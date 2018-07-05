@@ -1,0 +1,4 @@
+bin/docker_common.sh
+bin/install_egg.sh
+docker_image_build_info
+
