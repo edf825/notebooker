@@ -1,13 +1,11 @@
-FROM base.docker.prod.ahl/base/medusa-python:27-2
+FROM base.docker.prod.ahl/base/medusa-python:27-3.1
 
 MAINTAINER AHL Data Science
 
 ARG ENV_CHECK_VERSION=1.0.0
 ARG GOSU_VERSION=1.9.0
 
-ENV DEVPI_SERVER=http://ahldevpi.dev.man.com:3142 \
-    DEVPI_INDEX=ahl/27-2 \
-    MEDUSA_ENV=/opt/man/releases/python-medusa/27-2
+ENV MEDUSA_ENV=/opt/man/releases/python-medusa/27-3
 ENV PATH="${MEDUSA_ENV}/bin:${PATH}"
 
 ENV PYTHON_EGG_CACHE /tmp/egg-cache
