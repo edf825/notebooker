@@ -1,0 +1,29 @@
+{% import "header.html" as header %}
+
+{{ header.ocnHeader() }}
+
+<html>
+<body>
+
+    <table id="resultsTable" class="ui sortable selectable celled table">
+        <thead>
+            <th>Report Name</th>
+            <th>Completion Time</th>
+            <th>Results</th>
+            <th>Download Link</th>
+        </thead>
+        <tbody>
+        {% for report_name, completed_reports in all_jobs.items() %}
+            {% for job_id, result in completed_reports.items() %}
+                <tr>
+                    <td class="result-reportName">{{ result.get('report_name') }}</td>
+                    <td class="result-completeTime">{{ result.get('complete_time') }}</td>
+                    <td class="result-url"><button><a href="{{ result.get('result_url') }}">Result</a></button></td>
+                    <td class="result-ipynb"><button><a href="{{ result.get('ipynb_url') }}">Download .ipynb</a></button></td>
+                </tr>
+            {% endfor %}
+        {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

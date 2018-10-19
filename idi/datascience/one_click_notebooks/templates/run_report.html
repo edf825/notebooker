@@ -1,0 +1,38 @@
+{% import "header.html" as header %}
+
+{{ header.ocnHeader("#runReport") }}
+
+<html>
+    <head>
+
+        <script type="application/javascript" src="{{ url_for('static', filename='run_report.js') }}"></script>
+    </head>
+    <body>
+        <div class="ui container">
+            <h1>Run a check</h1>
+            <div class="ui form" id="run-check-form">
+                <div class="field">
+                    <label>Mongo Host</label>
+                    <input type="text" name="mongo-host" placeholder="Mongo Host">
+                </div>
+                <div class="field">
+                    <label>Mongo Library</label>
+                    <input type="text" name="mongo-library" placeholder="Mongo Library">
+                </div>
+                <div class="field">
+                    <label>Strategy Name (Optional)</label>
+                    <input type="text" name="strategy-name" placeholder="Strategy Name (Optional)">
+                </div>
+                <div class="field">
+                    <label>Symbols</label>
+                    <textarea name="symbols"></textarea>
+                </div>
+                <div class="field">
+                    <label>Columns</label>
+                    <textarea name="columns"></textarea>
+                </div>
+                <button class="positive ui button" id="runCheck">Run Check</button>
+            </div>
+        </div>
+    </body>
+</html>

@@ -1,0 +1,26 @@
+{% macro ocnHeader(activeTab) %}
+    <html>
+        <head>
+            <title>One-Click-Notebooks</title>
+
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.3.2/dist/semantic.min.css">
+            <script src="https://code.jquery.com/jquery-3.3.1.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/semantic-ui@2.3.2/dist/semantic.min.js"></script>
+            <script>var activeTab = "{{ activeTab }}"</script>
+            <script type="application/javascript" src="{{ url_for('static', filename='header.js') }}"></script>
+        </head>
+        <body>
+        <div class="ui menu inverted">
+          <div class="header item white">
+            <a href="/"><h1>One-Click-Notebooks</h1></a>
+          </div>
+          <a class="item" id="runReport" href="/run_report">
+            Run a Report
+          </a>
+          <a class="item" id="results" href="#" style="display: none">
+            Results
+          </a>
+        </div>
+        </body>
+    </html>
+{% endmacro %}
