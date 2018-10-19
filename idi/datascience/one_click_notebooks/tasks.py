@@ -21,8 +21,8 @@ def ipython_to_html(ipynb_path, job_id, out_dir, ipynb_name):
     return r
 
 
-def _output_ipynb_name(job_id, report_name):
-    return '{}_{}.ipynb'.format(report_name, job_id)
+def _output_ipynb_name(report_name):
+    return '{}.ipynb'.format(report_name)
 
 
 def _output_dir(job_id, output_base_dir, report_name):
@@ -30,13 +30,15 @@ def _output_dir(job_id, output_base_dir, report_name):
     return os.path.join(output_base_dir, report_name, job_id)
 
 
-def _output_status(job_id, report_name, output_base_dir):
-    ipynb_name = _output_ipynb_name(job_id, report_name)
+def _output_status(job_id, report_name, output_base_dir, start_time=None, input_data=None):
+    ipynb_name = _output_ipynb_name(report_name)
     return {'ipynb_result': ipynb_name,
             'status': 'Checks done!',
             'report_name': report_name,
             'html_result_dir': _output_dir(job_id, output_base_dir, report_name),
-            'html_result_filename': '{}.html'.format(ipynb_name)}
+            'html_result_filename': '{}.html'.format(ipynb_name),
+            'start_time': start_time,
+            'input_data': input_data}
 
 
 def _python_template(report_name):
@@ -55,42 +57,50 @@ def run_checks(job_id, report_name, output_base_dir, input_json):
     import pkg_resources
     from ahl.logging import get_logger
 
+    job_start_time = datetime.datetime.now()
     logger = get_logger(__name__)
 
     output_dir = _output_dir(job_id, output_base_dir, report_name)
-    output_ipynb = _output_ipynb_name(job_id, report_name)
+    output_ipynb = _output_ipynb_name(report_name)
 
     if not os.path.isdir(output_dir):
         logger.info('Making dir @ {}'.format(output_dir))
         os.makedirs(output_dir)
 
-    python_input_filename = _python_template(report_name)
-    ipynb_output_filename = _ipynb_output_path(report_name)
+    def generate_ipynb_from_py(report_name):
+        python_input_filename = _python_template(report_name)
+        raw_ipynb_output_filename = _ipynb_output_path(report_name)
+        python_template = pkg_resources.resource_filename(__name__, python_input_filename)
+        output_template = pkg_resources.resource_filename(__name__, raw_ipynb_output_filename)
 
-    # "touch" the output file
-    with open(ipynb_output_filename, 'a') as f:
-        os.utime(ipynb_output_filename, None)
+        # "touch" the output file
+        with open(output_template, 'a') as f:
+            os.utime(output_template, None)
 
-    python_template = pkg_resources.resource_filename(__name__, python_input_filename)
-    jupytext.writef(jupytext.readf(python_template), ipynb_output_filename)
-    output_ipynb_path = os.path.join(output_dir, output_ipynb)
+        jupytext.writef(jupytext.readf(python_template), output_template)
+        return output_template
 
-    logger.info('Executing notebook at {} using parameters {} --> {}'.format(ipynb_output_filename, input_json, output_ipynb))
-    pm.execute_notebook(ipynb_output_filename,
-                        output_ipynb_path,
+    ipynb_raw = generate_ipynb_from_py(report_name)
+    ipynb_executed = os.path.join(output_dir, output_ipynb)
+
+    logger.info('Executing notebook at {} using parameters {} --> {}'.format(ipynb_raw, input_json, output_ipynb))
+    pm.execute_notebook(ipynb_raw,
+                        ipynb_executed,
                         parameters=input_json,
                         log_output=True)
 
-    logger.info('Saving output notebook @ {}/{}'.format(output_dir, output_ipynb))
-    html_result = ipython_to_html(output_ipynb_path, job_id, output_dir, output_ipynb)
+    logger.info('Saving output notebook as HTML from {}'.format(ipynb_executed))
+    html_result = ipython_to_html(ipynb_executed, job_id, output_dir, output_ipynb)
     html_result_filename = os.path.basename(html_result)
 
     result_metadata = {'ipynb_result': output_ipynb,
                        'status': 'Checks done!',
                        'report_name': report_name,
                        'html_result_dir': output_dir,
-                       'html_result_filename': html_result_filename}
-    if result_metadata != _output_status(job_id, report_name, output_base_dir):
+                       'html_result_filename': html_result_filename,
+                       'input_data': input_json,
+                       'start_time': job_start_time}
+    if result_metadata != _output_status(job_id, report_name, output_base_dir, start_time=job_start_time, input_data=input_json):
         logger.warn('Output metadata did not match expected format! '
                     'It may not be able to recover this result if the webapp has to restart.')
     return result_metadata
@@ -98,5 +108,5 @@ def run_checks(job_id, report_name, output_base_dir, input_json):
 
 if __name__ == '__main__':
     import os
-    print run_checks('asdasda', 'watchdog_checks', os.path.dirname(os.path.realpath(__file__)), {})
+    print run_checks('asdasda', 'watchdog_checks', os.path.dirname(os.path.realpath(__file__)) + '/results', {})
 

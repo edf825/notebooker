@@ -25,7 +25,7 @@ logger = get_logger(__name__)
 
 @flask_app.route('/', methods=['GET'])
 def index():
-    return render_template('index.html', all_jobs=all_available_results())
+    return render_template('index.html', all_jobs=all_available_results(), running_jobs=get_all_running_jobs())
 
 
 @flask_app.route('/run_report', methods=['GET'])
@@ -120,13 +120,20 @@ def download_ipynb_result(task_id, report_name):
 # ---------------- Loading -------------------- #
 
 
+def get_all_running_jobs():
+    jobs = []
+    for job_id, future in running_jobs.items():
+        status = _get_job_status(job_id)
+        jobs.append({'status': status.get('status'), 'tracker_url': url_for('task_loading', task_id=job_id)})
+    return jobs
+
+
 @flask_app.route('/task_loading/<task_id>')
 def task_loading(task_id):
     return render_template('loading.html', task_id=task_id, location=url_for('task_status', task_id=task_id))
 
 
-@flask_app.route('/status/<task_id>')
-def task_status(task_id):
+def _get_job_status(task_id):
     job_future = _get_job_result_future(task_id)
     if job_future is None:
         return jsonify({'status': 'Job not found. Did you use an old job ID?'}), 404
@@ -153,7 +160,12 @@ def task_status(task_id):
         response = {'status': 'Running...'}
     else:
         response = {'status': 'Submitted for execution...'}
-    return jsonify(response)
+    return response
+
+
+@flask_app.route('/status/<task_id>')
+def task_status(task_id):
+    return jsonify(_get_job_status(task_id))
 
 
 # ----------------- Flask admin ---------------- #
