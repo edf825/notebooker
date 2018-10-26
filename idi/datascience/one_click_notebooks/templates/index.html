@@ -8,6 +8,7 @@
     <table id="resultsTable" class="ui sortable selectable celled table">
         <thead>
             <th>Report Name</th>
+            <th>Job ID</th>
             <th>Status</th>
             <th>Start Time</th>
             <th>Completion Time</th>
@@ -18,24 +19,27 @@
         {% for report_name, completed_reports in all_jobs.items() %}
             {% for job_id, result in completed_reports.items() %}
                 <tr>
-                    <td class="result-reportName">{{ result.get('report_name') }}</td>
-                    <td class="result-status">Complete</td>
-                    <td class="result-completeTime">{{ result.get('start_time') }}</td>
-                    <td class="result-completeTime">{{ result.get('complete_time') }}</td>
-                    <td class="result-url"><button><a href="{{ result.get('result_url') }}">Result</a></button></td>
-                    <td class="result-ipynb"><button><a href="{{ result.get('ipynb_url') }}">Download .ipynb</a></button></td>
+                    <td class="result-reportName">{{ result.report_name }}</td>
+                    <td class="result-jobId">{{ result.job_id }}</td>
+                    <td class="result-status">{{ result.status }}</td>
+                    <td class="result-startTime">{{ result.job_start_time }}</td>
+                    <td class="result-completeTime">{{ result.job_finish_time }}</td>
+                    <td class="result-url"><button><a href="{{ result.result_url }}">Result</a></button></td>
+                    <td class="result-ipynb"><button><a href="{{ result.ipynb_url }}">Download .ipynb</a></button></td>
                 </tr>
             {% endfor %}
         {% endfor %}
 
-        {% for pre_result in running_jobs %}
-            <td class="result-reportName">Pending</td>
-            <td class="result-status">{{ pre_result.get('status') }}</td>
-            <td class="result-completeTime"></td>
-            <td class="result-completeTime"></td>
-            <td class="result-url"><button><a href="{{ pre_result.get('tracker_url') }}">Result</a></button></td>
-            <td class="result-ipynb"><button class="ui button disabled"><a href="#">Download .ipynb</a></button></td>
-        {% endfor %}
+        <!--{% for pre_result in running_jobs %}-->
+            <!--<tr>-->
+                <!--<td class="result-reportName">Pending</td>-->
+                <!--<td class="result-status">{{ pre_result.get('status') }}</td>-->
+                <!--<td class="result-completeTime"></td>-->
+                <!--<td class="result-completeTime"></td>-->
+                <!--<td class="result-url"><button><a href="{{ pre_result.get('tracker_url') }}">Result</a></button></td>-->
+                <!--<td class="result-ipynb"><button class="ui button disabled"><a href="#">Download .ipynb</a></button></td>-->
+            <!--</tr>-->
+        <!--{% endfor %}-->
         </tbody>
     </table>
 </body>

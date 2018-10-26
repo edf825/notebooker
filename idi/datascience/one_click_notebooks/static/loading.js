@@ -1,7 +1,7 @@
 $(document).ready(function() {
     let results_url = "";
     let load_status = function() {
-        if ($('#loadingStatus').text() === "Checks done!") {
+        if ($('#loadingStatus').text() === "Done!") {
             clearInterval(intervalId);
             window.location.href = results_url;
         }
