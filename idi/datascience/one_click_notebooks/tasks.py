@@ -28,22 +28,32 @@ def _output_ipynb_name(report_name):
 
 
 def _python_template(report_name):
-    return 'notebook_templates/{}.py'.format(report_name)
+    return os.path.join('notebook_templates', '{}.py'.format(report_name))
 
 
-def _ipynb_output_path(report_name):
-    return 'notebook_templates/{}.ipynb'.format(report_name)
+def _ipynb_output_path(template_base_dir, report_name):
+    return os.path.join(template_base_dir, '{}.ipynb'.format(report_name))
 
 
-def generate_ipynb_from_py(report_name):
+def generate_ipynb_from_py(template_base_dir, report_name):
+    from ahl.logging import get_logger
+    logger = get_logger(__name__)
 
     python_input_filename = _python_template(report_name)
-    raw_ipynb_output_filename = _ipynb_output_path(report_name)
+    output_template = _ipynb_output_path(template_base_dir, report_name)
     python_template = pkg_resources.resource_filename(__name__, python_input_filename)
-    output_template = pkg_resources.resource_filename(__name__, raw_ipynb_output_filename)
+
+    try:
+        with open(output_template, 'r') as f:
+            if f.read():
+                logger.info('Loading ipynb from cached location: {}'.format(output_template))
+                return output_template
+    except IOError:
+        pass
 
     # "touch" the output file
-    with open(output_template, 'a') as f:
+    logger.info('Creating ipynb at: {}'.format(output_template))
+    with open(output_template, 'w') as f:
         os.utime(output_template, None)
 
     jupytext.writef(jupytext.readf(python_template), output_template)
@@ -54,6 +64,7 @@ def run_checks(job_id,              # type: str
                job_start_time,      # type: datetime.datetime
                report_name,         # type: str
                output_base_dir,     # type: str
+               template_base_dir,   # type: str
                mongo_host,          # type: str
                mongo_library,       # type: str
                input_json,          # type: Dict[Any, Any]
@@ -81,7 +92,7 @@ def run_checks(job_id,              # type: str
             logger.info('Making dir @ {}'.format(output_dir))
             os.makedirs(output_dir)
 
-        ipynb_raw_path = generate_ipynb_from_py(report_name)
+        ipynb_raw_path = generate_ipynb_from_py(template_base_dir, report_name)
         ipynb_executed_path = os.path.join(output_dir, output_ipynb)
 
         logger.info('Executing notebook at {} using parameters {} --> {}'.format(ipynb_raw_path, input_json, output_ipynb))

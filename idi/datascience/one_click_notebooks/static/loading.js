@@ -1,9 +1,11 @@
 $(document).ready(function() {
     let results_url = "";
+    var last_data = undefined;
     let load_status = function() {
-        if ($('#loadingStatus').text() === "Done!") {
+        if (typeof last_data !== "undefined" && typeof last_data.results_url !== "undefined") {
+            console.log(last_data);
             clearInterval(intervalId);
-            window.location.href = results_url;
+            top.window.location.href = last_data.results_url;
         }
         $.ajax({
             url: loc,  // We get this from loading.html, which comes from flask
@@ -12,10 +14,7 @@ $(document).ready(function() {
                 console.log(data);
                 results_url = data.results_url;
                 $('#loadingStatus').text(data.status);
-                if (data.status.startsWith('Error')) {
-                    $('#exceptionText').text(data.exception_info);
-                    clearInterval(intervalId);
-                }
+                last_data = data;
             },
             error: function(xhr, error){
                 $('h2').text(xhr.responseJSON.status);

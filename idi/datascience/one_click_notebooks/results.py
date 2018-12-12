@@ -30,7 +30,7 @@ class JobStatus(Enum):
         mapping = {
             x.value: x
             for x
-            in (JobStatus.DONE, JobStatus.ERROR, JobStatus.CANCELLED, JobStatus.PENDING)
+            in (JobStatus.DONE, JobStatus.ERROR, JobStatus.CANCELLED, JobStatus.PENDING, JobStatus.SUBMITTED)
         }.get(s)
         return mapping
 
@@ -182,6 +182,7 @@ class NotebookResultSerializer(object):
                JobStatus.DONE: NotebookResultComplete,
                JobStatus.PENDING: NotebookResultPending,
                JobStatus.ERROR: NotebookResultError,
+               JobStatus.SUBMITTED: NotebookResultPending,
                }.get(job_status)
         if job_status == JobStatus.DONE:
             outputs = {}

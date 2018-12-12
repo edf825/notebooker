@@ -4,7 +4,13 @@ import datetime
 import functools
 import glob
 import os
+import papermill as pm
+import re
+import shutil
+import threading
+import time
 import traceback
+import tempfile
 import uuid
 from ahl.concurrent.futures import hpc_pool
 from collections import defaultdict
@@ -13,16 +19,19 @@ from ahl.logging import get_logger
 from typing import Dict
 
 from idi.datascience.one_click_notebooks import tasks, results
-from idi.datascience.one_click_notebooks.results import JobStatus
+from idi.datascience.one_click_notebooks.results import JobStatus, NotebookResultError
 
 flask_app = Flask(__name__)
 spark_pool = None
 running_jobs = {}  # Maps jobid --> Future
 complete_jobs = {}  # Maps report_name --> jobid --> results.NotebookResultBase
-OUTPUT_BASE_DIR = os.getenv('OUTPUT_DIR', os.path.join(os.path.dirname(os.path.realpath(__file__)), 'results'))
+# TODO: Figure out how we can get the below to work without expanduser, which is required by Spark.
+OUTPUT_BASE_DIR = os.path.join(os.getenv('OUTPUT_DIR', tempfile.mkdtemp(dir=os.path.expanduser('~'))), 'results')
+TEMPLATE_BASE_DIR = os.path.join(os.getenv('OUTPUT_DIR', tempfile.mkdtemp(dir=os.path.expanduser('~'))), 'templates')
 MONGO_HOST = 'research'
 MONGO_LIBRARY = 'NOTEBOOK_OUTPUT'
 result_serializer = None
+alive = True
 logger = get_logger(__name__)
 
 
@@ -30,15 +39,22 @@ logger = get_logger(__name__)
 
 @flask_app.route('/', methods=['GET'])
 def index():
-    return render_template('index.html', all_jobs=all_available_results(), running_jobs=get_all_running_jobs())
-
-
-@flask_app.route('/run_report', methods=['GET'])
-def run_report():
-    return render_template('run_report.html')
+    return render_template('index.html', all_jobs=all_available_results())
 
 
 # ------------------ Running checks ---------------- #
+
+@flask_app.route('/run_report/<report_name>', methods=['GET'])
+def run_report(report_name):
+    path = tasks.generate_ipynb_from_py(TEMPLATE_BASE_DIR, report_name)
+    nb = pm.read_notebook(path)
+    metadata = [cell for cell in nb.node.cells if 'parameters' in cell.get('metadata', {}).get('tags', [])]
+    parameters_as_html = ''
+    if metadata:
+        parameters_as_html = metadata[0]['source'].strip()
+
+    return render_template('run_report.html', parameters_as_html=parameters_as_html, report_name=report_name)
+
 
 def _get_job_result_future(job_id):
     if job_id not in running_jobs:
@@ -47,31 +63,62 @@ def _get_job_result_future(job_id):
     return job_result
 
 
-def _run_report(report_name, *args):
+def _run_report(report_name, overrides):
     job_id = str(uuid.uuid4())
     job_start_time = datetime.datetime.now()
     result_serializer.save_check_stub(job_id, report_name,
-                                      input_json=args, job_start_time=job_start_time,
+                                      input_json=overrides, job_start_time=job_start_time,
                                       status=JobStatus.SUBMITTED)
-    logger.info('Calculating a new {} ipynb'.format(report_name))
-    spark_future = spark_pool.submit(functools.partial(tasks.run_checks,
-                                                       job_id,
-                                                       job_start_time,
-                                                       report_name,
-                                                       OUTPUT_BASE_DIR,
-                                                       MONGO_HOST,
-                                                       MONGO_LIBRARY,
-                                                       *args))
+    logger.info('Calculating a new {} ipynb with parameters: {}'.format(report_name, overrides))
+    try:
+        spark_future = spark_pool.submit(functools.partial(tasks.run_checks,
+                                                           job_id,
+                                                           job_start_time,
+                                                           report_name,
+                                                           OUTPUT_BASE_DIR,
+                                                           TEMPLATE_BASE_DIR,
+                                                           MONGO_HOST,
+                                                           MONGO_LIBRARY,
+                                                           overrides))
+    except Exception as e:
+        import traceback
+        error_info = traceback.format_exc()
+        notebook_result = NotebookResultError(job_id=job_id,
+                                              job_start_time=job_start_time,
+                                              input_json=overrides,
+                                              report_name=report_name,
+                                              error_info=error_info)
+        logger.info('Saving error result to mongo library {}@{}...'.format(MONGO_LIBRARY, MONGO_HOST))
+        result_serializer.save_check_result(notebook_result)
+        logger.info('Error result saved to mongo successfully.')
+        return job_id
     global running_jobs
     running_jobs[job_id] = spark_future
     return job_id
 
 
-@flask_app.route('/run_checks', methods=['POST', 'PUT'])
-def run_checks_http():
-    input_json = request.get_json()
-    job_id = _run_report('watchdog_checks', input_json)
-    return jsonify({'id': job_id}), 202, {'Location': url_for('task_status', task_id=job_id)}
+class NotebookRunError(Exception):
+    pass
+
+
+@flask_app.route('/run_checks/<report_name>', methods=['POST', 'PUT'])
+def run_checks_http(report_name):
+    overrides = request.values.get('overrides')
+    override_dict = {}
+    issues = []
+    for s in overrides.split('\n'):
+        s = s.strip()
+        match = re.match('(?P<variable_name>[a-zA-Z_]+) *= *(?P<value>.+)', s)
+        if match:
+            try:
+                # This is dirty but we trust our users...
+                override_dict[match.group('variable_name')] = eval(match.group('value'))
+            except Exception as e:
+                issues.append('Failed to parse input: {}: {}'.format(s, str(e)))
+    if issues:
+        return jsonify({'status': 'Failed', 'content':('\n'.join(issues))})
+    job_id = _run_report(report_name, override_dict)
+    return jsonify({'id': job_id}), 202, {'Location': url_for('task_status', report_name=report_name, task_id=job_id)}
 
 
 # ------------------- Serving results -------------------- #
@@ -109,9 +156,12 @@ def all_available_results():
 
 @flask_app.route('/results/<report_name>/<task_id>')
 def task_results(task_id, report_name):
+    result = _get_job_results(task_id, report_name)
     return render_template('results.html',
                            task_id=task_id,
                            report_name=report_name,
+                           result=result,
+                           donevalue=JobStatus.DONE.value,
                            html_render=url_for('task_results_html', report_name=report_name, task_id=task_id),
                            ipynb_url=url_for('download_ipynb_result', report_name=report_name, task_id=task_id))
 
@@ -120,7 +170,9 @@ def task_results(task_id, report_name):
 def task_results_html(task_id, report_name):
     result = _get_job_results(task_id, report_name)
     if isinstance(result, results.NotebookResultError):
-        abort(404)
+        return '<p>This job resulted in an error: <br/><code>{}</code></p>'.format(result.error_info)
+    if isinstance(result, results.NotebookResultPending):
+        return task_loading(report_name, task_id)
     return result.raw_html
 
 
@@ -138,64 +190,48 @@ def task_result_resources_html(task_id, resource, report_name):
 @flask_app.route('/result_download_ipynb/<report_name>/<task_id>')
 def download_ipynb_result(task_id, report_name):
     result = _get_job_results(task_id, report_name)
-    return Response(result.raw_ipynb_json,
-                    mimetype="application/vnd.jupyter",
-                    headers={"Content-Disposition": "attachment;filename={}.ipynb".format(task_id)})
+    if isinstance(result, results.NotebookResultComplete):
+        return Response(result.raw_ipynb_json,
+                        mimetype="application/vnd.jupyter",
+                        headers={"Content-Disposition": "attachment;filename={}.ipynb".format(task_id)})
+    else:
+        abort(404)
 
 
 # ---------------- Loading -------------------- #
 
 
-def get_all_running_jobs():
-    jobs = []
-    for job_id, future in running_jobs.items():
-        status = _get_job_status(job_id)
-        jobs.append({'status': status.get('status'), 'tracker_url': url_for('task_loading', task_id=job_id)})
-    return jobs
+def task_loading(report_name, task_id):
+    return render_template('loading.html', task_id=task_id, location=url_for('task_status',
+                                                                             report_name=report_name,
+                                                                             task_id=task_id))
 
 
-@flask_app.route('/task_loading/<task_id>')
-def task_loading(task_id):
-    return render_template('loading.html', task_id=task_id, location=url_for('task_status', task_id=task_id))
-
-
-def _get_job_status(task_id):
-    job_future = _get_job_result_future(task_id)
-    if job_future is None:
+def _get_job_status(task_id, report_name):
+    job_result = _get_job_results(task_id, report_name)
+    if job_result is None:
         return {'status': 'Job not found. Did you use an old job ID?'}
-    if job_future.done():
-        try:
-            notebook_result = job_future.result()
-            report_name = notebook_result.report_name
-            # Now save the job to "complete_jobs"
-            global complete_jobs
-            if report_name not in complete_jobs:
-                complete_jobs[report_name] = {}
-            complete_jobs[report_name][task_id] = notebook_result
-            response = {'status': 'Done!',
-                        'results_url': url_for('task_results', report_name=report_name, task_id=task_id)}
-
-        except KeyboardInterrupt:
-            raise
-        except Exception as e:
-            response = {'status': 'Error: {}'.format(str(e)),
-                        'exception_info': traceback.format_exc()}
-            return response
-    elif job_future.running():
-        response = {'status': 'Running...'}
+    if job_result.status == JobStatus.DONE.value:
+        response = {'status': job_result.status,
+                    'results_url': url_for('task_results', report_name=report_name, task_id=task_id)}
+    elif job_result.status == JobStatus.ERROR.value:
+        response = {'status': job_result.status,
+                    'results_url': url_for('task_results', report_name=report_name, task_id=task_id)}
     else:
-        response = {'status': 'Submitted for execution...'}
+        response = {'status': job_result.status}
     return response
 
 
-@flask_app.route('/status/<task_id>')
-def task_status(task_id):
-    return jsonify(_get_job_status(task_id))
+@flask_app.route('/status/<report_name>/<task_id>')
+def task_status(report_name, task_id):
+    return jsonify(_get_job_status(task_id, report_name))
 
 
 # ----------------- Flask admin ---------------- #
 
 def _cleanup_on_exit():
+    global alive
+    alive = False
     logger.info('Cleaning up jobs')
     for job_id, job_future in running_jobs.items():
         if job_future.running():
@@ -204,26 +240,41 @@ def _cleanup_on_exit():
             logger.info('Job cancel: {}'.format('SUCCESS' if cancel_result else 'FAILED'))
             result_serializer.update_check_status(job_id, 'CANCELLED')
     logger.info('Job cleanup done. Stopping spark pool.')
-    global spark_pool
-    spark_pool.shutdown()
+    if spark_pool:
+        global spark_pool
+        spark_pool.shutdown()
+    shutil.rmtree(OUTPUT_BASE_DIR)
+    shutil.rmtree(TEMPLATE_BASE_DIR)
 
 
-def _find_completed_jobs(serializer):
-    # type: (results.NotebookResultSerializer) -> Dict[str, Dict[str, results.NotebookResultBase]]
-    all_existing_results = defaultdict(dict)
-    for result in serializer.get_all_results():
-        all_existing_results[result.report_name][result.job_id] = result
-    return all_existing_results
+def _report_hunter():
+    serializer = results.NotebookResultSerializer()
+    global alive, complete_jobs
+    while alive:
+        all_existing_results = defaultdict(dict)
+        for result in serializer.get_all_results():
+            all_existing_results[result.report_name][result.job_id] = result
+        if complete_jobs != all_existing_results:
+            logger.info('Report-hunter found a status change')
+            complete_jobs = all_existing_results
+        time.sleep(10)
+    logger.info('Report-hunting job successfully killed.')
 
 
 def start_app():
-    global spark_pool, complete_jobs, result_serializer
+    global spark_pool, result_serializer
+    logger.info('Creating {}'.format(OUTPUT_BASE_DIR))
+    os.makedirs(OUTPUT_BASE_DIR)
+    logger.info('Creating {}'.format(TEMPLATE_BASE_DIR))
+    os.makedirs(TEMPLATE_BASE_DIR)
     result_serializer = results.NotebookResultSerializer()
-    complete_jobs = _find_completed_jobs(result_serializer)
     spark_pool = hpc_pool('SPARK', local_thread_count=8)
     port = int(os.getenv('OCN_PORT', 11828))
     atexit.register(_cleanup_on_exit)
-    flask_app.run('0.0.0.0', port, threaded=True, debug=False)
+    all_report_refresher = threading.Thread(target=_report_hunter)
+    all_report_refresher.daemon = True
+    all_report_refresher.start()
+    flask_app.run('0.0.0.0', port, threaded=True, debug=True)
 
 
 if __name__ == '__main__':

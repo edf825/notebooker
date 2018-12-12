@@ -21,6 +21,7 @@
 </head>
 <body>
     <div class="ui container center">
+
         <h1>Task Results</h1>
         <div class="ui grid">
             <div class="five wide column">
@@ -29,17 +30,28 @@
             <div class="five wide column">
                 <h4>Report Template Name: {{ report_name }}</h4>
             </div>
-            <div class="five wide column">
-                <a href="{{ ipynb_url }}"><button class="ui red button">Download .ipynb</button></a>
-            </div>
+            {% if result.status == donevalue %}
+                <div class="five wide column">
+                    <a href="{{ ipynb_url }}"><button class="ui red button">Download .ipynb</button></a>
+                </div>
+            {% endif %}
             <!--<div class="four wide column">-->
 
             </div>
-        </div>
 
         <br/>
         <br/>
-        <iframe src="{{ html_render }}" style="width:100%" onload="resizeIframe(this)" scrolling="no"></iframe>
+        <div class="ui segment">
+          <div class="ui left rail">
+            <div class="ui segment">
+                <strong>This report started running at:</strong> <br/> {{result.job_start_time}}<br/>
+                {% if result.job_finish_time %}
+                    <strong>It finished at:</strong> <br/> {{result.job_finish_time}}
+                {% endif %}
+            </div>
+          </div>
+            <iframe src="{{ html_render }}" style="width:100%; border:none;" onload="resizeIframe(this)" scrolling="no"></iframe>
+        </div>
     </div>
 </body>
 </html>

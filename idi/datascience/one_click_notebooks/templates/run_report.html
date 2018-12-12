@@ -2,37 +2,28 @@
 
 {{ header.ocnHeader("#runReport") }}
 
-<html>
+<html xmlns="http://www.w3.org/1999/html">
     <head>
 
-        <script type="application/javascript" src="{{ url_for('static', filename='run_report.js') }}"></script>
+    <script type="application/javascript" src="{{ url_for('static', filename='run_report.js') }}"></script>
     </head>
     <body>
         <div class="ui container">
-            <h1>Run a check</h1>
-            <div class="ui form" id="run-check-form">
+            <h1>Run a {{report_name}} check</h1>
+            <h3>Existing parameters:</h3>
+            <code>{{parameters_as_html|safe}}</code>
+            <h3>Override parameters:</h3>
+            <form class="ui form" id="run-check-form">
                 <div class="field">
-                    <label>Mongo Host</label>
-                    <input type="text" name="mongo-host" placeholder="Mongo Host">
+                    <label>Overrides</label>
+                    <textarea name="overrides" placeholder="Write your overrides in python here.
+Only 'x = y' statements will work, similar to the existing parameters above."></textarea>
                 </div>
                 <div class="field">
-                    <label>Mongo Library</label>
-                    <input type="text" name="mongo-library" placeholder="Mongo Library">
-                </div>
-                <div class="field">
-                    <label>Strategy Name (Optional)</label>
-                    <input type="text" name="strategy-name" placeholder="Strategy Name (Optional)">
-                </div>
-                <div class="field">
-                    <label>Symbols</label>
-                    <textarea name="symbols"></textarea>
-                </div>
-                <div class="field">
-                    <label>Columns</label>
-                    <textarea name="columns"></textarea>
+                    <input name="report_name" value="{{report_name}}" style="display:none">
                 </div>
                 <button class="positive ui button" id="runCheck">Run Check</button>
-            </div>
+            </form>
         </div>
     </body>
 </html>
