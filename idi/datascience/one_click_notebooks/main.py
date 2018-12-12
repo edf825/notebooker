@@ -7,11 +7,13 @@ import os
 import traceback
 import uuid
 from ahl.concurrent.futures import hpc_pool
-from concurrent.futures import Future
+from collections import defaultdict
 from flask import Flask, render_template, request, jsonify, url_for, send_from_directory, abort, Response
 from ahl.logging import get_logger
+from typing import Dict
 
 from idi.datascience.one_click_notebooks import tasks, results
+from idi.datascience.one_click_notebooks.results import JobStatus
 
 flask_app = Flask(__name__)
 spark_pool = None
@@ -47,9 +49,14 @@ def _get_job_result_future(job_id):
 
 def _run_report(report_name, *args):
     job_id = str(uuid.uuid4())
+    job_start_time = datetime.datetime.now()
+    result_serializer.save_check_stub(job_id, report_name,
+                                      input_json=args, job_start_time=job_start_time,
+                                      status=JobStatus.SUBMITTED)
     logger.info('Calculating a new {} ipynb'.format(report_name))
     spark_future = spark_pool.submit(functools.partial(tasks.run_checks,
                                                        job_id,
+                                                       job_start_time,
                                                        report_name,
                                                        OUTPUT_BASE_DIR,
                                                        MONGO_HOST,
@@ -86,7 +93,8 @@ def _get_job_results(job_id, report_name):
     if notebook_result is None:
         err_info = 'Job results not found for report name={} / job id={}. ' \
                  'Did you use an invalid job ID?'.format(report_name, job_id)
-        return results.NotebookResultError(job_id, error_info=err_info, report_name=report_name)
+        return results.NotebookResultError(job_id, error_info=err_info, report_name=report_name,
+                                           job_start_time=datetime.datetime.now())
     return notebook_result
 
 
@@ -200,25 +208,18 @@ def _cleanup_on_exit():
     spark_pool.shutdown()
 
 
-def _find_completed_jobs():
-    all_existing_results = {}
-    # TODO: Read from Mongo
-    # for path, dirs, files in os.walk(OUTPUT_BASE_DIR):
-    #     If there is an HTML render, the check has finished
-        # if any(fname.endswith('.html') for fname in files):
-        #     The basename of the path is the check uuid
-            # results_dir, report_name, job_id = path.rsplit(os.path.sep, 2)
-            # check_result = tasks._output_status(job_id, report_name, results_dir)
-            # if report_name not in all_existing_results:
-            #     all_existing_results[report_name] = {}
-            # all_existing_results[report_name][job_id] = check_result
+def _find_completed_jobs(serializer):
+    # type: (results.NotebookResultSerializer) -> Dict[str, Dict[str, results.NotebookResultBase]]
+    all_existing_results = defaultdict(dict)
+    for result in serializer.get_all_results():
+        all_existing_results[result.report_name][result.job_id] = result
     return all_existing_results
 
 
 def start_app():
     global spark_pool, complete_jobs, result_serializer
     result_serializer = results.NotebookResultSerializer()
-    complete_jobs = _find_completed_jobs()
+    complete_jobs = _find_completed_jobs(result_serializer)
     spark_pool = hpc_pool('SPARK', local_thread_count=8)
     port = int(os.getenv('OCN_PORT', 11828))
     atexit.register(_cleanup_on_exit)

@@ -1,5 +1,12 @@
 # This module is meant to be used primarily by Spark nodes, hence local imports *everywhere*
+import datetime
+import jupytext
+import os
+import pkg_resources
+from typing import Any, Dict
 
+from idi.datascience.one_click_notebooks.results import NotebookResultComplete, NotebookResultSerializer, \
+    NotebookResultError
 
 def ipython_to_html(ipynb_path, job_id):
     import nbformat
@@ -29,9 +36,6 @@ def _ipynb_output_path(report_name):
 
 
 def generate_ipynb_from_py(report_name):
-    import jupytext
-    import os
-    import pkg_resources
 
     python_input_filename = _python_template(report_name)
     raw_ipynb_output_filename = _ipynb_output_path(report_name)
@@ -46,54 +50,75 @@ def generate_ipynb_from_py(report_name):
     return output_template
 
 
-def run_checks(job_id, report_name, output_base_dir, mongo_host, mongo_library, input_json):
-    import datetime
-    import os
-    import papermill as pm
+def run_checks(job_id,              # type: str
+               job_start_time,      # type: datetime.datetime
+               report_name,         # type: str
+               output_base_dir,     # type: str
+               mongo_host,          # type: str
+               mongo_library,       # type: str
+               input_json,          # type: Dict[Any, Any]
+               ):
+    # type: (...) -> NotebookResultComplete
     from ahl.logging import get_logger
-    from idi.datascience.one_click_notebooks.results import NotebookResultComplete, NotebookResultSerializer
-    from idi.datascience.one_click_notebooks.utils import _output_dir
-
-    job_start_time = datetime.datetime.now()
     logger = get_logger(__name__)
 
     # Save initial state to mongo
     serializer = NotebookResultSerializer(mongo_host=mongo_host, result_collection_name=mongo_library)
-    serializer.save_check_stub(job_id, report_name, input_json=input_json, job_start_time=job_start_time)
+    try:
+        import os
+        import papermill as pm
+        from idi.datascience.one_click_notebooks.results import JobStatus
+        from idi.datascience.one_click_notebooks.utils import _output_dir
 
-    output_dir = _output_dir(output_base_dir, report_name, job_id)
-    output_ipynb = _output_ipynb_name(report_name)
+        serializer.save_check_stub(job_id, report_name,
+                                   input_json=input_json, job_start_time=job_start_time,
+                                   status=JobStatus.PENDING)
 
-    if not os.path.isdir(output_dir):
-        logger.info('Making dir @ {}'.format(output_dir))
-        os.makedirs(output_dir)
+        output_dir = _output_dir(output_base_dir, report_name, job_id)
+        output_ipynb = _output_ipynb_name(report_name)
 
-    ipynb_raw_path = generate_ipynb_from_py(report_name)
-    ipynb_executed_path = os.path.join(output_dir, output_ipynb)
+        if not os.path.isdir(output_dir):
+            logger.info('Making dir @ {}'.format(output_dir))
+            os.makedirs(output_dir)
 
-    logger.info('Executing notebook at {} using parameters {} --> {}'.format(ipynb_raw_path, input_json, output_ipynb))
-    pm.execute_notebook(ipynb_raw_path,
-                        ipynb_executed_path,
-                        parameters=input_json,
-                        log_output=True)
-    with open(ipynb_executed_path, 'r') as f:
-        raw_executed_ipynb = f.read()
+        ipynb_raw_path = generate_ipynb_from_py(report_name)
+        ipynb_executed_path = os.path.join(output_dir, output_ipynb)
 
-    logger.info('Saving output notebook as HTML from {}'.format(ipynb_executed_path))
-    html, resources = ipython_to_html(ipynb_executed_path, job_id)
+        logger.info('Executing notebook at {} using parameters {} --> {}'.format(ipynb_raw_path, input_json, output_ipynb))
+        pm.execute_notebook(ipynb_raw_path,
+                            ipynb_executed_path,
+                            parameters=input_json,
+                            log_output=True)
+        with open(ipynb_executed_path, 'r') as f:
+            raw_executed_ipynb = f.read()
 
-    notebook_result = NotebookResultComplete(job_id=job_id,
-                                             job_start_time=job_start_time,
-                                             job_finish_time=datetime.datetime.now(),
-                                             input_json=input_json,
-                                             raw_html_resources=resources,
-                                             raw_ipynb_json=raw_executed_ipynb,
-                                             raw_html=html,
-                                             report_name=report_name)
-    logger.info('Saving result to mongo library {}@{}...'.format(mongo_library, mongo_host))
-    serializer.save_check_result(notebook_result)
-    logger.info('Saved result to mongo successfully.')
-    return notebook_result
+        logger.info('Saving output notebook as HTML from {}'.format(ipynb_executed_path))
+        html, resources = ipython_to_html(ipynb_executed_path, job_id)
+
+        notebook_result = NotebookResultComplete(job_id=job_id,
+                                                 job_start_time=job_start_time,
+                                                 job_finish_time=datetime.datetime.now(),
+                                                 input_json=input_json,
+                                                 raw_html_resources=resources,
+                                                 raw_ipynb_json=raw_executed_ipynb,
+                                                 raw_html=html,
+                                                 report_name=report_name)
+        logger.info('Saving result to mongo library {}@{}...'.format(mongo_library, mongo_host))
+        serializer.save_check_result(notebook_result)
+        logger.info('Saved result to mongo successfully.')
+        return notebook_result
+    except Exception as e:
+        import traceback
+        error_info = traceback.format_exc()
+        notebook_result = NotebookResultError(job_id=job_id,
+                                              job_start_time=job_start_time,
+                                              input_json=input_json,
+                                              report_name=report_name,
+                                              error_info=error_info)
+        logger.info('Saving error result to mongo library {}@{}...'.format(mongo_library, mongo_host))
+        serializer.save_check_result(notebook_result)
+        logger.info('Error result saved to mongo successfully.')
+        raise
 
 
 if __name__ == '__main__':
