@@ -24,8 +24,10 @@
                     <td class="result-status">{{ result.status }}</td>
                     <td class="result-startTime">{{ result.job_start_time }}</td>
                     <td class="result-completeTime">{{ result.job_finish_time }}</td>
-                    <td class="result-url"><button><a href="{{ result.result_url }}">Result</a></button></td>
-                    <td class="result-ipynb"><button><a href="{{ result.ipynb_url }}">Download .ipynb</a></button></td>
+                    <td class="result-url">
+                        <button onclick="location.href='{{ result.result_url }}'" type="button">Result</button></td>
+                    <td class="result-ipynb">
+                        <button onclick="location.href='{{ result.ipynb_url }}'" type="button">Download .ipynb</button></td>
                 </tr>
             {% endfor %}
         {% endfor %}
