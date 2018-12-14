@@ -1,3 +1,8 @@
+import pkgutil
+
+from idi.datascience.one_click_notebooks.constants import TEMPLATE_MODULE_NAME
+
+
 def _output_dir(output_base_dir, report_name, job_id):
     import os
     return os.path.join(output_base_dir, report_name, job_id)
@@ -7,12 +12,9 @@ def _cache_key(report_name, job_id):
     return 'report_name={}&job_id={}'.format(report_name, job_id)
 
 
-def cache_key_to_dict(cache_key):
-    out = {}
-    for assignment in cache_key.split('&'):
-        k, v = assignment.split('=')
-        out[k] = v
-    return out
-
-
-
+def get_all_possible_checks():
+    return list({x.rsplit('.', 1)[1]
+                 for (_, x, _)
+                 in pkgutil.walk_packages('idi.datascience')
+                 if TEMPLATE_MODULE_NAME in x
+                 and not x.endswith(TEMPLATE_MODULE_NAME)})

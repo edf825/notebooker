@@ -2,41 +2,20 @@ import attr
 import datetime
 import gridfs
 import pymongo
-from bson import Binary
-from enum import Enum, unique
 
 from ahl.logging import get_logger
 from ahl.mongo import Mongoose
 from ahl.mongo.auth import get_auth, authenticate
 from ahl.mongo.decorators import mongo_retry
-from nbconvert.writers import FilesWriter
+from flask import url_for
 from typing import AnyStr, Optional, Generator, Any, Dict, Union, List, Tuple
 
-from idi.datascience.one_click_notebooks.utils import _output_dir, _cache_key
+from idi.datascience.one_click_notebooks.caching import get_cache, set_cache, _get_cache, _set_cache
+from idi.datascience.one_click_notebooks.constants import JobStatus
+from idi.datascience.one_click_notebooks.exceptions import NotebookRunError
+
 
 logger = get_logger(__name__)
-
-
-@unique
-class JobStatus(Enum):
-    DONE = 'Checks done!'
-    ERROR = 'Error'
-    CANCELLED = 'CANCELLED'
-    PENDING = 'Running...'
-    SUBMITTED = 'Submitted to run'
-    TIMEOUT = 'Report timed out. Please try again!'
-    DELETED = 'This report has been deleted.'
-
-    @staticmethod
-    def from_string(s):
-        # type: (AnyStr) -> JobStatus
-        mapping = {
-            x.value: x
-            for x
-            in (JobStatus.DONE, JobStatus.ERROR, JobStatus.CANCELLED, JobStatus.PENDING, JobStatus.SUBMITTED,
-                JobStatus.TIMEOUT, JobStatus.DELETED)
-        }.get(s)
-        return mapping
 
 
 @attr.s()
@@ -179,7 +158,7 @@ class NotebookResultSerializer(object):
 
     @mongo_retry
     def get_check_result(self, job_id):
-        # type: (AnyStr) -> Optional[NotebookResultBase]
+        # type: (AnyStr) -> Optional[Union[NotebookResultError, NotebookResultComplete, NotebookResultPending]]
         result = self.library.find_one({'job_id': job_id}, {'_id': 0})
         if not result:
             return None
@@ -233,13 +212,61 @@ class NotebookResultSerializer(object):
         self.update_check_status(job_id, JobStatus.DELETED)
 
 
+def _get_job_results(job_id,            # type: str
+                     report_name,       # type: str
+                     serializer,        # type: NotebookResultSerializer
+                     retrying=False     # type: Optional[bool]
+                     ):
+    # type: (...) -> Union[NotebookResultError, NotebookResultComplete, NotebookResultPending]
+    current_result = get_cache(report_name, job_id)
+    if current_result:
+        notebook_result = current_result
+    else:
+        notebook_result = serializer.get_check_result(job_id)
+        set_cache(report_name, job_id, notebook_result)
+
+    if not notebook_result:
+        err_info = 'Job results not found for report name={} / job id={}. ' \
+                 'Did you use an invalid job ID?'.format(report_name, job_id)
+        return NotebookResultError(job_id, error_info=err_info, report_name=report_name,
+                                   job_start_time=datetime.datetime.now())
+    if isinstance(notebook_result, str):
+        if not retrying:
+            return _get_job_results(job_id, report_name, retrying=True)
+        raise NotebookRunError('An unexpected string was found as a result. Please run your request again.')
+
+    return notebook_result
+
+
+def _get_all_result_keys(serializer):
+    # type: (NotebookResultSerializer) -> List[Tuple[str, str]]
+    all_keys = _get_cache('all_result_keys')
+    if not all_keys:
+        all_keys = serializer.get_all_result_keys()
+        _set_cache('all_result_keys', all_keys, timeout=1)
+    return all_keys
+
+
+def all_available_results(serializer,  # type: NotebookResultSerializer
+                          ):
+    # type: (...) -> Dict[Tuple[str, str], Union[NotebookResultError, NotebookResultComplete, NotebookResultPending]]
+    all_keys = _get_all_result_keys(serializer)
+    complete_jobs = {}
+    for report_name, job_id in all_keys:
+        result = _get_job_results(job_id, report_name, serializer)
+        report_name, job_id = result.report_name, result.job_id
+        result.result_url = url_for('task_results', task_id=job_id, report_name=report_name)
+        result.ipynb_url = url_for('download_ipynb_result', task_id=job_id, report_name=report_name)
+        complete_jobs[(report_name, job_id)] = result
+    return complete_jobs
+
+
 def save_output_to_mongo(mongo_host,
                          mongo_library,
                          notebook_result):
     # type: (str, str, NotebookResultComplete) -> None
     serializer = NotebookResultSerializer(mongo_host=mongo_host, result_collection_name=mongo_library)
     serializer.save_check_result(notebook_result)
-
 
 
 if __name__ == '__main__':
