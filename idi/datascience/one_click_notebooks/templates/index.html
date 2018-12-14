@@ -5,33 +5,41 @@
 <html>
 <body>
 
-    <table id="resultsTable" class="ui sortable selectable celled table">
-        <thead>
-            <th>Report Name</th>
-            <th>Job ID</th>
-            <th>Status</th>
-            <th>Start Time</th>
-            <th>Completion Time</th>
-            <th>Results</th>
-            <th>Download Link</th>
-        </thead>
-        <tbody>
-        {% for report_name, completed_reports in all_jobs.items() %}
-            {% for job_id, result in completed_reports.items() %}
+    {{ header.sidebar(all_reports) }}
+    <div class="ui container">
+        <table id="resultsTable" class="ui sortable selectable celled table">
+            <thead>
+                <th>Report Name</th>
+                <th>Job ID</th>
+                <th>Status</th>
+                <th>Start Time</th>
+                <th>Completion Time</th>
+                <th>Results</th>
+                <th>Download Link</th>
+                <th>Delete Result</th>
+            </thead>
+            <tbody>
+            {% for ((report_name, job_id), result) in all_jobs.items() %}
                 <tr>
-                    <td class="result-reportName">{{ result.report_name }}</td>
-                    <td class="result-jobId">{{ result.job_id }}</td>
-                    <td class="result-status">{{ result.status }}</td>
-                    <td class="result-startTime">{{ result.job_start_time }}</td>
-                    <td class="result-completeTime">{{ result.job_finish_time }}</td>
-                    <td class="result-url">
-                        <button onclick="location.href='{{ result.result_url }}'" type="button">Result</button></td>
-                    <td class="result-ipynb">
-                        <button onclick="location.href='{{ result.ipynb_url }}'" type="button">Download .ipynb</button></td>
+                    <td>{{ result.report_name }}</td>
+                    <td>{{ result.job_id }}</td>
+                    <td>{{ result.status }}</td>
+                    <td>{{ result.job_start_time }}</td>
+                    <td>{{ result.job_finish_time }}</td>
+                    <td><button onclick="location.href='{{ result.result_url }}'"
+                                type="button" class="ui button blue">Result</button>
+                    </td>
+                    <td>
+                        <button onclick="location.href='{{ result.ipynb_url }}'"
+                                type="button" class="ui button yellow">Download .ipynb</button>
+                    </td>
+                    <td>
+                        <button type="button" class="ui button red" onclick="alert('not yet implemented!')"><i class="trash icon"></i></button>
+                    </td>
                 </tr>
             {% endfor %}
-        {% endfor %}
-        </tbody>
-    </table>
+            </tbody>
+        </table>
+    </div>
 </body>
 </html>

@@ -2,44 +2,79 @@ import atexit
 import copy
 import datetime
 import functools
-import glob
+import pkgutil
+
 import os
 import papermill as pm
 import re
+import retrying
 import shutil
 import threading
 import time
-import traceback
 import tempfile
 import uuid
 from ahl.concurrent.futures import hpc_pool
-from collections import defaultdict
-from flask import Flask, render_template, request, jsonify, url_for, send_from_directory, abort, Response
+from flask import Flask, render_template, request, jsonify, url_for, abort, Response
 from ahl.logging import get_logger
-from typing import Dict
+from typing import List, Tuple
+from urllib3.connection import ConnectionError
+from werkzeug.contrib.cache import MemcachedCache, SimpleCache
 
 from idi.datascience.one_click_notebooks import tasks, results
 from idi.datascience.one_click_notebooks.results import JobStatus, NotebookResultError
+from idi.datascience.one_click_notebooks.utils import _cache_key, cache_key_to_dict
 
+SUBMISSION_TIMEOUT = 3
+RUNNING_TIMEOUT = 60
 flask_app = Flask(__name__)
 spark_pool = None
-running_jobs = {}  # Maps jobid --> Future
-complete_jobs = {}  # Maps report_name --> jobid --> results.NotebookResultBase
+# cache = MemcachedCache(['127.0.0.1:11211'])
+cache = SimpleCache()
+cache_expiries = {}
 # TODO: Figure out how we can get the below to work without expanduser, which is required by Spark.
 OUTPUT_BASE_DIR = os.path.join(os.getenv('OUTPUT_DIR', tempfile.mkdtemp(dir=os.path.expanduser('~'))), 'results')
 TEMPLATE_BASE_DIR = os.path.join(os.getenv('OUTPUT_DIR', tempfile.mkdtemp(dir=os.path.expanduser('~'))), 'templates')
 MONGO_HOST = 'research'
 MONGO_LIBRARY = 'NOTEBOOK_OUTPUT'
-result_serializer = None
+TEMPLATE_MODULE_NAME = 'notebook_templates'
+result_serializer = None  # type: results.NotebookResultSerializer
 alive = True
 logger = get_logger(__name__)
+
+
+@retrying.retry(stop_max_attempt_number=3)
+def _get_cache(key):
+    global cache
+    # if cache_expiries.get(key) and datetime.datetime.now() > cache_expiries.get(key):
+    #     return None
+    return cache.get(key)
+
+
+def get_cache(report_name, job_id):
+    return _get_cache(_cache_key(report_name, job_id))
+
+
+@retrying.retry(stop_max_attempt_number=3)
+def _set_cache(key, value, timeout=0):
+    global cache
+    # if timeout_seconds:
+    #     cache_expiries[key] = datetime.datetime.now() + datetime.timedelta(seconds=timeout_seconds)
+    # cache[key] = value
+    cache.set(key, value, timeout=timeout)
+
+
+def set_cache(report_name, job_id, value):
+    if value:
+        return _set_cache(_cache_key(report_name, job_id), value)
 
 
 # ----------------- Main page -------------------- #
 
 @flask_app.route('/', methods=['GET'])
 def index():
-    return render_template('index.html', all_jobs=all_available_results())
+    return render_template('index.html',
+                           all_jobs=all_available_results(),
+                           all_reports=get_all_possible_checks())
 
 
 # ------------------ Running checks ---------------- #
@@ -53,14 +88,10 @@ def run_report(report_name):
     if metadata:
         parameters_as_html = metadata[0]['source'].strip()
 
-    return render_template('run_report.html', parameters_as_html=parameters_as_html, report_name=report_name)
-
-
-def _get_job_result_future(job_id):
-    if job_id not in running_jobs:
-        return None
-    job_result = running_jobs[job_id]
-    return job_result
+    return render_template('run_report.html',
+                           parameters_as_html=parameters_as_html,
+                           report_name=report_name,
+                           all_reports=get_all_possible_checks())
 
 
 def _run_report(report_name, overrides):
@@ -92,8 +123,7 @@ def _run_report(report_name, overrides):
         result_serializer.save_check_result(notebook_result)
         logger.info('Error result saved to mongo successfully.')
         return job_id
-    global running_jobs
-    running_jobs[job_id] = spark_future
+    logger.info('Successfully submitted job to spark.')
     return job_id
 
 
@@ -121,37 +151,57 @@ def run_checks_http(report_name):
     return jsonify({'id': job_id}), 202, {'Location': url_for('task_status', report_name=report_name, task_id=job_id)}
 
 
+def get_all_possible_checks():
+    return list({x.rsplit('.', 1)[1]
+                 for (_, x, _)
+                 in pkgutil.walk_packages('idi.datascience')
+                 if TEMPLATE_MODULE_NAME in x
+                 and not x.endswith(TEMPLATE_MODULE_NAME)})
+
+
 # ------------------- Serving results -------------------- #
 
 
-def _get_job_results(job_id, report_name):
-    global complete_jobs
-
-    if report_name in complete_jobs and job_id in complete_jobs[report_name]:
-        notebook_result = complete_jobs.get(report_name, {}).get(job_id)
+def _get_job_results(job_id, report_name, retrying=False):
+    current_result = get_cache(report_name, job_id)
+    if current_result:
+        notebook_result = current_result
     else:
         notebook_result = result_serializer.get_check_result(job_id)
-        if notebook_result:
-            report_name = notebook_result.report_name
-            if report_name not in complete_jobs:
-                complete_jobs[report_name] = {}
-            complete_jobs[report_name][job_id] = notebook_result
+        set_cache(report_name, job_id, notebook_result)
 
-    if notebook_result is None:
+    if not notebook_result:
         err_info = 'Job results not found for report name={} / job id={}. ' \
                  'Did you use an invalid job ID?'.format(report_name, job_id)
         return results.NotebookResultError(job_id, error_info=err_info, report_name=report_name,
                                            job_start_time=datetime.datetime.now())
+    if isinstance(notebook_result, str):
+        if not retrying:
+            return _get_job_results(job_id, report_name, retrying=True)
+        raise NotebookRunError('An unexpected string was found as a result. Please run your request again.')
+
     return notebook_result
 
 
+def _get_all_result_keys():
+    # type: () -> List[Tuple[str, str]]
+    all_keys = _get_cache('all_result_keys')
+    if not all_keys:
+        all_keys = result_serializer.get_all_result_keys()
+        _set_cache('all_result_keys', all_keys, timeout=1)
+    return all_keys
+
+
 def all_available_results():
-    complete = copy.deepcopy(complete_jobs)
-    for report_name, reports in complete.items():
-        for job_id, result in reports.items():
-            reports[job_id].result_url = url_for('task_results', task_id=job_id, report_name=report_name)
-            reports[job_id].ipynb_url = url_for('download_ipynb_result', task_id=job_id, report_name=report_name)
-    return complete
+    all_keys = _get_all_result_keys()
+    complete_jobs = {}
+    for report_name, job_id in all_keys:
+        result = _get_job_results(job_id, report_name)
+        report_name, job_id = result.report_name, result.job_id
+        result.result_url = url_for('task_results', task_id=job_id, report_name=report_name)
+        result.ipynb_url = url_for('download_ipynb_result', task_id=job_id, report_name=report_name)
+        complete_jobs[(report_name, job_id)] = result
+    return complete_jobs
 
 
 @flask_app.route('/results/<report_name>/<task_id>')
@@ -163,7 +213,8 @@ def task_results(task_id, report_name):
                            result=result,
                            donevalue=JobStatus.DONE.value,
                            html_render=url_for('task_results_html', report_name=report_name, task_id=task_id),
-                           ipynb_url=url_for('download_ipynb_result', report_name=report_name, task_id=task_id))
+                           ipynb_url=url_for('download_ipynb_result', report_name=report_name, task_id=task_id),
+                           all_reports=get_all_possible_checks())
 
 
 @flask_app.route('/result_html_render/<report_name>/<task_id>')
@@ -179,12 +230,12 @@ def task_results_html(task_id, report_name):
 @flask_app.route('/result_html_render/<report_name>/<task_id>/resources/<path:resource>')
 def task_result_resources_html(task_id, resource, report_name):
     result = _get_job_results(task_id, report_name)
-    html_resources = result.raw_html_resources
-    resource_path = os.path.join(task_id, 'resources', resource)
-    if resource_path in html_resources.get('outputs', {}):
-        return html_resources['outputs'][resource_path]
-    else:
-        return abort(404)
+    if isinstance(result, results.NotebookResultComplete):
+        html_resources = result.raw_html_resources
+        resource_path = os.path.join(task_id, 'resources', resource)
+        if resource_path in html_resources.get('outputs', {}):
+            return html_resources['outputs'][resource_path]
+    return abort(404)
 
 
 @flask_app.route('/result_download_ipynb/<report_name>/<task_id>')
@@ -232,14 +283,7 @@ def task_status(report_name, task_id):
 def _cleanup_on_exit():
     global alive
     alive = False
-    logger.info('Cleaning up jobs')
-    for job_id, job_future in running_jobs.items():
-        if job_future.running():
-            logger.info('Cancelling job {}'.format(job_id))
-            cancel_result = job_future.cancel()
-            logger.info('Job cancel: {}'.format('SUCCESS' if cancel_result else 'FAILED'))
-            result_serializer.update_check_status(job_id, 'CANCELLED')
-    logger.info('Job cleanup done. Stopping spark pool.')
+    logger.info('Stopping spark pool.')
     if spark_pool:
         global spark_pool
         spark_pool.shutdown()
@@ -249,16 +293,47 @@ def _cleanup_on_exit():
 
 def _report_hunter():
     serializer = results.NotebookResultSerializer()
-    global alive, complete_jobs
+    last_query = None
+    global alive
     while alive:
-        all_existing_results = defaultdict(dict)
-        for result in serializer.get_all_results():
-            all_existing_results[result.report_name][result.job_id] = result
-        if complete_jobs != all_existing_results:
-            logger.info('Report-hunter found a status change')
-            complete_jobs = all_existing_results
+        try:
+            ct = 0
+            # First, check we have all keys that are available and populate their entries
+            all_keys = _get_all_result_keys()
+            for report_name, job_id in all_keys:
+                # This method loads from db and saves into the store.
+                _get_job_results(job_id, report_name)
+
+            # Now, get all pending requests and check they haven't timed out...
+            all_pending = serializer.get_all_results(mongo_filter={'status': {'$in': [JobStatus.SUBMITTED.value,
+                                                                                      JobStatus.PENDING.value]}})
+            now = datetime.datetime.now()
+            cutoff = {JobStatus.SUBMITTED.value: now - datetime.timedelta(SUBMISSION_TIMEOUT),
+                      JobStatus.PENDING.value: now - datetime.timedelta(RUNNING_TIMEOUT)}
+            for result in all_pending:
+                if result.job_start_time < cutoff.get(result.status):
+                    delta_seconds = (cutoff.get(result.status) - now).total_seconds()
+                    serializer.update_check_status(result.job_id, JobStatus.TIMEOUT,
+                                                   error_info='This request timed out while being submitted to Spark. '
+                                                              'Please try again! Timed out after {:.0f} minutes '
+                                                              '{:.0f} seconds.'.format(delta_seconds/60,
+                                                                                       delta_seconds % 60))
+            # Finally, check we have the latest updates
+            _last_query = datetime.datetime.now() - datetime.timedelta(minutes=1)
+            query_results = serializer.get_all_results(since=last_query)
+            for result in query_results:
+                ct += 1
+                existing = get_cache(result.report_name, result.job_id)
+                if not existing or result.status != existing.status:  # Only update the cache when the status changes
+                    set_cache(result.report_name, result.job_id, result)
+                    logger.info('Report-hunter found a change for {} (status: {}->{})'.format(
+                        result.job_id, existing.status if existing else None, result.status))
+            logger.info('Found {} updates since {}.'.format(ct, last_query))
+            last_query = _last_query
+        except Exception as e:
+            logger.exception(str(e))
         time.sleep(10)
-    logger.info('Report-hunting job successfully killed.')
+    logger.info('Report-hunting thread successfully killed.')
 
 
 def start_app():

@@ -1,57 +1,46 @@
 {% import "header.html" as header %}
 
-{{ header.ocnHeader("#results") }}
+{{ header.ocnHeader() }}
 
 <html>
 <head>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.3.2/dist/semantic.min.css">
-    <script src="https://code.jquery.com/jquery-3.3.1.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/semantic-ui@2.3.2/dist/semantic.min.js"></script>
     <script>
       function resizeIframe(obj) {
         obj.style.height = obj.contentWindow.document.body.scrollHeight + 'px';
         obj.style.width = obj.contentWindow.document.body.scrollWidth + 'px';
       }
     </script>
-    <!--<link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">-->
-    <!--<script type="application/javascript">-->
-        <!--var loc = "{{ location|safe }}";-->
-    <!--</script>-->
-    <!--<script type="application/javascript" src="{{ url_for('static', filename='loading.js') }}"></script>-->
 </head>
 <body>
-    <div class="ui container center">
-
+    {{ header.sidebar(all_reports) }}
+    <div class="ui container">
         <h1>Task Results</h1>
         <div class="ui grid">
-            <div class="five wide column">
-                <h4>Task ID: {{ task_id }}</h4>
-            </div>
-            <div class="five wide column">
-                <h4>Report Template Name: {{ report_name }}</h4>
-            </div>
-            {% if result.status == donevalue %}
-                <div class="five wide column">
-                    <a href="{{ ipynb_url }}"><button class="ui red button">Download .ipynb</button></a>
-                </div>
-            {% endif %}
+            <iframe
+                    class="thirteen wide column"
+                    src="{{ html_render }}"
+                    style="width:100%; border:none;" onload="resizeIframe(this)"
+                    scrolling="no">
+
+            </iframe>
+            <div class="three wide column">
+                <h4>Report was submitted at:</h4> {{result.job_start_time}}
+                {% if result.job_finish_time %}
+                        <h4>It finished at:</h4>  {{result.job_finish_time}}
+                {% endif %}
+                <h4>Task ID:</h4> {{ task_id }}
+                <h4>Report Template Name:</h4> {{ report_name }}
+                <br/>
+                <br/>
+                {% if result.status == donevalue %}
+                        <a href="{{ ipynb_url }}"><button class="ui red button">Download .ipynb</button></a>
+                {% endif %}
             <!--<div class="four wide column">-->
 
             </div>
-
         <br/>
         <br/>
-        <div class="ui segment">
-          <div class="ui left rail">
-            <div class="ui segment">
-                <strong>This report started running at:</strong> <br/> {{result.job_start_time}}<br/>
-                {% if result.job_finish_time %}
-                    <strong>It finished at:</strong> <br/> {{result.job_finish_time}}
-                {% endif %}
-            </div>
-          </div>
-            <iframe src="{{ html_render }}" style="width:100%; border:none;" onload="resizeIframe(this)" scrolling="no"></iframe>
-        </div>
+        <br/>
     </div>
 </body>
 </html>

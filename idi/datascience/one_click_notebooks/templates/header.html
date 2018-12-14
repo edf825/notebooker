@@ -4,9 +4,13 @@
             <title>One-Click-Notebooks</title>
 
             <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.3.2/dist/semantic.min.css">
+            <link rel="stylesheet" href="https://cdn.datatables.net/1.10.19/css/jquery.dataTables.min.css">
             <link rel="stylesheet" href="{{ url_for('static', filename='one_click_notebooks.css') }}">
             <script src="https://code.jquery.com/jquery-3.3.1.js"></script>
             <script src="https://cdn.jsdelivr.net/npm/semantic-ui@2.3.2/dist/semantic.min.js"></script>
+            <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+            <script src="https://cdn.datatables.net/1.10.19/js/dataTables.semanticui.min.js"></script>
+            <script type="application/javascript" src="{{ url_for('static', filename='index.js') }}"></script>
             <script>var activeTab = "{{ activeTab }}"</script>
             <script type="application/javascript" src="{{ url_for('static', filename='header.js') }}"></script>
         </head>
@@ -23,20 +27,36 @@
 {% endmacro %}
 
 
-{% macro ocnHeader(activeTab) %}
+{% macro ocnHeader() %}
     <html>
         {{ justHeader() }}
         <body>
-        <div class="ui menu inverted" id="ocnMenu">
+        <div class="ui top attached menu inverted" id="ocnMenu">
           <div class="header item white">
             <a href="/"><h1>One-Click-Notebooks</h1></a>
           </div>
-          <a class="item" id="runReport" href="/run_report/watchdog_checks">
+          <a class="item" id="runReport">
             Run a Report
           </a>
           <a class="item" id="results" href="#" style="display: none">
             Results
           </a>
+        </div>
+        </body>
+    </html>
+{% endmacro %}
+
+{% macro sidebar(all_reports) %}
+    <html>
+        <body>
+        <div class="ui inverted labeled icon left inline vertical sidebar menu" id="runReportSidebar">
+            <div class="item">
+                <h4 class="ui header inverted">Execute a notebook:</h4>
+            </div>
+            {% for report in all_reports %}
+            <a class="item" href="/run_report/{{report}}">{{report.capitalize()}}</a>
+            {% endfor %}
+            <a class="item bottom" href="http://docs/"><i class="plus icon"></i><i>Add a new notebook</i></a>
         </div>
         </body>
     </html>

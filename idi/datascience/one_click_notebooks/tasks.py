@@ -81,9 +81,9 @@ def run_checks(job_id,              # type: str
         from idi.datascience.one_click_notebooks.results import JobStatus
         from idi.datascience.one_click_notebooks.utils import _output_dir
 
-        serializer.save_check_stub(job_id, report_name,
-                                   input_json=input_json, job_start_time=job_start_time,
-                                   status=JobStatus.PENDING)
+        serializer.update_check_status(job_id, report_name=report_name,
+                                       input_json=input_json, job_start_time=job_start_time,
+                                       status=JobStatus.PENDING)
 
         output_dir = _output_dir(output_base_dir, report_name, job_id)
         output_ipynb = _output_ipynb_name(report_name)

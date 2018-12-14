@@ -8,10 +8,11 @@ from enum import Enum, unique
 from ahl.logging import get_logger
 from ahl.mongo import Mongoose
 from ahl.mongo.auth import get_auth, authenticate
+from ahl.mongo.decorators import mongo_retry
 from nbconvert.writers import FilesWriter
-from typing import AnyStr, Optional, Generator, Any, Dict, Union
+from typing import AnyStr, Optional, Generator, Any, Dict, Union, List, Tuple
 
-from idi.datascience.one_click_notebooks.utils import _output_dir
+from idi.datascience.one_click_notebooks.utils import _output_dir, _cache_key
 
 logger = get_logger(__name__)
 
@@ -23,6 +24,8 @@ class JobStatus(Enum):
     CANCELLED = 'CANCELLED'
     PENDING = 'Running...'
     SUBMITTED = 'Submitted to run'
+    TIMEOUT = 'Report timed out. Please try again!'
+    DELETED = 'This report has been deleted.'
 
     @staticmethod
     def from_string(s):
@@ -30,7 +33,8 @@ class JobStatus(Enum):
         mapping = {
             x.value: x
             for x
-            in (JobStatus.DONE, JobStatus.ERROR, JobStatus.CANCELLED, JobStatus.PENDING, JobStatus.SUBMITTED)
+            in (JobStatus.DONE, JobStatus.ERROR, JobStatus.CANCELLED, JobStatus.PENDING, JobStatus.SUBMITTED,
+                JobStatus.TIMEOUT, JobStatus.DELETED)
         }.get(s)
         return mapping
 
@@ -40,7 +44,7 @@ class NotebookResultBase(object):
     job_id = attr.ib()
     job_start_time = attr.ib()
     report_name = attr.ib()
-    status = attr.ib(default=JobStatus.ERROR)
+    status = attr.ib(default=JobStatus.ERROR.value)
 
     def saveable_output(self):
         out = attr.asdict(self)
@@ -121,6 +125,7 @@ class NotebookResultSerializer(object):
         self.database = database_name
         self.mongo_host = mongo_host
 
+    @mongo_retry
     def _save_raw_to_db(self, out_data):
         out_data['update_time'] = datetime.datetime.now()
         existing = self.library.find_one({'job_id': out_data['job_id']})
@@ -135,14 +140,16 @@ class NotebookResultSerializer(object):
         out_data = notebook_result.saveable_output()
         self._save_raw_to_db(out_data)
 
+    @mongo_retry
     def update_check_status(self, job_id, status, **extra):
+        # type: (str, JobStatus, **Any) -> None
         existing = self.library.find_one({'job_id': job_id})
         if not existing:
             logger.warn("Couldn't update check status to {} for job id {} since it is not in the database.".format(
                 status, job_id
             ))
         else:
-            existing['status'] = status
+            existing['status'] = status.value
             for k, v in extra.items():
                 existing[k] = v
             self._save_raw_to_db(existing)
@@ -170,6 +177,7 @@ class NotebookResultSerializer(object):
             for filename, binary_data in notebook_result.raw_html_resources['outputs'].items():
                 self.result_data_store.put(binary_data, filename=filename)
 
+    @mongo_retry
     def get_check_result(self, job_id):
         # type: (AnyStr) -> Optional[NotebookResultBase]
         result = self.library.find_one({'job_id': job_id}, {'_id': 0})
@@ -183,7 +191,11 @@ class NotebookResultSerializer(object):
                JobStatus.PENDING: NotebookResultPending,
                JobStatus.ERROR: NotebookResultError,
                JobStatus.SUBMITTED: NotebookResultPending,
+               JobStatus.TIMEOUT: NotebookResultError,
+               JobStatus.DELETED: None
                }.get(job_status)
+        if cls is None:
+            return None
         if job_status == JobStatus.DONE:
             outputs = {}
             for filename in result.get('raw_html_resources', {}).get('outputs', []):
@@ -194,24 +206,31 @@ class NotebookResultSerializer(object):
 
         return notebook_result
 
-    def get_all_results(self, since=None, limit=100):
-        # type: (Optional[datetime.datetime], Optional[int]) -> Generator[NotebookResultBase]
+    @mongo_retry
+    def get_all_results(self, since=None, limit=100, mongo_filter=None):
+        # type: (Optional[datetime.datetime], Optional[int], Optional[Dict]) -> Generator[NotebookResultBase]
+        base_filter = {'status': {'$ne': JobStatus.DELETED.value}}
+        if mongo_filter:
+            base_filter.update(mongo_filter)
         if since:
-            results = self.library.find({'updated_time': {'$gt': since}}, {'job_id': 1}).limit(limit)
-        else:
-            results = self.library.find({}, {'job_id': 1}).limit(limit)
+            base_filter.update({'update_time': {'$gt': since}})
+        results = self.library.find(base_filter, {'job_id': 1}).limit(limit)
         for res in results:
             if res:
                 yield self.get_check_result(res['job_id'])
 
+    @mongo_retry
+    def get_all_result_keys(self, limit=0):
+        # type: (Optional[int]) -> List[Tuple[str, str]]
+        keys = []
+        for result in self.library.find({'status': {'$ne': JobStatus.DELETED.value}},
+                                        {'report_name': 1, 'job_id': 1, '_id': 0}).limit(limit):
+            keys.append((result['report_name'], result['job_id']))
+        return keys
+
     def delete_result(self, job_id):
-        # type: (AnyStr) -> int
-        existing = self.library.find_one({'job_id': job_id}, {'_id': 1})
-        if existing:
-            delete_result = self.library.delete_one({'job_id': job_id})
-            return delete_result.deleted_count
-        else:
-            return 0
+        # type: (AnyStr) -> None
+        self.update_check_status(job_id, JobStatus.DELETED)
 
 
 def save_output_to_mongo(mongo_host,
