@@ -1,7 +1,7 @@
 import atexit
 import datetime
 import functools
-
+import importlib
 import os
 import papermill as pm
 import re
@@ -11,10 +11,12 @@ import uuid
 from ahl.concurrent.futures import hpc_pool
 from flask import Flask, render_template, request, jsonify, url_for, abort, Response
 from ahl.logging import get_logger
+from typing import Dict, Any, Tuple, List
 
 from idi.datascience.one_click_notebooks import tasks, results
 from idi.datascience.one_click_notebooks.constants import OUTPUT_BASE_DIR, \
     TEMPLATE_BASE_DIR, MONGO_HOST, MONGO_LIBRARY, JobStatus, _IS_ALIVE
+from idi.datascience.one_click_notebooks.handle_overrides import _handle_overrides
 from idi.datascience.one_click_notebooks.report_hunter import _report_hunter
 from idi.datascience.one_click_notebooks.results import NotebookResultError, _get_job_results, all_available_results
 from idi.datascience.one_click_notebooks.utils import get_all_possible_checks
@@ -87,17 +89,7 @@ def _run_report(report_name, overrides):
 @flask_app.route('/run_checks/<report_name>', methods=['POST', 'PUT'])
 def run_checks_http(report_name):
     overrides = request.values.get('overrides')
-    override_dict = {}
-    issues = []
-    for s in overrides.split('\n'):
-        s = s.strip()
-        match = re.match('(?P<variable_name>[a-zA-Z_]+) *= *(?P<value>.+)', s)
-        if match:
-            try:
-                # This is dirty but we trust our users...
-                override_dict[match.group('variable_name')] = eval(match.group('value'))
-            except Exception as e:
-                issues.append('Failed to parse input: {}: {}'.format(s, str(e)))
+    override_dict, issues = _handle_overrides(overrides)
     if issues:
         return jsonify({'status': 'Failed', 'content':('\n'.join(issues))})
     job_id = _run_report(report_name, override_dict)
