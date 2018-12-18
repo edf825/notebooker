@@ -82,8 +82,9 @@ def run_checks(job_id,              # type: str
         from idi.datascience.one_click_notebooks.constants import JobStatus
         from idi.datascience.one_click_notebooks.utils import _output_dir
 
-        serializer.update_check_status(job_id, report_name=report_name,
-                                       input_json=input_json, job_start_time=job_start_time,
+        serializer.update_check_status(job_id,
+                                       report_name=report_name,
+                                       job_start_time=job_start_time,
                                        status=JobStatus.PENDING)
 
         output_dir = _output_dir(output_base_dir, report_name, job_id)
@@ -110,7 +111,6 @@ def run_checks(job_id,              # type: str
         notebook_result = NotebookResultComplete(job_id=job_id,
                                                  job_start_time=job_start_time,
                                                  job_finish_time=datetime.datetime.now(),
-                                                 input_json=input_json,
                                                  raw_html_resources=resources,
                                                  raw_ipynb_json=raw_executed_ipynb,
                                                  raw_html=html,
@@ -124,7 +124,6 @@ def run_checks(job_id,              # type: str
         error_info = traceback.format_exc()
         notebook_result = NotebookResultError(job_id=job_id,
                                               job_start_time=job_start_time,
-                                              input_json=input_json,
                                               report_name=report_name,
                                               error_info=error_info)
         logger.info('Saving error result to mongo library {}@{}...'.format(mongo_library, mongo_host))

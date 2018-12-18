@@ -23,7 +23,7 @@
                 <tr>
                     <td>{{ result.report_name }}</td>
                     <td>{{ result.job_id }}</td>
-                    <td>{{ result.status }}</td>
+                    <td>{{ result.status.value }}</td>
                     <td>{{ result.job_start_time }}</td>
                     <td>{{ result.job_finish_time }}</td>
                     <td><button onclick="location.href='{{ result.result_url }}'"

@@ -9,8 +9,6 @@ cache = SimpleCache()
 @retrying.retry(stop_max_attempt_number=3)
 def _get_cache(key):
     global cache
-    # if cache_expiries.get(key) and datetime.datetime.now() > cache_expiries.get(key):
-    #     return None
     return cache.get(key)
 
 
@@ -21,9 +19,6 @@ def get_cache(report_name, job_id):
 @retrying.retry(stop_max_attempt_number=3)
 def _set_cache(key, value, timeout=0):
     global cache
-    # if timeout_seconds:
-    #     cache_expiries[key] = datetime.datetime.now() + datetime.timedelta(seconds=timeout_seconds)
-    # cache[key] = value
     cache.set(key, value, timeout=timeout)
 
 

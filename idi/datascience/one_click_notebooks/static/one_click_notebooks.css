@@ -9,3 +9,7 @@
 code {
     white-space: pre-line;
 }
+
+#overrides {
+    font-family: monospace;
+}

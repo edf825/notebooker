@@ -1,8 +1,8 @@
 import ast
 import cPickle
 import importlib
+import json
 import os
-import re
 import subprocess
 import tempfile
 from typing import Tuple, Dict, Any, List, Union, AnyStr
@@ -16,6 +16,8 @@ logger = get_logger(__name__)
 
 def _handle_overrides_safe(overrides, output_path):
     # type: (AnyStr, str) -> Dict[str, Union[Dict[str, Any], List[str]]]
+    # This function executes the given python (in "overrides") and returns the
+    # evaluated variables as a dictionary. Problems are returned as "issues" in a list.
     issues = []
     result = {'overrides': {}, 'issues': issues}
     try:
@@ -32,7 +34,15 @@ def _handle_overrides_safe(overrides, output_path):
                 targets = [_.id for _ in node.targets]
                 logger.info('Found an assignment to: {}'.format(', '.join(targets)))
                 for target in targets:
-                    result['overrides'][target] = locals()[target]
+                    value = locals()[target]
+                    try:
+                        json.dumps(value)  # Test that we can JSON serialise this - required by papermill
+                    except TypeError as te:
+                        issues.append('Could not JSON serialise a parameter ("{}") - this must be serialisable so that '
+                                      'we can execute the notebook with it! (Error: {}, Value: {})'.format(
+                            target, str(te), value))
+                        continue
+                    result['overrides'][target] = value
             elif isinstance(node, (ast.Expr, ast.Expression)):
                 issues.append('Found an expression that did nothing! It has a value of type: {}'.format(type(node.value)))
     except Exception as e:

@@ -12,8 +12,12 @@ from idi.datascience.one_click_notebooks.caching import get_cache, set_cache
 logger = get_logger(__name__)
 
 
-def _report_hunter():
-    serializer = results.NotebookResultSerializer()
+def _report_hunter(mongo_host, database_name, result_collection_name, run_once=False):
+    # This is a function designed to run in a thread separately from the webapp. It updates the cache which the
+    # web app reads from and performs some admin on pending/running jobs.
+    serializer = results.NotebookResultSerializer(mongo_host=mongo_host,
+                                                  database_name=database_name,
+                                                  result_collection_name=result_collection_name)
     last_query = None
     global _IS_ALIVE
     while _IS_ALIVE:
@@ -29,11 +33,12 @@ def _report_hunter():
             all_pending = serializer.get_all_results(mongo_filter={'status': {'$in': [JobStatus.SUBMITTED.value,
                                                                                       JobStatus.PENDING.value]}})
             now = datetime.datetime.now()
-            cutoff = {JobStatus.SUBMITTED.value: now - datetime.timedelta(SUBMISSION_TIMEOUT),
-                      JobStatus.PENDING.value: now - datetime.timedelta(RUNNING_TIMEOUT)}
+            cutoff = {JobStatus.SUBMITTED: now - datetime.timedelta(minutes=SUBMISSION_TIMEOUT),
+                      JobStatus.PENDING: now - datetime.timedelta(minutes=RUNNING_TIMEOUT)}
             for result in all_pending:
-                if result.job_start_time < cutoff.get(result.status):
-                    delta_seconds = (cutoff.get(result.status) - now).total_seconds()
+                this_cutoff = cutoff.get(result.status)
+                if result.job_start_time <= this_cutoff:
+                    delta_seconds = (now - this_cutoff).total_seconds()
                     serializer.update_check_status(result.job_id, JobStatus.TIMEOUT,
                                                    error_info='This request timed out while being submitted to Spark. '
                                                               'Please try again! Timed out after {:.0f} minutes '
@@ -53,5 +58,7 @@ def _report_hunter():
             last_query = _last_query
         except Exception as e:
             logger.exception(str(e))
+        if run_once:
+            break
         time.sleep(10)
     logger.info('Report-hunting thread successfully killed.')

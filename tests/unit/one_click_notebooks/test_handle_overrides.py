@@ -56,3 +56,16 @@ def test_handle_overrides_handles_imports(input_txt):
         overrides, issues = _handle_overrides(input_txt)
     assert overrides == {'d': datetime.datetime(2018, 1, 1)}
 
+
+@pytest.mark.parametrize('input_txt', ['import datetime;d=datetime.datetime(10, 1, 1)'])
+def test_handle_overrides_handles_imports(input_txt):
+    with mock.patch('idi.datascience.one_click_notebooks.handle_overrides.subprocess.Popen') as popen:
+        popen.side_effect = lambda args: mock.MagicMock(res=_handle_overrides_safe(args[4], args[6]))
+        overrides, issues = _handle_overrides(input_txt)
+    assert overrides == {}
+    assert issues == ['Could not JSON serialise a parameter ("d") - '
+                      'this must be serialisable so that we can execute '
+                      'the notebook with it! '
+                      '(Error: datetime.datetime(10, 1, 1, 0, 0) is not JSON serializable, '
+                      'Value: 0010-01-01 00:00:00)']
+

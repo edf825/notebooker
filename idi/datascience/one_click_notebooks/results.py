@@ -33,14 +33,12 @@ class NotebookResultBase(object):
 
 @attr.s()
 class NotebookResultPending(NotebookResultBase):
-    input_json = attr.ib(attr.Factory(dict))
     status = attr.ib(default=JobStatus.PENDING)
     update_time = attr.ib(default=datetime.datetime.now())
 
 
 @attr.s()
 class NotebookResultError(NotebookResultBase):
-    input_json = attr.ib(attr.Factory(dict))
     status = attr.ib(default=JobStatus.ERROR)
     error_info = attr.ib(default="")
     update_time = attr.ib(default=datetime.datetime.now())
@@ -50,7 +48,6 @@ class NotebookResultError(NotebookResultBase):
 class NotebookResultComplete(NotebookResultBase):
     job_start_time = attr.ib()
     job_finish_time = attr.ib()
-    input_json = attr.ib(attr.Factory(dict))
     raw_html_resources = attr.ib(attr.Factory(dict))
     status = attr.ib(default=JobStatus.DONE)
     raw_ipynb_json = attr.ib(default="")
@@ -73,7 +70,6 @@ class NotebookResultComplete(NotebookResultBase):
                 'report_name': self.report_name,
                 'raw_html': self.raw_html,
                 'raw_html_resources': self.html_resources(),
-                'input_json': self.input_json,
                 'job_id': self.job_id,
                 'job_start_time': self.job_start_time,
                 'job_finish_time': self.job_finish_time,
@@ -133,12 +129,12 @@ class NotebookResultSerializer(object):
                 existing[k] = v
             self._save_raw_to_db(existing)
 
-    def save_check_stub(self, job_id, report_name, input_json=None, job_start_time=None, status=JobStatus.PENDING):
-        # type: (str, str, Optional[Dict[Any, Any]], Optional[datetime.datetime], Optional[JobStatus]) -> None
+    def save_check_stub(self, job_id, report_name, job_start_time=None, status=JobStatus.PENDING):
+        # type: (str, str,Optional[datetime.datetime], Optional[JobStatus]) -> None
         # Call this when we are just starting a check
+        job_start_time = job_start_time or datetime.datetime.now()
         pending_result = NotebookResultPending(job_id=job_id,
                                                status=status,
-                                               input_json=input_json,
                                                job_start_time=job_start_time,
                                                report_name=report_name)
         self._save_to_db(pending_result)
@@ -181,7 +177,38 @@ class NotebookResultSerializer(object):
                 outputs[filename] = self.result_data_store.get_last_version(filename).read()
             result['raw_html_resources']['outputs'] = outputs
 
-        notebook_result = cls(**result)
+        if cls == NotebookResultComplete:
+            notebook_result = NotebookResultComplete(
+                job_id=result['job_id'],
+                job_start_time=result['job_start_time'],
+                report_name=result['report_name'],
+                status=job_status,
+                update_time=result['update_time'],
+                job_finish_time=result['job_finish_time'],
+                raw_html_resources=result['raw_html_resources'],
+                raw_ipynb_json=result['raw_ipynb_json'],
+                raw_html=result['raw_html'],
+            )
+        elif cls == NotebookResultPending:
+            notebook_result = NotebookResultPending(
+                job_id=result['job_id'],
+                job_start_time=result['job_start_time'],
+                report_name=result['report_name'],
+                status=job_status,
+                update_time=result['update_time'],
+            )
+
+        elif cls == NotebookResultError:
+            notebook_result = NotebookResultError(
+                job_id=result['job_id'],
+                job_start_time=result['job_start_time'],
+                report_name=result['report_name'],
+                status=job_status,
+                update_time=result['update_time'],
+                error_info=result['error_info'],
+            )
+        else:
+            raise ValueError('Could not deserialise {} into result object.'.format(result))
 
         return notebook_result
 
@@ -220,6 +247,7 @@ def _get_job_results(job_id,            # type: str
     # type: (...) -> Union[NotebookResultError, NotebookResultComplete, NotebookResultPending]
     current_result = get_cache(report_name, job_id)
     if current_result:
+        logger.info('Cache hit for job_id={}, report_name={}'.format(job_id, report_name))
         notebook_result = current_result
     else:
         notebook_result = serializer.get_check_result(job_id)

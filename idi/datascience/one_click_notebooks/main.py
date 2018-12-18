@@ -2,6 +2,8 @@ import atexit
 import datetime
 import functools
 import importlib
+
+import click
 import os
 import papermill as pm
 import re
@@ -57,7 +59,7 @@ def _run_report(report_name, overrides):
     job_id = str(uuid.uuid4())
     job_start_time = datetime.datetime.now()
     result_serializer.save_check_stub(job_id, report_name,
-                                      input_json=overrides, job_start_time=job_start_time,
+                                      job_start_time=job_start_time,
                                       status=JobStatus.SUBMITTED)
     logger.info('Calculating a new {} ipynb with parameters: {}'.format(report_name, overrides))
     try:
@@ -75,7 +77,6 @@ def _run_report(report_name, overrides):
         error_info = traceback.format_exc()
         notebook_result = NotebookResultError(job_id=job_id,
                                               job_start_time=job_start_time,
-                                              input_json=overrides,
                                               report_name=report_name,
                                               error_info=error_info)
         logger.info('Saving error result to mongo library {}@{}...'.format(MONGO_LIBRARY, MONGO_HOST))
@@ -116,7 +117,7 @@ def task_results(task_id, report_name):
 def task_results_html(task_id, report_name):
     result = _get_job_results(task_id, report_name, result_serializer)
     if isinstance(result, results.NotebookResultError):
-        return '<p>This job resulted in an error: <br/><code>{}</code></p>'.format(result.error_info)
+        return '<p>This job resulted in an error: <br/><code style="white-space: pre-wrap;">{}</code></p>'.format(result.error_info)
     if isinstance(result, results.NotebookResultPending):
         return task_loading(report_name, task_id)
     return result.raw_html
@@ -158,13 +159,13 @@ def _get_job_status(task_id, report_name):
     if job_result is None:
         return {'status': 'Job not found. Did you use an old job ID?'}
     if job_result.status == JobStatus.DONE.value:
-        response = {'status': job_result.status,
+        response = {'status': job_result.status.value,
                     'results_url': url_for('task_results', report_name=report_name, task_id=task_id)}
     elif job_result.status == JobStatus.ERROR.value:
-        response = {'status': job_result.status,
+        response = {'status': job_result.status.value,
                     'results_url': url_for('task_results', report_name=report_name, task_id=task_id)}
     else:
-        response = {'status': job_result.status}
+        response = {'status': job_result.status.value}
     return response
 
 
@@ -186,17 +187,23 @@ def _cleanup_on_exit():
     shutil.rmtree(TEMPLATE_BASE_DIR)
 
 
-def start_app():
+@click.command()
+@click.option('--mongo-host', default='research')
+@click.option('--database-name', default='mongoose_restech')
+@click.option('--result-collection-name', default='NOTEBOOK_OUTPUT')
+def start_app(mongo_host, database_name, result_collection_name):
     global spark_pool, result_serializer
     logger.info('Creating {}'.format(OUTPUT_BASE_DIR))
     os.makedirs(OUTPUT_BASE_DIR)
     logger.info('Creating {}'.format(TEMPLATE_BASE_DIR))
     os.makedirs(TEMPLATE_BASE_DIR)
-    result_serializer = results.NotebookResultSerializer()
+    result_serializer = results.NotebookResultSerializer(mongo_host=mongo_host,
+                                                         database_name=database_name,
+                                                         result_collection_name=result_collection_name)
     spark_pool = hpc_pool('SPARK', local_thread_count=8)
     port = int(os.getenv('OCN_PORT', 11828))
     atexit.register(_cleanup_on_exit)
-    all_report_refresher = threading.Thread(target=_report_hunter)
+    all_report_refresher = threading.Thread(target=_report_hunter, args=(mongo_host, database_name, result_collection_name))
     all_report_refresher.daemon = True
     all_report_refresher.start()
     flask_app.run('0.0.0.0', port, threaded=True, debug=True)

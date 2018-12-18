@@ -2,6 +2,7 @@ $(document).ready(function() {
 
     $('#run-check-form').submit(function (e) {
         let form = $(this);
+        $('.message').hide();
         var reportName = $('input[name="report_name"]').val();
         $.ajax({
             type: "POST",
