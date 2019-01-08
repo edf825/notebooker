@@ -1,0 +1,46 @@
+{% import "header.html" as header %}
+
+{{ header.ocnHeader() }}
+
+<html>
+<head>
+    <script>
+      function resizeIframe(obj) {
+        obj.style.height = obj.contentWindow.document.body.scrollHeight + 'px';
+        obj.style.width = obj.contentWindow.document.body.scrollWidth + 'px';
+      }
+    </script>
+</head>
+<body>
+    {{ header.sidebar(all_reports) }}
+    <div class="ui container">
+        <h1>Task Results</h1>
+        <div class="ui grid">
+            <iframe
+                    class="thirteen wide column"
+                    src="{{ html_render }}"
+                    style="width:100%; border:none;" onload="resizeIframe(this)"
+                    scrolling="no">
+
+            </iframe>
+            <div class="three wide column">
+                <h4>Report was submitted at:</h4> {{result.job_start_time}}
+                {% if result.job_finish_time %}
+                        <h4>It finished at:</h4>  {{result.job_finish_time}}
+                {% endif %}
+                <h4>Task ID:</h4> {{ task_id }}
+                <h4>Report Template Name:</h4> {{ report_name }}
+                <br/>
+                <br/>
+                {% if result.status == donevalue %}
+                        <a href="{{ ipynb_url }}"><button class="ui red button">Download .ipynb</button></a>
+                {% endif %}
+            <!--<div class="four wide column">-->
+
+            </div>
+        <br/>
+        <br/>
+        <br/>
+    </div>
+</body>
+</html>

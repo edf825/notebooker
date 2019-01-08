@@ -1,0 +1,45 @@
+{% import "header.html" as header %}
+
+{{ header.ocnHeader() }}
+
+<html>
+<body>
+
+    {{ header.sidebar(all_reports) }}
+    <div class="ui container">
+        <table id="resultsTable" class="ui sortable selectable celled table">
+            <thead>
+                <th>Report Name</th>
+                <th>Job ID</th>
+                <th>Status</th>
+                <th>Start Time</th>
+                <th>Completion Time</th>
+                <th>Results</th>
+                <th>Download Link</th>
+                <th>Delete Result</th>
+            </thead>
+            <tbody>
+            {% for ((report_name, job_id), result) in all_jobs.items() %}
+                <tr>
+                    <td>{{ result.report_name }}</td>
+                    <td>{{ result.job_id }}</td>
+                    <td>{{ result.status.value }}</td>
+                    <td>{{ result.job_start_time }}</td>
+                    <td>{{ result.job_finish_time }}</td>
+                    <td><button onclick="location.href='{{ result.result_url }}'"
+                                type="button" class="ui button blue">Result</button>
+                    </td>
+                    <td>
+                        <button onclick="location.href='{{ result.ipynb_url }}'"
+                                type="button" class="ui button yellow">Download .ipynb</button>
+                    </td>
+                    <td>
+                        <button type="button" class="ui button red" onclick="alert('not yet implemented!')"><i class="trash icon"></i></button>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

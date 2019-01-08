@@ -1,0 +1,15 @@
+#ocnMenu {
+    margin: 0 0 1rem 0;
+}
+
+#errorMsg {
+    white-space: pre-wrap
+}
+
+code {
+    white-space: pre-line;
+}
+
+#overrides {
+    font-family: monospace;
+}

@@ -1,0 +1,30 @@
+{% import "header.html" as header %}
+
+{{ header.ocnHeader() }}
+
+<html xmlns="http://www.w3.org/1999/html">
+    <head>
+
+    <script type="application/javascript" src="{{ url_for('static', filename='run_report.js') }}"></script>
+    </head>
+    <body>
+        {{ header.sidebar(all_reports) }}
+        <div class="ui container">
+            <h1>Run a {{report_name}} check</h1>
+            <h3>Existing parameters:</h3>
+            <code>{{parameters_as_html|safe}}</code>
+            <h3>Override parameters:</h3>
+            <form class="ui form" id="run-check-form">
+                <div class="field">
+                    <label>Overrides</label>
+                    <textarea name="overrides" id="overrides" placeholder="Write your overrides in python here.
+You can import anything, but ensure that in any x=y statements, y is JSON serialisable."></textarea>
+                </div>
+                <div class="field">
+                    <input name="report_name" value="{{report_name}}" style="display:none">
+                </div>
+                <button class="positive ui button" id="runCheck">Run Check</button>
+            </form>
+        </div>
+    </body>
+</html>
