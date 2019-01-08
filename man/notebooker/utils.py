@@ -15,6 +15,6 @@ def _cache_key(report_name, job_id):
 def get_all_possible_checks():
     return list({x.rsplit('.', 1)[1]
                  for (_, x, _)
-                 in pkgutil.walk_packages('idi.datascience')
+                 in pkgutil.walk_packages('man.notebooker')
                  if TEMPLATE_MODULE_NAME in x
                  and not x.endswith(TEMPLATE_MODULE_NAME)})

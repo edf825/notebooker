@@ -1,8 +1,12 @@
-# This module is meant to be used primarily by Spark nodes, hence local imports *everywhere*
+# This module is meant to be used primarily by Spark nodes, hence local imports aplenty...
 import datetime
 import jupytext
+import nbformat
 import os
 import pkg_resources
+import traceback
+from nbconvert import HTMLExporter
+from traitlets.config import Config
 from typing import Any, Dict
 
 from man.notebooker.results import NotebookResultComplete, NotebookResultSerializer, \
@@ -10,9 +14,7 @@ from man.notebooker.results import NotebookResultComplete, NotebookResultSeriali
 
 
 def ipython_to_html(ipynb_path, job_id):
-    import nbformat
-    from nbconvert import HTMLExporter
-    from traitlets.config import Config
+    # type: (str, str) -> (nbformat.NotebookNode, Dict[str, Any])
     c = Config()
     c.HTMLExporter.preprocessors = ['nbconvert.preprocessors.ExtractOutputPreprocessor']
     html_exporter_with_figs = HTMLExporter(config=c)
@@ -25,18 +27,22 @@ def ipython_to_html(ipynb_path, job_id):
 
 
 def _output_ipynb_name(report_name):
+    # type: (str) -> str
     return '{}.ipynb'.format(report_name)
 
 
 def _python_template(report_name):
+    # type: (str) -> str
     return os.path.join('notebook_templates', '{}.py'.format(report_name))
 
 
 def _ipynb_output_path(template_base_dir, report_name):
+    # type: (str, str) -> str
     return os.path.join(template_base_dir, '{}.ipynb'.format(report_name))
 
 
 def generate_ipynb_from_py(template_base_dir, report_name):
+    # type: (str, str) -> str
     from ahl.logging import get_logger
     logger = get_logger(__name__)
 
@@ -47,7 +53,7 @@ def generate_ipynb_from_py(template_base_dir, report_name):
     try:
         with open(output_template, 'r') as f:
             if f.read():
-                logger.info('Loading ipynb from cached location: {}'.format(output_template))
+                logger.info('Loading ipynb from cached location: %s', output_template)
                 return output_template
     except IOError:
         pass
@@ -77,7 +83,6 @@ def run_checks(job_id,              # type: str
     # Save initial state to mongo
     serializer = NotebookResultSerializer(mongo_host=mongo_host, result_collection_name=mongo_library)
     try:
-        import os
         import papermill as pm
         from man.notebooker.constants import JobStatus
         from man.notebooker.utils import _output_dir
@@ -120,7 +125,6 @@ def run_checks(job_id,              # type: str
         logger.info('Saved result to mongo successfully.')
         return notebook_result
     except Exception as e:
-        import traceback
         error_info = traceback.format_exc()
         notebook_result = NotebookResultError(job_id=job_id,
                                               job_start_time=job_start_time,
@@ -130,9 +134,3 @@ def run_checks(job_id,              # type: str
         serializer.save_check_result(notebook_result)
         logger.info('Error result saved to mongo successfully.')
         raise
-
-
-if __name__ == '__main__':
-    import os
-    print run_checks('asdasda', 'watchdog_checks', os.path.dirname(os.path.realpath(__file__)) + '/results', {}, 'research', 'NOTEBOOK_OUTPUT')
-

@@ -10,7 +10,7 @@ from ahl.mongo.decorators import mongo_retry
 from flask import url_for
 from typing import AnyStr, Optional, Generator, Any, Dict, Union, List, Tuple
 
-from man.notebooker.caching import get_cache, set_cache, _get_cache, _set_cache
+from man.notebooker.caching import get_report_cache, set_report_cache, get_cache, set_cache
 from man.notebooker.constants import JobStatus
 from man.notebooker.exceptions import NotebookRunError
 
@@ -245,13 +245,13 @@ def _get_job_results(job_id,            # type: str
                      retrying=False     # type: Optional[bool]
                      ):
     # type: (...) -> Union[NotebookResultError, NotebookResultComplete, NotebookResultPending]
-    current_result = get_cache(report_name, job_id)
+    current_result = get_report_cache(report_name, job_id)
     if current_result:
-        logger.info('Cache hit for job_id={}, report_name={}'.format(job_id, report_name))
+        logger.debug('Cache hit for job_id=%s, report_name=%s', job_id, report_name)
         notebook_result = current_result
     else:
         notebook_result = serializer.get_check_result(job_id)
-        set_cache(report_name, job_id, notebook_result)
+        set_report_cache(report_name, job_id, notebook_result)
 
     if not notebook_result:
         err_info = 'Job results not found for report name={} / job id={}. ' \
@@ -260,7 +260,7 @@ def _get_job_results(job_id,            # type: str
                                    job_start_time=datetime.datetime.now())
     if isinstance(notebook_result, str):
         if not retrying:
-            return _get_job_results(job_id, report_name, retrying=True)
+            return _get_job_results(job_id, report_name, serializer, retrying=True)
         raise NotebookRunError('An unexpected string was found as a result. Please run your request again.')
 
     return notebook_result
@@ -268,10 +268,10 @@ def _get_job_results(job_id,            # type: str
 
 def _get_all_result_keys(serializer):
     # type: (NotebookResultSerializer) -> List[Tuple[str, str]]
-    all_keys = _get_cache('all_result_keys')
+    all_keys = get_cache('all_result_keys')
     if not all_keys:
         all_keys = serializer.get_all_result_keys()
-        _set_cache('all_result_keys', all_keys, timeout=1)
+        set_cache('all_result_keys', all_keys, timeout=1)
     return all_keys
 
 
@@ -295,8 +295,3 @@ def save_output_to_mongo(mongo_host,
     # type: (str, str, NotebookResultComplete) -> None
     serializer = NotebookResultSerializer(mongo_host=mongo_host, result_collection_name=mongo_library)
     serializer.save_check_result(notebook_result)
-
-
-if __name__ == '__main__':
-    import pprint
-    pprint.pprint(list(NotebookResultSerializer().get_all_results()))

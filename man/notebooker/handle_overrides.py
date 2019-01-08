@@ -2,6 +2,8 @@ import ast
 import cPickle
 import importlib
 import json
+import sys
+
 import os
 import subprocess
 import tempfile
@@ -24,11 +26,16 @@ def _handle_overrides_safe(overrides, output_path):
         raw_python = overrides.encode('utf-8')
     except UnicodeDecodeError:
         raw_python = str(overrides)
-    logger.info('Parsing the following as python: {}'.format(raw_python))
+    logger.info('Parsing the following as raw python:\n{}'.format(raw_python))
     try:
+        # Parse the python input as a Abstract Syntax Tree (this is what python itself does)
         parsed_module = ast.parse(raw_python)
+        # Figure out what each node of the tree is doing (i.e. assigning, expression, etc)
         nodes = ast.iter_child_nodes(parsed_module)
+        # Execute the code blindly. We trust the users (just about...) and are doing this in a safe-ish environment.
         exec(compile(parsed_module, filename='<ast>', mode='exec'))
+
+        # Now, iterate through the nodes, figure out what was assigned, and add it to the 'overrides' dict.
         for node in nodes:
             if isinstance(node, (ast.Assign, ast.AugAssign)):
                 targets = [_.id for _ in node.targets]
@@ -38,6 +45,7 @@ def _handle_overrides_safe(overrides, output_path):
                     try:
                         json.dumps(value)  # Test that we can JSON serialise this - required by papermill
                     except TypeError as te:
+                        # TODO: we may want to allow people to pass dataframes/timeseries as parameters. Can we handle?
                         issues.append('Could not JSON serialise a parameter ("{}") - this must be serialisable so that '
                                       'we can execute the notebook with it! (Error: {}, Value: {})'.format(
                             target, str(te), value))
@@ -61,25 +69,25 @@ def _handle_overrides_safe(overrides, output_path):
         cPickle.dump({'overrides': {},
                       'issues': issues},
                      f)
-    return result
+    sys.stdout.write(str(result))
 
 
 def _handle_overrides(overrides_string):
     # type: (str) -> Tuple[Dict[str, Any], List[str]]
     override_dict = {}
     issues = []
-    tmp_file = tempfile.mktemp()
-    try:
-        process = subprocess.Popen(['python', '-m',  __name__,
-                                    '--overrides', overrides_string,
-                                    '--output', tmp_file])
-        process.wait()
-        with open(tmp_file, 'r') as f:
-            output_dict = cPickle.load(f)
-        override_dict, issues = output_dict['overrides'], output_dict['issues']
-        os.remove(tmp_file)
-    except subprocess.CalledProcessError as cpe:
-        issues.append(str(cpe))
+    if overrides_string.strip():
+        tmp_file = tempfile.mktemp()
+        try:
+            subprocess.check_output([sys.executable, '-m',  __name__,
+                                     '--overrides', overrides_string,
+                                     '--output', tmp_file])
+            with open(tmp_file, 'r') as f:
+                output_dict = cPickle.load(f)
+            override_dict, issues = output_dict['overrides'], output_dict['issues']
+            os.remove(tmp_file)
+        except subprocess.CalledProcessError as cpe:
+            issues.append(str(cpe.output))
     return override_dict, issues
 
 

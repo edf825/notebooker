@@ -6,8 +6,7 @@ from ahl.logging import get_logger
 from man.notebooker import results
 from man.notebooker.constants import JobStatus, SUBMISSION_TIMEOUT, RUNNING_TIMEOUT, _IS_ALIVE
 from man.notebooker.results import _get_job_results, _get_all_result_keys
-from man.notebooker.caching import get_cache, set_cache
-
+from man.notebooker.caching import get_report_cache, set_report_cache, get_cache
 
 logger = get_logger(__name__)
 
@@ -19,8 +18,7 @@ def _report_hunter(mongo_host, database_name, result_collection_name, run_once=F
                                                   database_name=database_name,
                                                   result_collection_name=result_collection_name)
     last_query = None
-    global _IS_ALIVE
-    while _IS_ALIVE:
+    while get_cache('_STILL_ALIVE'):
         try:
             ct = 0
             # First, check we have all keys that are available and populate their entries
@@ -49,9 +47,9 @@ def _report_hunter(mongo_host, database_name, result_collection_name, run_once=F
             query_results = serializer.get_all_results(since=last_query)
             for result in query_results:
                 ct += 1
-                existing = get_cache(result.report_name, result.job_id)
+                existing = get_report_cache(result.report_name, result.job_id)
                 if not existing or result.status != existing.status:  # Only update the cache when the status changes
-                    set_cache(result.report_name, result.job_id, result)
+                    set_report_cache(result.report_name, result.job_id, result)
                     logger.info('Report-hunter found a change for {} (status: {}->{})'.format(
                         result.job_id, existing.status if existing else None, result.status))
             logger.info('Found {} updates since {}.'.format(ct, last_query))

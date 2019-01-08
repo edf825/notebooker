@@ -17,11 +17,11 @@ RUN yum install -y ahl-gosu-${GOSU_VERSION} ahl-env-check-${ENV_CHECK_VERSION}
 ARG VERSION
 
 ADD dist /tmp/dist
-ADD install_datascience.sh /tmp/
-RUN /tmp/install_datascience.sh && rm -f /tmp/install_datascience.sh /tmp/dist/*.egg
+ADD install_man_notebooker.sh /tmp/
+RUN /tmp/install_man_notebooker.sh && rm -f /tmp/install_man_notebooker.sh /tmp/dist/*.egg
 
 ADD bin/* /usr/bin/
 
 LABEL IMAGE_TAG ${VERSION}
 
-ENTRYPOINT ["/usr/bin/run_datascience.sh"]
+ENTRYPOINT ["/usr/bin/run_man_notebooker.sh"]

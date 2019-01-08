@@ -1,7 +1,6 @@
 import atexit
 import datetime
 import functools
-import importlib
 
 import click
 import os
@@ -11,13 +10,14 @@ import shutil
 import threading
 import uuid
 from ahl.concurrent.futures import hpc_pool
-from flask import Flask, render_template, request, jsonify, url_for, abort, Response
 from ahl.logging import get_logger
+from flask import Flask, render_template, request, jsonify, url_for, abort, Response
 from typing import Dict, Any, Tuple, List
 
 from man.notebooker import tasks, results
+from man.notebooker.caching import set_cache
 from man.notebooker.constants import OUTPUT_BASE_DIR, \
-    TEMPLATE_BASE_DIR, MONGO_HOST, MONGO_LIBRARY, JobStatus, _IS_ALIVE
+    TEMPLATE_BASE_DIR, MONGO_HOST, MONGO_LIBRARY, JobStatus
 from man.notebooker.handle_overrides import _handle_overrides
 from man.notebooker.report_hunter import _report_hunter
 from man.notebooker.results import NotebookResultError, _get_job_results, all_available_results
@@ -27,6 +27,7 @@ flask_app = Flask(__name__)
 logger = get_logger(__name__)
 result_serializer = None  # type: results.NotebookResultSerializer
 spark_pool = None
+all_report_refresher = None
 
 
 # ----------------- Main page -------------------- #
@@ -94,7 +95,9 @@ def run_checks_http(report_name):
     if issues:
         return jsonify({'status': 'Failed', 'content':('\n'.join(issues))})
     job_id = _run_report(report_name, override_dict)
-    return jsonify({'id': job_id}), 202, {'Location': url_for('task_status', report_name=report_name, task_id=job_id)}
+    return (jsonify({'id': job_id}),
+            202,  # HTTP Accepted code
+            {'Location': url_for('task_status', report_name=report_name, task_id=job_id)})
 
 
 # ------------------- Serving results -------------------- #
@@ -107,7 +110,7 @@ def task_results(task_id, report_name):
                            task_id=task_id,
                            report_name=report_name,
                            result=result,
-                           donevalue=JobStatus.DONE.value,
+                           donevalue=JobStatus.DONE,
                            html_render=url_for('task_results_html', report_name=report_name, task_id=task_id),
                            ipynb_url=url_for('download_ipynb_result', report_name=report_name, task_id=task_id),
                            all_reports=get_all_possible_checks())
@@ -158,10 +161,10 @@ def _get_job_status(task_id, report_name):
     job_result = _get_job_results(task_id, report_name, result_serializer)
     if job_result is None:
         return {'status': 'Job not found. Did you use an old job ID?'}
-    if job_result.status == JobStatus.DONE.value:
+    if job_result.status == JobStatus.DONE:
         response = {'status': job_result.status.value,
                     'results_url': url_for('task_results', report_name=report_name, task_id=task_id)}
-    elif job_result.status == JobStatus.ERROR.value:
+    elif job_result.status == JobStatus.ERROR:
         response = {'status': job_result.status.value,
                     'results_url': url_for('task_results', report_name=report_name, task_id=task_id)}
     else:
@@ -177,22 +180,31 @@ def task_status(report_name, task_id):
 # ----------------- Flask admin ---------------- #
 
 def _cleanup_on_exit():
-    global _IS_ALIVE
-    _IS_ALIVE = False
+    global spark_pool, all_report_refresher
+    set_cache('_STILL_ALIVE', False)
     logger.info('Stopping spark pool.')
     if spark_pool:
-        global spark_pool
         spark_pool.shutdown()
     shutil.rmtree(OUTPUT_BASE_DIR)
     shutil.rmtree(TEMPLATE_BASE_DIR)
+    if all_report_refresher:
+        # Wait until it terminates.
+        all_report_refresher.join()
 
 
 @click.command()
 @click.option('--mongo-host', default='research')
 @click.option('--database-name', default='mongoose_restech')
 @click.option('--result-collection-name', default='NOTEBOOK_OUTPUT')
-def start_app(mongo_host, database_name, result_collection_name):
-    global spark_pool, result_serializer
+@click.option('--debug/--no-debug', default=False)
+@click.option('--port', default=int(os.getenv('OCN_PORT', 11828)))
+def start_app(mongo_host, database_name, result_collection_name, debug, port):
+    logger.info('Running man.notebooker with params: '
+                'mongo-host=%s, database-name=%s, '
+                'result-collection-name=%s, debug=%s, '
+                'port=%s', mongo_host, database_name, result_collection_name, debug, port)
+    set_cache('_STILL_ALIVE', True)
+    global spark_pool, result_serializer, all_report_refresher
     logger.info('Creating {}'.format(OUTPUT_BASE_DIR))
     os.makedirs(OUTPUT_BASE_DIR)
     logger.info('Creating {}'.format(TEMPLATE_BASE_DIR))
@@ -201,12 +213,11 @@ def start_app(mongo_host, database_name, result_collection_name):
                                                          database_name=database_name,
                                                          result_collection_name=result_collection_name)
     spark_pool = hpc_pool('SPARK', local_thread_count=8)
-    port = int(os.getenv('OCN_PORT', 11828))
     atexit.register(_cleanup_on_exit)
     all_report_refresher = threading.Thread(target=_report_hunter, args=(mongo_host, database_name, result_collection_name))
     all_report_refresher.daemon = True
     all_report_refresher.start()
-    flask_app.run('0.0.0.0', port, threaded=True, debug=True)
+    flask_app.run('0.0.0.0', port, threaded=True, debug=debug)
 
 
 if __name__ == '__main__':

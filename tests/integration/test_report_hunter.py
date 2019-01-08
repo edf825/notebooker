@@ -8,7 +8,7 @@ from ahl.mongo import Mongoose
 from arctic.store.bson_store import BSON_STORE_TYPE
 from werkzeug.contrib.cache import SimpleCache
 
-from man.notebooker.caching import get_cache, cache
+from man.notebooker.caching import get_report_cache, cache
 from man.notebooker.constants import JobStatus
 from man.notebooker.results import NotebookResultSerializer, NotebookResultPending, \
     NotebookResultError, NotebookResultComplete
@@ -64,7 +64,7 @@ def test_report_hunter_with_one(bson_library, mongo_host):
                                      report_name=report_name,
                                      update_time=datetime.datetime(2018, 1, 12),
                                      job_start_time=datetime.datetime(2018, 1, 12))
-    assert expected == get_cache(report_name, job_id)
+    assert expected == get_report_cache(report_name, job_id)
 
 
 @cache_blaster
@@ -82,7 +82,7 @@ def test_report_hunter_with_status_change(bson_library, mongo_host):
                                      report_name=report_name,
                                      update_time=datetime.datetime(2018, 1, 12, 2, 30),
                                      job_start_time=datetime.datetime(2018, 1, 12, 2, 30))
-    assert expected == get_cache(report_name, job_id)
+    assert expected == get_report_cache(report_name, job_id)
 
     with freezegun.freeze_time(datetime.datetime(2018, 1, 12, 2, 32)):
         serializer.update_check_status(job_id, JobStatus.CANCELLED, error_info='This was cancelled!')
@@ -95,7 +95,7 @@ def test_report_hunter_with_status_change(bson_library, mongo_host):
                                    job_start_time=datetime.datetime(2018, 1, 12, 2, 30),
                                    error_info='This was cancelled!'
                                    )
-    assert expected == get_cache(report_name, job_id)
+    assert expected == get_report_cache(report_name, job_id)
 
 
 @cache_blaster
@@ -122,7 +122,7 @@ def test_report_hunter_timeout(bson_library, mongo_host, status, time_later, sho
                                      status=status,
                                      update_time=time_now,
                                      job_start_time=start_time)
-    assert expected == get_cache(report_name, job_id)
+    assert expected == get_report_cache(report_name, job_id)
 
     time_now += time_later
     with freezegun.freeze_time(time_now):
@@ -142,7 +142,7 @@ def test_report_hunter_timeout(bson_library, mongo_host, status, time_later, sho
     else:
         # expected does not change
         pass
-    assert expected == get_cache(report_name, job_id)
+    assert expected == get_report_cache(report_name, job_id)
 
 
 @cache_blaster
@@ -161,7 +161,7 @@ def test_report_hunter_pending_to_done(bson_library, mongo_host):
                                      status=JobStatus.SUBMITTED,
                                      update_time=datetime.datetime(2018, 1, 12, 2, 30),
                                      job_start_time=datetime.datetime(2018, 1, 12, 2, 30))
-    assert expected == get_cache(report_name, job_id)
+    assert expected == get_report_cache(report_name, job_id)
 
     with freezegun.freeze_time(datetime.datetime(2018, 1, 12, 2, 32)):
         serializer.update_check_status(job_id, JobStatus.PENDING)
@@ -172,7 +172,7 @@ def test_report_hunter_pending_to_done(bson_library, mongo_host):
                                      status=JobStatus.PENDING,
                                      update_time=datetime.datetime(2018, 1, 12, 2, 32),
                                      job_start_time=datetime.datetime(2018, 1, 12, 2, 30))
-    assert expected == get_cache(report_name, job_id)
+    assert expected == get_report_cache(report_name, job_id)
 
     with freezegun.freeze_time(datetime.datetime(2018, 1, 12, 2, 37)):
         serializer.update_check_status(job_id,
@@ -193,4 +193,4 @@ def test_report_hunter_pending_to_done(bson_library, mongo_host):
                                       raw_html_resources={'outputs':{}},
                                       raw_ipynb_json='[]'
                                       )
-    assert expected == get_cache(report_name, job_id)
+    assert expected == get_report_cache(report_name, job_id)

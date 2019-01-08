@@ -49,7 +49,7 @@ to login with a token:
 ```
 
 7) Create a new notebook in
-idi/datascience/one_click_notebooks/notebook_templates with your
+man/notebooker/notebook_templates with your
 "one_click_notebooks_kernel" kernel
 
 8) Enable viewing tags by selecting View > Cell Toolbar > Tags
@@ -67,7 +67,7 @@ Run your own one-click-notebook server by simply running:
 
 ```bash
 python setup.py develop
-python idi/datascience/one_click_notebooks/main.py
+man_notebooker_webapp
 ```
 
 You should be able to run your new report if it is in the
