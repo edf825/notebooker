@@ -1,6 +1,6 @@
 import pkgutil
 
-from idi.datascience.one_click_notebooks.constants import TEMPLATE_MODULE_NAME
+from man.notebooker.constants import TEMPLATE_MODULE_NAME
 
 
 def _output_dir(output_base_dir, report_name, job_id):

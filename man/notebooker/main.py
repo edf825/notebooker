@@ -15,13 +15,13 @@ from flask import Flask, render_template, request, jsonify, url_for, abort, Resp
 from ahl.logging import get_logger
 from typing import Dict, Any, Tuple, List
 
-from idi.datascience.one_click_notebooks import tasks, results
-from idi.datascience.one_click_notebooks.constants import OUTPUT_BASE_DIR, \
+from man.notebooker import tasks, results
+from man.notebooker.constants import OUTPUT_BASE_DIR, \
     TEMPLATE_BASE_DIR, MONGO_HOST, MONGO_LIBRARY, JobStatus, _IS_ALIVE
-from idi.datascience.one_click_notebooks.handle_overrides import _handle_overrides
-from idi.datascience.one_click_notebooks.report_hunter import _report_hunter
-from idi.datascience.one_click_notebooks.results import NotebookResultError, _get_job_results, all_available_results
-from idi.datascience.one_click_notebooks.utils import get_all_possible_checks
+from man.notebooker.handle_overrides import _handle_overrides
+from man.notebooker.report_hunter import _report_hunter
+from man.notebooker.results import NotebookResultError, _get_job_results, all_available_results
+from man.notebooker.utils import get_all_possible_checks
 
 flask_app = Flask(__name__)
 logger = get_logger(__name__)

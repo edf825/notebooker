@@ -3,7 +3,7 @@ import datetime
 import pytest
 import re
 
-from idi.datascience.one_click_notebooks.handle_overrides import _handle_overrides
+from man.notebooker.handle_overrides import _handle_overrides
 
 
 IMPORT_REGEX = re.compile('^(from [a-zA-Z0-9_.]+ )?import (?P<import_target>[a-zA-Z0-9_.]+)( as (?P<name>.+))?$')

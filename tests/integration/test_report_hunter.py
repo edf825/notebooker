@@ -8,12 +8,12 @@ from ahl.mongo import Mongoose
 from arctic.store.bson_store import BSON_STORE_TYPE
 from werkzeug.contrib.cache import SimpleCache
 
-from idi.datascience.one_click_notebooks.caching import get_cache, cache
-from idi.datascience.one_click_notebooks.constants import JobStatus
-from idi.datascience.one_click_notebooks.results import NotebookResultSerializer, NotebookResultPending, \
+from man.notebooker.caching import get_cache, cache
+from man.notebooker.constants import JobStatus
+from man.notebooker.results import NotebookResultSerializer, NotebookResultPending, \
     NotebookResultError, NotebookResultComplete
 
-from idi.datascience.one_click_notebooks.report_hunter import _report_hunter
+from man.notebooker.report_hunter import _report_hunter
 
 pytest_plugins = ['ahl.testing.pytest.mongo_server']
 

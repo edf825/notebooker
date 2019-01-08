@@ -3,10 +3,10 @@ import time
 
 from ahl.logging import get_logger
 
-from idi.datascience.one_click_notebooks import results
-from idi.datascience.one_click_notebooks.constants import JobStatus, SUBMISSION_TIMEOUT, RUNNING_TIMEOUT, _IS_ALIVE
-from idi.datascience.one_click_notebooks.results import _get_job_results, _get_all_result_keys
-from idi.datascience.one_click_notebooks.caching import get_cache, set_cache
+from man.notebooker import results
+from man.notebooker.constants import JobStatus, SUBMISSION_TIMEOUT, RUNNING_TIMEOUT, _IS_ALIVE
+from man.notebooker.results import _get_job_results, _get_all_result_keys
+from man.notebooker.caching import get_cache, set_cache
 
 
 logger = get_logger(__name__)

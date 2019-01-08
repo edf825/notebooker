@@ -1,7 +1,7 @@
 import retrying
 from werkzeug.contrib.cache import SimpleCache
 
-from idi.datascience.one_click_notebooks.utils import _cache_key
+from man.notebooker.utils import _cache_key
 
 cache = SimpleCache()
 

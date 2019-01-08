@@ -10,9 +10,9 @@ from ahl.mongo.decorators import mongo_retry
 from flask import url_for
 from typing import AnyStr, Optional, Generator, Any, Dict, Union, List, Tuple
 
-from idi.datascience.one_click_notebooks.caching import get_cache, set_cache, _get_cache, _set_cache
-from idi.datascience.one_click_notebooks.constants import JobStatus
-from idi.datascience.one_click_notebooks.exceptions import NotebookRunError
+from man.notebooker.caching import get_cache, set_cache, _get_cache, _set_cache
+from man.notebooker.constants import JobStatus
+from man.notebooker.exceptions import NotebookRunError
 
 
 logger = get_logger(__name__)

@@ -5,7 +5,7 @@ import os
 import pkg_resources
 from typing import Any, Dict
 
-from idi.datascience.one_click_notebooks.results import NotebookResultComplete, NotebookResultSerializer, \
+from man.notebooker.results import NotebookResultComplete, NotebookResultSerializer, \
     NotebookResultError
 
 
@@ -79,8 +79,8 @@ def run_checks(job_id,              # type: str
     try:
         import os
         import papermill as pm
-        from idi.datascience.one_click_notebooks.constants import JobStatus
-        from idi.datascience.one_click_notebooks.utils import _output_dir
+        from man.notebooker.constants import JobStatus
+        from man.notebooker.utils import _output_dir
 
         serializer.update_check_status(job_id,
                                        report_name=report_name,

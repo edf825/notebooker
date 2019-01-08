@@ -6,7 +6,6 @@ except ImportError:
     import sys
     sys.exit(1)
 
-setup(namespace_packages=('idi',),
+setup(namespace_packages=('man',),
       setup_cfg='setup.cfg',
-      zip_safe=False,  # This is required for pyramid/venusian, which can't handle ZipImporter.
 )
