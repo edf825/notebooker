@@ -4,7 +4,7 @@ import time
 from ahl.logging import get_logger
 
 from man.notebooker import results
-from man.notebooker.constants import JobStatus, SUBMISSION_TIMEOUT, RUNNING_TIMEOUT, _IS_ALIVE
+from man.notebooker.constants import JobStatus, SUBMISSION_TIMEOUT, RUNNING_TIMEOUT
 from man.notebooker.results import _get_job_results, _get_all_result_keys
 from man.notebooker.caching import get_report_cache, set_report_cache, get_cache
 

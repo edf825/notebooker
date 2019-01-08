@@ -9,6 +9,7 @@ from nbconvert import HTMLExporter
 from traitlets.config import Config
 from typing import Any, Dict
 
+from man.notebooker.constants import KERNEL_SPEC
 from man.notebooker.results import NotebookResultComplete, NotebookResultSerializer, \
     NotebookResultError
 
@@ -63,7 +64,9 @@ def generate_ipynb_from_py(template_base_dir, report_name):
     with open(output_template, 'w') as f:
         os.utime(output_template, None)
 
-    jupytext.writef(jupytext.readf(python_template), output_template)
+    jupytext_nb = jupytext.readf(python_template)
+    jupytext_nb['metadata']['kernelspec'] = KERNEL_SPEC  # Override the kernel spec since we want to run it..
+    jupytext.writef(jupytext_nb, output_template)
     return output_template
 
 

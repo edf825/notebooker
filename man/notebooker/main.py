@@ -41,6 +41,7 @@ def index():
 
 # ------------------ Running checks ---------------- #
 
+
 @flask_app.route('/run_report/<report_name>', methods=['GET'])
 def run_report(report_name):
     path = tasks.generate_ipynb_from_py(TEMPLATE_BASE_DIR, report_name)
@@ -189,6 +190,7 @@ def _cleanup_on_exit():
     shutil.rmtree(TEMPLATE_BASE_DIR)
     if all_report_refresher:
         # Wait until it terminates.
+        logger.info('Stopping "report hunter" thread.')
         all_report_refresher.join()
 
 

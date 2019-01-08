@@ -12,7 +12,9 @@ TEMPLATE_BASE_DIR = os.path.join(os.getenv('TEMPLATE_DIR', tempfile.mkdtemp(dir=
 MONGO_HOST = 'research'
 MONGO_LIBRARY = 'NOTEBOOK_OUTPUT'
 TEMPLATE_MODULE_NAME = 'notebook_templates'
-_IS_ALIVE = True
+KERNEL_SPEC = {'display_name': os.getenv('NOTEBOOK_KERNEL_NAME', 'man_notebooker_kernel'),
+               'language': 'python',
+               'name': os.getenv('NOTEBOOK_KERNEL_NAME', 'man_notebooker_kernel')}
 
 
 @unique

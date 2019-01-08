@@ -6,4 +6,4 @@ if ! req=$(ls /tmp/dist/*.egg 2>/dev/null); then
 fi
 
 ${MEDUSA_ENV}/bin/easy_install ${req}
-${MEDUSA_ENV}/bin/ -m ipykernel install --user --name=${NOTEBOOK_KERNEL_NAME}
+${MEDUSA_ENV}/bin/python -m ipykernel install --user --name=man_notebooker_kernel

@@ -71,4 +71,4 @@ man_notebooker_webapp
 ```
 
 You should be able to run your new report if it is in the
-correct directory.
+correct directory, and your report requirements are listed in setup.cfg.
