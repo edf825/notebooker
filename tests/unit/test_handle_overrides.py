@@ -6,6 +6,7 @@ import hypothesis
 import hypothesis.strategies as st
 import pytest
 import re
+from typing import Any
 
 from man.notebooker.handle_overrides import handle_overrides, _handle_overrides_safe
 
@@ -33,9 +34,28 @@ def test_handle_overrides_handles_anything_cleanly_no_process_variable(text):
         assert len(issues) == 0 and len(overrides) == 0
 
 
+_CACHE = {}
+
+
+def _fakepickle_dump(to_pickle, file):
+    # type: (Any, file) -> None
+    global _CACHE
+    _CACHE[file.name] = to_pickle
+
+
+def _fakepickle_load(file):
+    # type: (file) -> Any
+    global _CACHE
+    return _CACHE[file.name]
+
+
 @hypothesis.given(st.from_regex(IMPORT_REGEX))
+@hypothesis.settings(max_examples=30)
 def test_handle_overrides_handles_anything_cleanly_no_process_import(text):
-    with mock.patch('man.notebooker.handle_overrides.subprocess.check_output') as popen:
+    with mock.patch('man.notebooker.handle_overrides.subprocess.check_output') as popen, \
+         mock.patch('man.notebooker.handle_overrides.pickle') as pickle:
+        pickle.dump.side_effect = _fakepickle_dump
+        pickle.load.side_effect = _fakepickle_load
         popen.side_effect = lambda args: mock.MagicMock(res=_handle_overrides_safe(args[4], args[6]))
         overrides, issues = handle_overrides(text)
     if any(t for t in text.split('\n') if t.strip()):
