@@ -18,7 +18,7 @@ from man.notebooker import tasks, results
 from man.notebooker.caching import set_cache
 from man.notebooker.constants import OUTPUT_BASE_DIR, \
     TEMPLATE_BASE_DIR, MONGO_HOST, MONGO_LIBRARY, JobStatus
-from man.notebooker.handle_overrides import _handle_overrides
+from man.notebooker.handle_overrides import handle_overrides
 from man.notebooker.report_hunter import _report_hunter
 from man.notebooker.results import NotebookResultError, _get_job_results, all_available_results
 from man.notebooker.utils import get_all_possible_checks
@@ -92,7 +92,7 @@ def _run_report(report_name, overrides):
 @flask_app.route('/run_checks/<report_name>', methods=['POST', 'PUT'])
 def run_checks_http(report_name):
     overrides = request.values.get('overrides')
-    override_dict, issues = _handle_overrides(overrides)
+    override_dict, issues = handle_overrides(overrides)
     if issues:
         return jsonify({'status': 'Failed', 'content':('\n'.join(issues))})
     job_id = _run_report(report_name, override_dict)

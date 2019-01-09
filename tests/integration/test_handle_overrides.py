@@ -1,10 +1,8 @@
 import datetime
-
 import pytest
 import re
 
-from man.notebooker.handle_overrides import _handle_overrides
-
+from man.notebooker.handle_overrides import handle_overrides
 
 IMPORT_REGEX = re.compile('^(from [a-zA-Z0-9_.]+ )?import (?P<import_target>[a-zA-Z0-9_.]+)( as (?P<name>.+))?$')
 VARIABLE_ASSIGNMENT_REGEX = re.compile('^(?P<variable_name>[a-zA-Z_]+) *= *(?P<value>.+)$')
@@ -26,12 +24,19 @@ VARIABLE_ASSIGNMENT_REGEX = re.compile('^(?P<variable_name>[a-zA-Z_]+) *= *(?P<v
         (
             'Successfully importing and using a library',
             'import datetime\nd = datetime.datetime(2018, 1, 1)',
-            {'d': datetime.datetime(2018, 1, 1)},
+            {},
+            ['Could not JSON serialise a parameter ("d") - this must be serialisable so that we can '
+             'execute the notebook with it! (Error: datetime.datetime(2018, 1, 1, 0, 0) is not JSON '
+             'serializable, Value: 2018-01-01 00:00:00)']),
+        (
+            'Successfully importing and using a library',
+            'import datetime\nd = datetime.datetime(2018, 1, 1).isoformat()',
+            {'d': '2018-01-01T00:00:00'},
             []),
         (
             'Successfully importing and using a library',
-            'from datetime import datetime as dt;d = dt(2018, 1, 1)\nq=\\\ndt(2011, 5, 1)',
-            {'d': datetime.datetime(2018, 1, 1), 'q': datetime.datetime(2011, 5, 1)},
+            'from datetime import datetime as dt;d = dt(2018, 1, 1).isoformat()\nq=\\\ndt(2011, 5, 1).isoformat()',
+            {'d': datetime.datetime(2018, 1, 1).isoformat(), 'q': datetime.datetime(2011, 5, 1).isoformat()},
             []),
         (
             'Failing importing and using an un-imported library',
@@ -43,17 +48,13 @@ VARIABLE_ASSIGNMENT_REGEX = re.compile('^(?P<variable_name>[a-zA-Z_]+) *= *(?P<v
             'import datetime;datetime.datetime(2018, 1, 1)',
             {},
             ["Found an expression that did nothing! It has a value of type: <class '_ast.Call'>"]),
-        (
-            'Trying to declare an un-picklable variable',
-            'a=1\nx = (_ for _ in range(10))',
-            {},
-            ["Could not pickle", "All input must be picklable (sorry!)"]),
     ])
 def test_handle_overrides_normal(test_name, input_str, expected_output_values, expected_issues):
-    override_dict, issues = _handle_overrides(input_str)
-    for k, v in expected_output_values.items():
-        assert expected_output_values[k] == override_dict.get(k)
-    print issues
-    for issue in expected_issues:
-        assert any(issue in resulting_issue for resulting_issue in issues), '"{}" not found in {}'.format(issue, issues)
+    override_dict, issues = handle_overrides(input_str)
+    if sorted(issues) != sorted(expected_issues) and expected_issues:
+        for expected_issue in expected_issues:
+            fail_msg = 'Issue {} was not found in the list of issues: {}'.format(expected_issue, issues)
+            assert any(expected_issue in issue for issue in issues), fail_msg
+    assert sorted(issues) == sorted(expected_issues)
+    assert sorted(override_dict.items()) == sorted(expected_output_values.items())
 

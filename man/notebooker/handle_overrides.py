@@ -1,5 +1,5 @@
 import ast
-import cPickle
+import pickle
 import importlib
 import json
 import sys
@@ -42,15 +42,14 @@ def _handle_overrides_safe(overrides, output_path):
                 logger.info('Found an assignment to: {}'.format(', '.join(targets)))
                 for target in targets:
                     value = locals()[target]
+                    result['overrides'][target] = value
                     try:
-                        json.dumps(value)  # Test that we can JSON serialise this - required by papermill
+                        json.dumps(result['overrides'])  # Test that we can JSON serialise this - required by papermill
                     except TypeError as te:
                         # TODO: we may want to allow people to pass dataframes/timeseries as parameters. Can we handle?
                         issues.append('Could not JSON serialise a parameter ("{}") - this must be serialisable so that '
                                       'we can execute the notebook with it! (Error: {}, Value: {})'.format(
                             target, str(te), value))
-                        continue
-                    result['overrides'][target] = value
             elif isinstance(node, (ast.Expr, ast.Expression)):
                 issues.append('Found an expression that did nothing! It has a value of type: {}'.format(type(node.value)))
     except Exception as e:
@@ -59,20 +58,21 @@ def _handle_overrides_safe(overrides, output_path):
     if not issues:
         try:
             with open(output_path, 'w') as f:
-                cPickle.dump(result, f)
+                logger.info('Dumping to %s: %s', output_path, result)
+                pickle.dump(result, f)
             return result
         except TypeError as e:
             issues.append('Could not pickle: {}. All input must be picklable (sorry!). '
                           'Error: {}'.format(str(result), str(e)))
+    if issues:
+        with open(output_path, 'w') as f:
+            result = {'overrides': {}, 'issues': issues}
+            logger.info('Dumping to %s: %s', output_path, result)
+            pickle.dump(result, f)
+    return result
 
-    with open(output_path, 'w') as f:
-        cPickle.dump({'overrides': {},
-                      'issues': issues},
-                     f)
-    sys.stdout.write(str(result))
 
-
-def _handle_overrides(overrides_string):
+def handle_overrides(overrides_string):
     # type: (str) -> Tuple[Dict[str, Any], List[str]]
     override_dict = {}
     issues = []
@@ -83,7 +83,8 @@ def _handle_overrides(overrides_string):
                                      '--overrides', overrides_string,
                                      '--output', tmp_file])
             with open(tmp_file, 'r') as f:
-                output_dict = cPickle.load(f)
+                output_dict = pickle.load(f)
+            logger.info('Got %s from pickle', output_dict)
             override_dict, issues = output_dict['overrides'], output_dict['issues']
             os.remove(tmp_file)
         except subprocess.CalledProcessError as cpe:
