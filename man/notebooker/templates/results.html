@@ -33,9 +33,13 @@
                 <br/>
                 <br/>
                 {% if result.status == donevalue %}
-                        <a href="{{ ipynb_url }}"><button class="ui red button">Download .ipynb</button></a>
+                        <button onclick="location.href='{{ ipynb_url }}'"
+                                    type="button" class="ui red button">Download .ipynb</button>
+                        <br/>
+                        <br/>
+                        <button onclick="location.href='{{ pdf_url }}'"
+                                    type="button" class="ui red button">Download .pdf</button>
                 {% endif %}
-            <!--<div class="four wide column">-->
 
             </div>
         <br/>

@@ -39,7 +39,7 @@ from typing import List, Optional, AnyStr, DefaultDict
 
 from equities.centaur.data import get_stocks_item
 from man.security_master.api import SecurityMasterAPI
-from man.security_master.sources.base import IdentifierType, Route
+from man.security_master.base import IdentifierType, Route
 
 
 def get_trading_filter(region, filter_type='swift_trading_filter'):

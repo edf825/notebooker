@@ -40,7 +40,7 @@ def _report_hunter(mongo_host, database_name, result_collection_name, run_once=F
                 if result.job_start_time <= this_cutoff:
                     delta_seconds = (now - this_cutoff).total_seconds()
                     serializer.update_check_status(result.job_id, JobStatus.TIMEOUT,
-                                                   error_info='This request timed out while being submitted to Spark. '
+                                                   error_info='This request timed out while being submitted to run. '
                                                               'Please try again! Timed out after {:.0f} minutes '
                                                               '{:.0f} seconds.'.format(delta_seconds/60,
                                                                                        delta_seconds % 60))

@@ -1,2 +1,2 @@
-class NotebookRunError(Exception):
+class NotebookRunException(Exception):
     pass
