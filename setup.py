@@ -8,4 +8,5 @@ except ImportError:
 
 setup(namespace_packages=('man',),
       setup_cfg='setup.cfg',
+      zip_safe=False,  # so that we can get our templates from man/notebooker/notebook_templates/
 )
