@@ -6,10 +6,6 @@ def integration = {
   pyTest 'tests/integration', "-m 'not compress and not serial'"
 }
 
-def latex = {
-  sh 'yum install texlive-xetex texlive-xetex-def texlive-adjustbox texlive-upquote texlive-ulem && yum clean all'
-}
-
 env.PYTHONPATH = '.:..'  // So that the src directory can be used as a dir
 
 acquireDotsDb(true, "trd-pool", true, 'twsadmin') {
@@ -20,12 +16,6 @@ acquireDotsDb(true, "trd-pool", true, 'twsadmin') {
 		dockerPath = 'docker'
         medusaVersions = ["27-3"]
         publicProject = true
-
-        preBuildStages = [
-            [name: 'LaTeX install',
-             body: latex
-             ]
-        ]
 
         testStages =  [
             [name: 'Unit',
