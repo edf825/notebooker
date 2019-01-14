@@ -12,7 +12,7 @@ ENV PYTHON_EGG_CACHE /tmp/egg-cache
 
 ENV ENV_CHECK_VERSION=${ENV_CHECK_VERSION}
 ENV GOSU_VERSION=${GOSU_VERSION}
-RUN yum install -y ahl-gosu-${GOSU_VERSION} ahl-env-check-${ENV_CHECK_VERSION}
+RUN yum install -y ahl-gosu-${GOSU_VERSION} ahl-env-check-${ENV_CHECK_VERSION} && yum clean all
 
 ARG VERSION
 
