@@ -206,14 +206,7 @@ def _cleanup_on_exit():
     time.sleep(2)
 
 
-@flask_app.before_first_request
-def start_app(mongo_host='research', database_name='mongoose_restech', result_collection_name='NOTEBOOK_OUTPUT',
-              debug=False, port=8000):
-    # TODO: Get the above from env
-    # import gunicorn, logging
-    # gunicorn_logger = logging.getLogger('gunicorn.error')
-    # flask_app.logger.handlers = gunicorn_logger.handlers
-    # logger.handlers = gunicorn_logger.handlers
+def start_app(mongo_host, database_name, result_collection_name, debug, port):
     logger.info('Running man.notebooker with params: '
                 'mongo-host=%s, database-name=%s, '
                 'result-collection-name=%s, debug=%s, '
@@ -232,30 +225,16 @@ def start_app(mongo_host='research', database_name='mongoose_restech', result_co
     all_report_refresher.start()
 
 
-def _kick_off(host, port):
-    def start_loop():
-        not_started = True
-        while not_started:
-            try:
-                url = 'http://{}:{}/'.format(host, port)
-                r = requests.get(url)
-                logger.info('Url %s gave status %s', url, r.status_code)
-                if r.status_code == 200:
-                    logger.info('Server started, quitting start_loop')
-                    not_started = False
-            except:
-                logger.info('Server not yet started')
-            time.sleep(1)
-    thread = threading.Thread(target=start_loop)
-    thread.daemon = True
-    thread.start()
-
-
-def main():
+@click.command()
+@click.option('--mongo-host', default='research')
+@click.option('--database-name', default='mongoose_restech')
+@click.option('--result-collection-name', default='NOTEBOOK_OUTPUT')
+@click.option('--debug/--no-debug', default=False)
+@click.option('--port', default=int(os.getenv('OCN_PORT', 11828)))
+def main(mongo_host, database_name, result_collection_name, debug, port):
     host = '0.0.0.0'
-    port = 8000
-    _kick_off(host, port)
-    flask_app.run(host=host, port=port, threaded=True, debug=True)
+    start_app(mongo_host, database_name, result_collection_name, debug, port)
+    flask_app.run(host=host, port=port, threaded=True, debug=debug)
 
 
 if __name__ == '__main__':
