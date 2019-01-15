@@ -12,3 +12,4 @@ run_env_check \
 	|| exit $?
 
 exec gosu ${USER_ID}:${GROUP_ID} "$@"
+

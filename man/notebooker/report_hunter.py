@@ -6,7 +6,7 @@ from ahl.logging import get_logger
 from man.notebooker import results
 from man.notebooker.constants import JobStatus, SUBMISSION_TIMEOUT, RUNNING_TIMEOUT
 from man.notebooker.results import _get_job_results, _get_all_result_keys
-from man.notebooker.caching import get_report_cache, set_report_cache, get_cache
+from man.notebooker.caching import get_report_cache, set_report_cache, get_cache, set_cache
 
 logger = get_logger(__name__)
 
@@ -17,6 +17,8 @@ def _report_hunter(mongo_host, database_name, result_collection_name, run_once=F
     serializer = results.NotebookResultSerializer(mongo_host=mongo_host,
                                                   database_name=database_name,
                                                   result_collection_name=result_collection_name)
+    if not get_cache('_STILL_ALIVE'):
+        set_cache('_STILL_ALIVE', True)
     last_query = None
     while get_cache('_STILL_ALIVE'):
         try:
@@ -38,7 +40,7 @@ def _report_hunter(mongo_host, database_name, result_collection_name, run_once=F
                 if result.job_start_time <= this_cutoff:
                     delta_seconds = (now - this_cutoff).total_seconds()
                     serializer.update_check_status(result.job_id, JobStatus.TIMEOUT,
-                                                   error_info='This request timed out while being submitted to Spark. '
+                                                   error_info='This request timed out while being submitted to run. '
                                                               'Please try again! Timed out after {:.0f} minutes '
                                                               '{:.0f} seconds.'.format(delta_seconds/60,
                                                                                        delta_seconds % 60))

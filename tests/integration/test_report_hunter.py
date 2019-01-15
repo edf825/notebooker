@@ -135,7 +135,7 @@ def test_report_hunter_timeout(bson_library, mongo_host, status, time_later, sho
                                        status=JobStatus.TIMEOUT,
                                        update_time=time_now,
                                        job_start_time=start_time,
-                                       error_info='This request timed out while being submitted to Spark. '
+                                       error_info='This request timed out while being submitted to run. '
                                                   'Please try again! '
                                                   'Timed out after {:.0f} minutes 0 seconds.'.format(mins)
                                        )

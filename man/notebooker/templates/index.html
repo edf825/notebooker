@@ -15,7 +15,8 @@
                 <th>Start Time</th>
                 <th>Completion Time</th>
                 <th>Results</th>
-                <th>Download Link</th>
+                <th>Download ipynb</th>
+                <th>Download pdf</th>
                 <th>Delete Result</th>
             </thead>
             <tbody>
@@ -30,8 +31,16 @@
                                 type="button" class="ui button blue">Result</button>
                     </td>
                     <td>
-                        <button onclick="location.href='{{ result.ipynb_url }}'"
-                                type="button" class="ui button yellow">Download .ipynb</button>
+                        {% if result.status == donevalue %}
+                            <button onclick="location.href='{{ result.ipynb_url }}'"
+                                    type="button" class="ui button yellow">Download .ipynb</button>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if result.pdf %}
+                            <button onclick="location.href='{{ result.pdf_url }}'"
+                                    type="button" class="ui button yellow">Download .pdf</button>
+                        {% endif %}
                     </td>
                     <td>
                         <button type="button" class="ui button red" onclick="alert('not yet implemented!')"><i class="trash icon"></i></button>
@@ -40,6 +49,11 @@
             {% endfor %}
             </tbody>
         </table>
+        <div>
+            <button class="ui button black" onclick="location.href=window.location.href+'/?limit=0'">
+                Load all {{ n_results_available }} results
+            </button>
+        </div>
     </div>
 </body>
 </html>

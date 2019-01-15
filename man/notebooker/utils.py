@@ -1,6 +1,6 @@
 import pkgutil
 
-from man.notebooker.constants import TEMPLATE_MODULE_NAME
+import man.notebooker.notebook_templates
 
 
 def _output_dir(output_base_dir, report_name, job_id):
@@ -13,8 +13,5 @@ def _cache_key(report_name, job_id):
 
 
 def get_all_possible_checks():
-    return list({x.rsplit('.', 1)[1]
-                 for (_, x, _)
-                 in pkgutil.walk_packages('man.notebooker')
-                 if TEMPLATE_MODULE_NAME in x
-                 and not x.endswith(TEMPLATE_MODULE_NAME)})
+    pkg_path = man.notebooker.notebook_templates.__path__
+    return [module for (_, module, _) in pkgutil.iter_modules(pkg_path)]

@@ -8,11 +8,12 @@ from ahl.mongo import Mongoose
 from ahl.mongo.auth import get_auth, authenticate
 from ahl.mongo.decorators import mongo_retry
 from flask import url_for
+from gridfs import NoFile
 from typing import AnyStr, Optional, Generator, Any, Dict, Union, List, Tuple
 
 from man.notebooker.caching import get_report_cache, set_report_cache, get_cache, set_cache
 from man.notebooker.constants import JobStatus
-from man.notebooker.exceptions import NotebookRunError
+from man.notebooker.exceptions import NotebookRunException
 
 
 logger = get_logger(__name__)
@@ -53,6 +54,7 @@ class NotebookResultComplete(NotebookResultBase):
     raw_ipynb_json = attr.ib(default="")
     raw_html = attr.ib(default="")
     update_time = attr.ib(default=datetime.datetime.now())
+    pdf = attr.ib(default="")
 
     def html_resources(self):
         # We have to save the raw images using Mongo GridFS - figure out where they will go here
@@ -83,6 +85,11 @@ class NotebookResultComplete(NotebookResultBase):
         )
 
 
+def _pdf_filename(job_id):
+    # type: (str) -> str
+    return '{}.pdf'.format(job_id)
+
+
 class NotebookResultSerializer(object):
     # This class is the interface between Mongo and the rest of the application
     def __init__(self,
@@ -97,7 +104,7 @@ class NotebookResultSerializer(object):
         user_creds = get_auth(mongo_host, 'mongoose', database_name)
 
         authenticate(self.mongo, user_creds.user, user_creds.password)
-        self.database = database_name
+        self.database_name = database_name
         self.mongo_host = mongo_host
 
     @mongo_retry
@@ -110,6 +117,7 @@ class NotebookResultSerializer(object):
             self.library.insert_one(out_data)
         # Ensure that the job_id index exists
         self.library.create_index([('job_id', pymongo.ASCENDING)], background=True)
+        self.library.create_index([('update_time', pymongo.DESCENDING)], background=True)
 
     def _save_to_db(self, notebook_result):
         out_data = notebook_result.saveable_output()
@@ -146,11 +154,12 @@ class NotebookResultSerializer(object):
         self._save_to_db(notebook_result)
 
         # Save to gridfs
-        if notebook_result.status == JobStatus.DONE and \
-                notebook_result.raw_html_resources and \
-                'outputs' in notebook_result.raw_html_resources:
-            for filename, binary_data in notebook_result.raw_html_resources['outputs'].items():
-                self.result_data_store.put(binary_data, filename=filename)
+        if notebook_result.status == JobStatus.DONE:
+            if notebook_result.raw_html_resources and 'outputs' in notebook_result.raw_html_resources:
+                for filename, binary_data in notebook_result.raw_html_resources['outputs'].items():
+                    self.result_data_store.put(binary_data, filename=filename)
+            if notebook_result.pdf:
+                self.result_data_store.put(notebook_result.pdf, filename=_pdf_filename(notebook_result.job_id))
 
     @mongo_retry
     def get_check_result(self, job_id):
@@ -176,6 +185,11 @@ class NotebookResultSerializer(object):
             for filename in result.get('raw_html_resources', {}).get('outputs', []):
                 outputs[filename] = self.result_data_store.get_last_version(filename).read()
             result['raw_html_resources']['outputs'] = outputs
+            pdf_filename = _pdf_filename(job_id)
+            try:
+                result['pdf'] = self.result_data_store.get_last_version(pdf_filename).read()
+            except NoFile:
+                pass
 
         if cls == NotebookResultComplete:
             notebook_result = NotebookResultComplete(
@@ -188,6 +202,7 @@ class NotebookResultSerializer(object):
                 raw_html_resources=result['raw_html_resources'],
                 raw_ipynb_json=result['raw_ipynb_json'],
                 raw_html=result['raw_html'],
+                pdf=result.get('pdf', ''),
             )
         elif cls == NotebookResultPending:
             notebook_result = NotebookResultPending(
@@ -229,10 +244,15 @@ class NotebookResultSerializer(object):
     def get_all_result_keys(self, limit=0):
         # type: (Optional[int]) -> List[Tuple[str, str]]
         keys = []
-        for result in self.library.find({'status': {'$ne': JobStatus.DELETED.value}},
-                                        {'report_name': 1, 'job_id': 1, '_id': 0}).limit(limit):
+        query = {'status': {'$ne': JobStatus.DELETED.value}}
+        projection = {'report_name': 1, 'job_id': 1, '_id': 0}
+        for result in self.library.find(query, projection).sort('update_time', -1).limit(limit):
             keys.append((result['report_name'], result['job_id']))
         return keys
+
+    @mongo_retry
+    def n_all_results(self):
+        return self.library.find().count()
 
     def delete_result(self, job_id):
         # type: (AnyStr) -> None
@@ -261,30 +281,32 @@ def _get_job_results(job_id,            # type: str
     if isinstance(notebook_result, str):
         if not retrying:
             return _get_job_results(job_id, report_name, serializer, retrying=True)
-        raise NotebookRunError('An unexpected string was found as a result. Please run your request again.')
+        raise NotebookRunException('An unexpected string was found as a result. Please run your request again.')
 
     return notebook_result
 
 
-def _get_all_result_keys(serializer):
-    # type: (NotebookResultSerializer) -> List[Tuple[str, str]]
-    all_keys = get_cache('all_result_keys')
+def _get_all_result_keys(serializer, limit=0):
+    # type: (NotebookResultSerializer, Optional[int]) -> List[Tuple[str, str]]
+    all_keys = get_cache(('all_result_keys', limit))
     if not all_keys:
-        all_keys = serializer.get_all_result_keys()
-        set_cache('all_result_keys', all_keys, timeout=1)
+        all_keys = serializer.get_all_result_keys(limit=limit)
+        set_cache(('all_result_keys', limit), all_keys, timeout=1)
     return all_keys
 
 
 def all_available_results(serializer,  # type: NotebookResultSerializer
+                          limit=50,
                           ):
     # type: (...) -> Dict[Tuple[str, str], Union[NotebookResultError, NotebookResultComplete, NotebookResultPending]]
-    all_keys = _get_all_result_keys(serializer)
+    all_keys = _get_all_result_keys(serializer, limit=limit)
     complete_jobs = {}
     for report_name, job_id in all_keys:
         result = _get_job_results(job_id, report_name, serializer)
         report_name, job_id = result.report_name, result.job_id
         result.result_url = url_for('task_results', task_id=job_id, report_name=report_name)
         result.ipynb_url = url_for('download_ipynb_result', task_id=job_id, report_name=report_name)
+        result.pdf_url = url_for('download_pdf_result', task_id=job_id, report_name=report_name)
         complete_jobs[(report_name, job_id)] = result
     return complete_jobs
 

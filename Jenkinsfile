@@ -8,22 +8,21 @@ def integration = {
 
 env.PYTHONPATH = '.:..'  // So that the src directory can be used as a dir
 
-acquireDotsDb(true, "trd-pool", true, 'twsadmin') {
-    ahlPython {
-        buildLabel='ts2-el7'
-        labels='ts2-el7'
-        buildPinnedEgg = true
-		dockerPath = 'docker'
-        medusaVersions = ["27-3"]
-      publicProject = false
-        testStages =  [
-            [name: 'Unit',
-             body: unit,
-            ],
-            [name: 'Integration',
-             body: integration,
-             workers: 1
-            ],
-        ]
-    }
+ahlPython {
+    buildLabel='ts2-el7'
+    labels='ts2-el7'
+    buildPinnedEgg = true
+    dockerPath = 'docker'
+    medusaVersions = ["27-3"]
+    publicProject = true
+
+    testStages =  [
+        [name: 'Unit',
+         body: unit,
+        ],
+        [name: 'Integration',
+         body: integration,
+         workers: 1
+        ],
+    ]
 }
