@@ -5,4 +5,4 @@ set -o xtrace -o errexit -o pipefail -o nounset
 # See https://github.com/ipython/ipython/issues/9656
 rm -rf ${MEDUSA_ENV}/lib/python2.7/site-packages/backports/
 
-${MEDUSA_ENV}/bin/python -m ipykernel install --user --name=man_notebooker_kernel
+${MEDUSA_ENV}/bin/python -m ipykernel install --name=man_notebooker_kernel
