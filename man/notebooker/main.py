@@ -23,7 +23,7 @@ from man.notebooker.constants import OUTPUT_BASE_DIR, \
     TEMPLATE_BASE_DIR, JobStatus, CANCEL_MESSAGE
 from man.notebooker.handle_overrides import handle_overrides
 from man.notebooker.report_hunter import _report_hunter
-from man.notebooker.results import _get_job_results, all_available_results, _pdf_filename
+from man.notebooker.results import _get_job_results, all_available_results, _pdf_filename, get_all_result_keys
 from man.notebooker.execute_notebook import run_report_worker
 from man.notebooker.utils import get_all_possible_checks
 
@@ -44,6 +44,18 @@ def index():
                            n_results_available=result_serializer.n_all_results(),
                            donevalue=JobStatus.DONE,  # needed so we can check if a result is available  # needed so we can check if a result is available
                            )
+
+
+@flask_app.route('/delete_report/<job_id>', methods=['POST'])
+def delete_report(job_id):
+    try:
+        result_serializer.delete_result(job_id)
+        get_all_result_keys(result_serializer, limit=50, force_reload=True)
+        result = {'status': 'ok'}
+    except:
+        error_info = traceback.format_exc()
+        result = {'status': 'error', 'error': error_info}
+    return jsonify(result)
 
 
 # ------------------ Running checks ---------------- #

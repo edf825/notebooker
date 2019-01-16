@@ -9,8 +9,8 @@
     <div class="ui container">
         <table id="resultsTable" class="ui sortable selectable celled table">
             <thead>
-                <th>Report Name</th>
-                <th>Job ID</th>
+                <th>Report Template Name</th>
+{#                <th>Job ID</th>#}
                 <th>Status</th>
                 <th>Start Time</th>
                 <th>Completion Time</th>
@@ -23,7 +23,7 @@
             {% for ((report_name, job_id), result) in all_jobs.items() %}
                 <tr>
                     <td>{{ result.report_name }}</td>
-                    <td>{{ result.job_id }}</td>
+{#                    <td>{{ result.job_id }}</td>#}
                     <td>{{ result.status.value }}</td>
                     <td>{{ result.job_start_time }}</td>
                     <td>{{ result.job_finish_time }}</td>
@@ -43,7 +43,9 @@
                         {% endif %}
                     </td>
                     <td>
-                        <button type="button" class="ui button red" onclick="alert('not yet implemented!')"><i class="trash icon"></i></button>
+                        <button type="button" class="ui button red deletebutton" id="delete_{{ result.job_id }}">
+                            <i class="trash icon"></i>
+                        </button>
                     </td>
                 </tr>
             {% endfor %}
@@ -54,6 +56,16 @@
                 Load all {{ n_results_available }} results
             </button>
         </div>
+    </div>
+    <div class="ui modal" id="deleteModal">
+      <div class="header">Delete report</div>
+      <div class="content">
+        <p>Are you sure you wish to delete this report?</p>
+      </div>
+      <div class="actions">
+        <div class="ui approve button red">Delete</div>
+        <div class="ui cancel button">Cancel</div>
+      </div>
     </div>
 </body>
 </html>

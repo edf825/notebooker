@@ -252,7 +252,7 @@ class NotebookResultSerializer(object):
 
     @mongo_retry
     def n_all_results(self):
-        return self.library.find().count()
+        return self.library.find({'status': {'$ne': JobStatus.DELETED.value}}).count()
 
     def delete_result(self, job_id):
         # type: (AnyStr) -> None
@@ -286,10 +286,10 @@ def _get_job_results(job_id,            # type: str
     return notebook_result
 
 
-def _get_all_result_keys(serializer, limit=0):
-    # type: (NotebookResultSerializer, Optional[int]) -> List[Tuple[str, str]]
+def get_all_result_keys(serializer, limit=0, force_reload=False):
+    # type: (NotebookResultSerializer, Optional[int], Optional[bool]) -> List[Tuple[str, str]]
     all_keys = get_cache(('all_result_keys', limit))
-    if not all_keys:
+    if not all_keys or force_reload:
         all_keys = serializer.get_all_result_keys(limit=limit)
         set_cache(('all_result_keys', limit), all_keys, timeout=1)
     return all_keys
@@ -299,7 +299,7 @@ def all_available_results(serializer,  # type: NotebookResultSerializer
                           limit=50,
                           ):
     # type: (...) -> Dict[Tuple[str, str], Union[NotebookResultError, NotebookResultComplete, NotebookResultPending]]
-    all_keys = _get_all_result_keys(serializer, limit=limit)
+    all_keys = get_all_result_keys(serializer, limit=limit)
     complete_jobs = {}
     for report_name, job_id in all_keys:
         result = _get_job_results(job_id, report_name, serializer)
