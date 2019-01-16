@@ -4,6 +4,8 @@ import functools
 import json
 import sys
 import time
+
+import nbformat
 import os
 import shutil
 import threading
@@ -15,7 +17,9 @@ import papermill as pm
 import requests
 from ahl.logging import get_logger
 from flask import Flask, render_template, request, jsonify, url_for, abort, Response
-from typing import Dict, Any, Tuple, List
+from nbconvert import HTMLExporter
+from traitlets.config import Config
+from typing import Dict, Any, Tuple, List, Optional
 
 from man.notebooker import execute_notebook, results
 from man.notebooker.caching import set_cache, get_cache
@@ -60,17 +64,64 @@ def delete_report(job_id):
 
 # ------------------ Running checks ---------------- #
 
+def _get_metadata_cell_idx(notebook):
+    # type: (nbformat.NotebookNode) -> Optional[int]
+    for idx, cell in enumerate(notebook['cells']):
+        tags = cell.get('metadata', {}).get('tags', [])
+        if 'parameters' in tags:
+            return idx
+    return None
+
+
+def _get_preview(report_name, is_suffix):
+    cached = get_cache(('preview', report_name, is_suffix))
+    if cached:
+        return cached
+    path = execute_notebook.generate_ipynb_from_py(TEMPLATE_BASE_DIR, report_name)
+    nb = nbformat.read(path, as_version=nbformat.v4.nbformat)
+    metadata_idx = _get_metadata_cell_idx(nb)
+    exporter = HTMLExporter(config=Config())
+    html = ''
+    if metadata_idx is not None:
+        if is_suffix:
+            nb['cells'] = nb['cells'][metadata_idx+1:]
+        else:
+            nb['cells'] = nb['cells'][:metadata_idx]
+        html, _ = exporter.from_notebook_node(nb) if nb['cells'] else ('', '')
+    set_cache(('preview', report_name, is_suffix), html, timeout=120)
+    return html
+
+
+@flask_app.route('/run_report/get_prefix/<report_name>', methods=['GET'])
+def run_report_get_prefix(report_name):
+    if report_name not in get_all_possible_checks():
+        return ''
+    return _get_preview(report_name, False)
+
+
+@flask_app.route('/run_report/get_suffix/<report_name>', methods=['GET'])
+def run_report_get_suffix(report_name):
+    if report_name not in get_all_possible_checks():
+        return ''
+    return _get_preview(report_name, True)
+
+
 @flask_app.route('/run_report/<report_name>', methods=['GET'])
 def run_report_http(report_name):
     path = execute_notebook.generate_ipynb_from_py(TEMPLATE_BASE_DIR, report_name)
-    nb = pm.read_notebook(path)
-    metadata = [cell for cell in nb.node.cells if 'parameters' in cell.get('metadata', {}).get('tags', [])]
+    nb = nbformat.read(path, as_version=nbformat.v4.nbformat)
+    metadata_idx = _get_metadata_cell_idx(nb)
     parameters_as_html = ''
-    if metadata:
-        parameters_as_html = metadata[0]['source'].strip()
+    has_prefix = has_suffix = False
+    if metadata_idx is not None:
+        metadata = nb['cells'][metadata_idx]
+        parameters_as_html = metadata['source'].strip()
+        has_prefix, has_suffix = bool(nb['cells'][:metadata_idx]), bool(nb['cells'][metadata_idx+1:])
 
     return render_template('run_report.html',
                            parameters_as_html=parameters_as_html,
+                           has_prefix=has_prefix,
+                           has_suffix=has_suffix,
                            report_name=report_name,
                            all_reports=get_all_possible_checks())
 
