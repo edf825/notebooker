@@ -13,13 +13,12 @@ import traceback
 import uuid
 
 import click
-import papermill as pm
-import requests
+import pkg_resources
 from ahl.logging import get_logger
 from flask import Flask, render_template, request, jsonify, url_for, abort, Response
 from nbconvert import HTMLExporter
 from traitlets.config import Config
-from typing import Dict, Any, Tuple, List, Optional
+from typing import Optional
 
 from man.notebooker import execute_notebook, results
 from man.notebooker.caching import set_cache, get_cache
@@ -28,7 +27,6 @@ from man.notebooker.constants import OUTPUT_BASE_DIR, \
 from man.notebooker.handle_overrides import handle_overrides
 from man.notebooker.report_hunter import _report_hunter
 from man.notebooker.results import _get_job_results, all_available_results, _pdf_filename, get_all_result_keys
-from man.notebooker.execute_notebook import run_report_worker
 from man.notebooker.utils import get_all_possible_checks
 
 flask_app = Flask(__name__)
@@ -73,37 +71,28 @@ def _get_metadata_cell_idx(notebook):
     return None
 
 
-def _get_preview(report_name, is_suffix):
-    cached = get_cache(('preview', report_name, is_suffix))
+def _get_preview(report_name):
+    cached = get_cache(('preview', report_name))
     if cached:
         return cached
     path = execute_notebook.generate_ipynb_from_py(TEMPLATE_BASE_DIR, report_name)
     nb = nbformat.read(path, as_version=nbformat.v4.nbformat)
     metadata_idx = _get_metadata_cell_idx(nb)
-    exporter = HTMLExporter(config=Config())
+    conf = Config()
+    conf.HTMLExporter.template_file = pkg_resources.resource_filename(__name__, '/templates/notebook_preview.tpl')
+    exporter = HTMLExporter(config=conf)
     html = ''
     if metadata_idx is not None:
-        if is_suffix:
-            nb['cells'] = nb['cells'][metadata_idx+1:]
-        else:
-            nb['cells'] = nb['cells'][:metadata_idx]
         html, _ = exporter.from_notebook_node(nb) if nb['cells'] else ('', '')
-    set_cache(('preview', report_name, is_suffix), html, timeout=120)
+    set_cache(('preview', report_name), html, timeout=120)
     return html
 
 
-@flask_app.route('/run_report/get_prefix/<report_name>', methods=['GET'])
-def run_report_get_prefix(report_name):
+@flask_app.route('/run_report/get_preview/<report_name>', methods=['GET'])
+def run_report_get_previewx(report_name):
     if report_name not in get_all_possible_checks():
         return ''
-    return _get_preview(report_name, False)
-
-
-@flask_app.route('/run_report/get_suffix/<report_name>', methods=['GET'])
-def run_report_get_suffix(report_name):
-    if report_name not in get_all_possible_checks():
-        return ''
-    return _get_preview(report_name, True)
+    return _get_preview(report_name)
 
 
 @flask_app.route('/run_report/<report_name>', methods=['GET'])

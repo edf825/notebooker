@@ -13,3 +13,8 @@ code {
 #overrides {
     font-family: monospace;
 }
+
+#templateHint {
+    text-align: right;
+    display: block;
+}
