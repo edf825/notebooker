@@ -259,14 +259,15 @@ class NotebookResultSerializer(object):
         self.update_check_status(job_id, JobStatus.DELETED)
 
 
-def _get_job_results(job_id,            # type: str
-                     report_name,       # type: str
-                     serializer,        # type: NotebookResultSerializer
-                     retrying=False     # type: Optional[bool]
+def _get_job_results(job_id,              # type: str
+                     report_name,         # type: str
+                     serializer,          # type: NotebookResultSerializer
+                     retrying=False,      # type: Optional[bool]
+                     ignore_cache=False,  # type: Optional[bool]
                      ):
     # type: (...) -> Union[NotebookResultError, NotebookResultComplete, NotebookResultPending]
     current_result = get_report_cache(report_name, job_id)
-    if current_result:
+    if current_result and not ignore_cache:
         logger.debug('Cache hit for job_id=%s, report_name=%s', job_id, report_name)
         notebook_result = current_result
     else:
