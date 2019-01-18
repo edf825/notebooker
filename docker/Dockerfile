@@ -1,4 +1,4 @@
-FROM base.docker.prod.ahl/base/medusa-python:27-3.1
+FROM shared-docker.repo.prod.m/man/base/medusa-python-eggcache:27-3
 
 MAINTAINER AHL Data Science
 
