@@ -72,3 +72,17 @@ man_notebooker_webapp
 
 You should be able to run your new report if it is in the
 correct directory, and your report requirements are listed in setup.cfg.
+
+## Adding a One-Click-Scheduled notebook
+
+Add a one-click-scheduling job which calls the `man_execute_notebook`
+entrypoint, like so:
+
+```bash
+man_execute_notebook --report-name plot_random_data --mongo-host mktdatad --overrides-as-json '{"n_points": 100}'
+```
+
+NB: Your command must include the report name, the rest is optional.
+
+The results will be viewable on the web GUI, or you can optionally set
+an email address to which the output can be sent.
