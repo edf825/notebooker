@@ -1,5 +1,7 @@
 import datetime
 import json
+import subprocess
+import sys
 import uuid
 
 import click
@@ -109,7 +111,7 @@ def run_report_worker(job_submit_time,
         logger.info('Error result saved to mongo successfully.')
         if attempts_remaining == 0:
             logger.info('Abandoning attempt to run report. It failed too many times.')
-            return None
+            return notebook_result
         logger.info('Retrying report.')
         return run_report_worker(job_submit_time,
                                  report_name,
@@ -143,6 +145,8 @@ def main(report_name,
          output_base_dir,
          template_base_dir,
          ):
+    if report_name is None:
+        raise ValueError('Error! Please provide a --report-name.')
     logger.info('Creating %s', OUTPUT_BASE_DIR)
     os.makedirs(OUTPUT_BASE_DIR)
     logger.info('Creating %s', TEMPLATE_BASE_DIR)
@@ -162,7 +166,35 @@ def main(report_name,
         template_base_dir=template_base_dir,
         attempts_remaining=n_retries-1
     )
+    if isinstance(result, NotebookResultError):
+        logger.warn('Notebook execution failed! Output was:')
+        logger.warn(repr(result))
+        raise Exception(result.error_info)
     return result
+
+
+def docker_compose_entrypoint():
+    """
+    Sadness. This is required because of https://github.com/jupyter/jupyter_client/issues/154
+    Otherwise we will get "RuntimeError: Kernel died before replying to kernel_info"
+    The suggested fix to use sh -c "command" does not work for our use-case, sadly.
+
+    Examples
+    --------
+    man_execute_notebook --report-name watchdog_checks --mongo-host mktdatad
+Recieved a request to run a report with the following parameters:
+['/users/is/jbannister/pyenvs/notebooker/bin/python', '-m', 'man.notebooker.execute_notebook', '--report-name', 'watchdog_checks', '--mongo-host', 'mktdatad']
+...
+
+    man_execute_notebook
+Recieved a request to run a report with the following parameters:
+['/users/is/jbannister/pyenvs/notebooker/bin/python', '-m', 'man.notebooker.execute_notebook']
+ValueError: Error! Please provide a --report-name.
+    """
+    args_to_execute = [sys.executable, '-m', __name__] + sys.argv[1:]
+    logger.info('Recieved a request to run a report with the following parameters:')
+    logger.info(args_to_execute)
+    return subprocess.Popen(args_to_execute).wait()
 
 
 if __name__ == '__main__':

@@ -106,7 +106,7 @@ def run_report(report_name, overrides):
                                       status=JobStatus.SUBMITTED)
     import subprocess
     p = subprocess.Popen([sys.executable,
-                          '-m', 'man.notebooker.execute_notebook',
+                          '-m', execute_notebook.__name__,
                           '--job-id', job_id,
                           '--output-base-dir', OUTPUT_BASE_DIR,
                           '--template-base-dir', TEMPLATE_BASE_DIR,
