@@ -23,13 +23,14 @@ from man.notebooker.utils.notebook_execution import ipython_to_html, ipython_to_
 logger = get_logger(__name__)
 
 
-def run_checks(job_id,              # type: str
-               job_start_time,      # type: datetime.datetime
-               report_name,         # type: str
-               output_base_dir,     # type: str
-               template_base_dir,   # type: str
-               result_serializer,   # type: NotebookResultSerializer
-               input_json,          # type: Dict[Any, Any]
+def run_checks(job_id,  # type: str
+               job_start_time,  # type: datetime.datetime
+               report_name,  # type: str
+               report_title,  # type: str
+               output_base_dir,  # type: str
+               template_base_dir,  # type: str
+               result_serializer,  # type: NotebookResultSerializer
+               overrides,  # type: Dict[Any, Any]
                ):
     # type: (...) -> NotebookResultComplete
     result_serializer.update_check_status(job_id,
@@ -47,17 +48,17 @@ def run_checks(job_id,              # type: str
     ipynb_raw_path = generate_ipynb_from_py(template_base_dir, report_name)
     ipynb_executed_path = os.path.join(output_dir, output_ipynb)
 
-    logger.info('Executing notebook at {} using parameters {} --> {}'.format(ipynb_raw_path, input_json, output_ipynb))
+    logger.info('Executing notebook at {} using parameters {} --> {}'.format(ipynb_raw_path, overrides, output_ipynb))
     pm.execute_notebook(ipynb_raw_path,
                         ipynb_executed_path,
-                        parameters=input_json,
+                        parameters=overrides,
                         log_output=True)
     with open(ipynb_executed_path, 'r') as f:
         raw_executed_ipynb = f.read()
 
     logger.info('Saving output notebook as HTML from {}'.format(ipynb_executed_path))
     html, resources = ipython_to_html(ipynb_executed_path, job_id)
-    pdf = ipython_to_pdf(raw_executed_ipynb)
+    pdf = ipython_to_pdf(raw_executed_ipynb, report_title)
 
     notebook_result = NotebookResultComplete(job_id=job_id,
                                              job_start_time=job_start_time,
@@ -66,7 +67,9 @@ def run_checks(job_id,              # type: str
                                              raw_ipynb_json=raw_executed_ipynb,
                                              raw_html=html,
                                              pdf=pdf,
-                                             report_name=report_name)
+                                             report_name=report_name,
+                                             report_title=report_title,
+                                             )
     result_serializer.save_check_result(notebook_result)
     logger.info('Saved result to mongo successfully.')
     return notebook_result
@@ -76,6 +79,7 @@ def run_report_worker(job_submit_time,
                       report_name,
                       overrides,
                       result_serializer,
+                      report_title='',
                       job_id=None,
                       output_base_dir=OUTPUT_BASE_DIR,
                       template_base_dir=TEMPLATE_BASE_DIR,
@@ -94,6 +98,7 @@ def run_report_worker(job_submit_time,
             job_id,
             job_submit_time,
             report_name,
+            report_title,
             output_base_dir,
             template_base_dir,
             result_serializer,
@@ -105,6 +110,7 @@ def run_report_worker(job_submit_time,
         notebook_result = NotebookResultError(job_id=job_id,
                                               job_start_time=job_submit_time,
                                               report_name=report_name,
+                                              report_title=report_title,
                                               error_info=error_info)
         logger.error('Report run failed. Saving error result to mongo library %s@%s...', MONGO_LIBRARY, MONGO_HOST)
         result_serializer.save_check_result(notebook_result)
@@ -117,6 +123,7 @@ def run_report_worker(job_submit_time,
                                  report_name,
                                  overrides,
                                  result_serializer,
+                                 report_title=report_title,
                                  job_id=job_id,
                                  output_base_dir=output_base_dir,
                                  template_base_dir=template_base_dir,
@@ -128,6 +135,7 @@ def run_report_worker(job_submit_time,
 @click.command()
 @click.option('--report-name')
 @click.option('--overrides-as-json', default='{}')
+@click.option('--report-title', default='')
 @click.option('--n-retries', default=3)
 @click.option('--mongo-db-name', default='mongoose_restech')
 @click.option('--mongo-host', default='research')
@@ -137,6 +145,7 @@ def run_report_worker(job_submit_time,
 @click.option('--template-base-dir', default=TEMPLATE_BASE_DIR)
 def main(report_name,
          overrides_as_json,
+         report_title,
          n_retries,
          mongo_db_name,
          mongo_host,
@@ -147,6 +156,7 @@ def main(report_name,
          ):
     if report_name is None:
         raise ValueError('Error! Please provide a --report-name.')
+    report_title = report_title or report_name
     logger.info('Creating %s', OUTPUT_BASE_DIR)
     os.makedirs(OUTPUT_BASE_DIR)
     logger.info('Creating %s', TEMPLATE_BASE_DIR)
@@ -161,6 +171,7 @@ def main(report_name,
         report_name,
         overrides,
         result_serializer,
+        report_title=report_title,
         job_id=job_id,
         output_base_dir=output_base_dir,
         template_base_dir=template_base_dir,

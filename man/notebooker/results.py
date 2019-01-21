@@ -36,6 +36,7 @@ class NotebookResultBase(object):
 class NotebookResultPending(NotebookResultBase):
     status = attr.ib(default=JobStatus.PENDING)
     update_time = attr.ib(default=datetime.datetime.now())
+    report_title = attr.ib(default='')
 
 
 @attr.s()
@@ -43,6 +44,7 @@ class NotebookResultError(NotebookResultBase):
     status = attr.ib(default=JobStatus.ERROR)
     error_info = attr.ib(default="")
     update_time = attr.ib(default=datetime.datetime.now())
+    report_title = attr.ib(default='')
 
 
 @attr.s(repr=False)
@@ -55,6 +57,7 @@ class NotebookResultComplete(NotebookResultBase):
     raw_html = attr.ib(default="")
     update_time = attr.ib(default=datetime.datetime.now())
     pdf = attr.ib(default="")
+    report_title = attr.ib(default='')
 
     def html_resources(self):
         # We have to save the raw images using Mongo GridFS - figure out where they will go here
@@ -70,6 +73,7 @@ class NotebookResultComplete(NotebookResultBase):
         return {'raw_ipynb_json': self.raw_ipynb_json,
                 'status': self.status.value,
                 'report_name': self.report_name,
+                'report_title': self.report_title,
                 'raw_html': self.raw_html,
                 'raw_html_resources': self.html_resources(),
                 'job_id': self.job_id,
@@ -79,9 +83,10 @@ class NotebookResultComplete(NotebookResultBase):
 
     def __repr__(self):
         return 'NotebookResultComplete(job_id={job_id}, status={status}, report_name={report_name}, ' \
-               'job_start_time={job_start_time}, job_finish_time={job_finish_time}, update_time={update_time})'.format(
+               'job_start_time={job_start_time}, job_finish_time={job_finish_time}, update_time={update_time}, ' \
+               'report_title={report_title})'.format(
             job_id=self.job_id, status=self.status, report_name=self.report_name, job_start_time=self.job_start_time,
-            job_finish_time=self.job_finish_time, update_time=self.update_time
+            job_finish_time=self.job_finish_time, update_time=self.update_time, report_title=self.report_title,
         )
 
 
@@ -137,12 +142,15 @@ class NotebookResultSerializer(object):
                 existing[k] = v
             self._save_raw_to_db(existing)
 
-    def save_check_stub(self, job_id, report_name, job_start_time=None, status=JobStatus.PENDING):
-        # type: (str, str,Optional[datetime.datetime], Optional[JobStatus]) -> None
+    def save_check_stub(self, job_id, report_name, report_title='',
+                        job_start_time=None, status=JobStatus.PENDING):
+        # type: (str, str, Optional[str], Optional[datetime.datetime], Optional[JobStatus]) -> None
         # Call this when we are just starting a check
         job_start_time = job_start_time or datetime.datetime.now()
+        report_title = report_title or report_name
         pending_result = NotebookResultPending(job_id=job_id,
                                                status=status,
+                                               report_title=report_title,
                                                job_start_time=job_start_time,
                                                report_name=report_name)
         self._save_to_db(pending_result)
@@ -203,6 +211,7 @@ class NotebookResultSerializer(object):
                 raw_ipynb_json=result['raw_ipynb_json'],
                 raw_html=result['raw_html'],
                 pdf=result.get('pdf', ''),
+                report_title=result.get('report_title', result['report_name']),
             )
         elif cls == NotebookResultPending:
             notebook_result = NotebookResultPending(
@@ -211,6 +220,7 @@ class NotebookResultSerializer(object):
                 report_name=result['report_name'],
                 status=job_status,
                 update_time=result['update_time'],
+                report_title=result.get('report_title', result['report_name']),
             )
 
         elif cls == NotebookResultError:
@@ -221,6 +231,7 @@ class NotebookResultSerializer(object):
                 status=job_status,
                 update_time=result['update_time'],
                 error_info=result['error_info'],
+                report_title=result.get('report_title', result['report_name']),
             )
         else:
             raise ValueError('Could not deserialise {} into result object.'.format(result))

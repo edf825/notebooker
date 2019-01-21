@@ -9,6 +9,7 @@
     <div class="ui container">
         <table id="resultsTable" class="ui sortable selectable celled table">
             <thead>
+                <th>Title</th>
                 <th>Report Template Name</th>
 {#                <th>Job ID</th>#}
                 <th>Status</th>
@@ -22,6 +23,7 @@
             <tbody>
             {% for ((report_name, job_id), result) in all_jobs.items() %}
                 <tr>
+                    <td>{{ result.report_title }}</td>
                     <td>{{ result.report_name }}</td>
 {#                    <td>{{ result.job_id }}</td>#}
                     <td>{{ result.status.value }}</td>

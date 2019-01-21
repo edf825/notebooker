@@ -3,6 +3,7 @@ import nbformat
 import os
 import pkg_resources
 from nbconvert import HTMLExporter, PDFExporter
+from nbconvert.exporters.exporter import ResourcesDict
 from traitlets.config import Config
 from typing import Any, Dict, AnyStr
 
@@ -25,10 +26,14 @@ def ipython_to_html(ipynb_path, job_id):
     return html, resources
 
 
-def ipython_to_pdf(raw_executed_ipynb):
-    # type: (str) -> AnyStr
+def ipython_to_pdf(raw_executed_ipynb, report_title):
+    # type: (str, str) -> AnyStr
     pdf_exporter = PDFExporter(Config())
-    pdf, _ = pdf_exporter.from_notebook_node(nbformat.reads(raw_executed_ipynb, as_version=nbformat.v4.nbformat))
+    resources = ResourcesDict()
+    resources['metadata'] = ResourcesDict()
+    resources['metadata']['name'] = report_title
+    pdf, _ = pdf_exporter.from_notebook_node(nbformat.reads(raw_executed_ipynb, as_version=nbformat.v4.nbformat),
+                                             resources=resources)
     return pdf
 
 

@@ -18,11 +18,13 @@
         <div class="ui grid" >
             <div class="one wide column"></div>
             <div class="seven wide column">
-                <h1>Override Parameters:</h1>
-                <h3>Existing parameters:</h3>
-                <code>{{parameters_as_html|safe}}</code>
-                <h3>Override parameters:</h3>
+                <h1>Customise your report</h1>
                 <form class="ui form" id="run-check-form">
+                    <h3>Report Title:</h3>
+                    <input name="report_title" placeholder="{{ report_name }}" id="titleInput" width="100%"/>
+                    <h3>Existing parameters:</h3>
+                    <code>{{parameters_as_html|safe}}</code>
+                    <h3>Override parameters:</h3>
                     <div class="field">
                         <label>Overrides</label>
                         <textarea name="overrides" id="overrides" placeholder="Write your overrides in python here.

@@ -98,10 +98,11 @@ def _monitor_stderr(process, job_id):
     return ''.join(stderr)
 
 
-def run_report(report_name, overrides):
+def run_report(report_name, report_title, overrides):
     job_id = str(uuid.uuid4())
     job_start_time = datetime.datetime.now()
     result_serializer.save_check_stub(job_id, report_name,
+                                      report_title=report_title,
                                       job_start_time=job_start_time,
                                       status=JobStatus.SUBMITTED)
     import subprocess
@@ -111,6 +112,7 @@ def run_report(report_name, overrides):
                           '--output-base-dir', OUTPUT_BASE_DIR,
                           '--template-base-dir', TEMPLATE_BASE_DIR,
                           '--report-name', report_name,
+                          '--report-title', report_title,
                           '--overrides-as-json', json.dumps(overrides),
                           '--mongo-db-name', result_serializer.database_name,
                           '--mongo-host', result_serializer.mongo_host,
@@ -126,9 +128,10 @@ def run_report(report_name, overrides):
 def run_checks_http(report_name):
     overrides = request.values.get('overrides')
     override_dict, issues = handle_overrides(overrides)
+    report_title = request.values.get('report_title')
     if issues:
         return jsonify({'status': 'Failed', 'content': ('\n'.join(issues))})
-    job_id = run_report(report_name, override_dict)
+    job_id = run_report(report_name, report_title, override_dict)
     return (jsonify({'id': job_id}),
             202,  # HTTP Accepted code
             {'Location': url_for('task_status', report_name=report_name, task_id=job_id)})
