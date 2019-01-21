@@ -9,10 +9,9 @@ $(document).ready( function () {
               return true;
             },
             onApprove : function() {
-                console.log(to_delete);
                 $.ajax({
                     type: "POST",
-                    url: '/delete_report/'+to_delete,  // We get this from loading.html, which comes from flask
+                    url: '/delete_report/' + to_delete,  // We get this from loading.html, which comes from flask
                     dataType: 'json',
                     success: function(data, status, request) {
                         console.log(data);

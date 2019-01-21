@@ -17,7 +17,8 @@ $(document).ready(function() {
                 $('#run_output').text(data.run_output);
                 last_data = data;
                 let i = $('#resultsIframe', window.parent.document);
-                i.css('height', i[0].contentWindow.document.body.scrollHeight+40 + 'px');
+                // Add 40 pixels to make sure we actually get the whole iframe contents...
+                i.css('height', (i[0].contentWindow.document.body.scrollHeight + 40) + 'px');
                 i.css('width', i[0].contentWindow.document.body.scrollWidth + 'px');
             },
             error: function(xhr, error){
