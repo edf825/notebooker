@@ -5,7 +5,7 @@ MAINTAINER AHL Data Science
 ARG ENV_CHECK_VERSION=1.0.0
 ARG GOSU_VERSION=1.9.0
 
-ENV MEDUSA_ENV=/opt/man/releases/python-medusa/27-3
+ENV MEDUSA_ENV=/default-medusa-venv
 ENV PATH="${MEDUSA_ENV}/bin:${PATH}"
 
 ENV PYTHON_EGG_CACHE /tmp/egg-cache
