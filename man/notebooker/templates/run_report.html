@@ -6,25 +6,47 @@
     <head>
 
     <script type="application/javascript" src="{{ url_for('static', filename='run_report.js') }}"></script>
+    <script>
+      function resizeIframe(obj) {
+        obj.style.height = obj.contentWindow.document.body.scrollHeight + 'px';
+        obj.style.width = obj.contentWindow.document.body.scrollWidth + 'px';
+      }
+    </script>
     </head>
     <body>
         {{ header.sidebar(all_reports) }}
-        <div class="ui container">
-            <h1>Run a {{report_name}} check</h1>
-            <h3>Existing parameters:</h3>
-            <code>{{parameters_as_html|safe}}</code>
-            <h3>Override parameters:</h3>
-            <form class="ui form" id="run-check-form">
-                <div class="field">
-                    <label>Overrides</label>
-                    <textarea name="overrides" id="overrides" placeholder="Write your overrides in python here.
+        <div class="ui grid" >
+            <div class="one wide column"></div>
+            <div class="seven wide column">
+                <h1>Customise your report</h1>
+                <form class="ui form" id="run-check-form">
+                    <h3>Report Title:</h3>
+                    <input name="report_title" placeholder="{{ report_name }}" id="titleInput" width="100%"/>
+                    <h3>Existing parameters:</h3>
+                    <code>{{parameters_as_html|safe}}</code>
+                    <h3>Override parameters:</h3>
+                    <div class="field">
+                        <label>Overrides</label>
+                        <textarea name="overrides" id="overrides" placeholder="Write your overrides in python here.
 You can import anything, but ensure that in any x=y statements, y is JSON serialisable."></textarea>
-                </div>
-                <div class="field">
-                    <input name="report_name" value="{{report_name}}" style="display:none">
-                </div>
-                <button class="positive ui button" id="runCheck">Run Check</button>
-            </form>
+                    </div>
+                    <div class="field">
+                        <input name="report_name" value="{{report_name}}" style="display:none">
+                    </div>
+                    <button class="positive ui button" id="runCheck">Run Check</button>
+                </form>
+            </div>
+            <div class="seven wide column">
+                <h1>Notebook Template:</h1>
+                <iframe
+                    id="nbTemplateIframe"
+                    style="width:100%; border:none;"
+                    scrolling="no"
+                    src="/run_report/get_preview/{{ report_name }}"
+                    onload="resizeIframe(this)"></iframe>
+                <em id="templateHint">The "parameters" cell is highlighted in yellow</em>
+            </div>
+            <div class="one wide column"></div>
         </div>
     </body>
 </html>

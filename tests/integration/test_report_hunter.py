@@ -39,6 +39,7 @@ def cache_blaster(f):
         return result
     return decorator.decorator(do_it, f)
 
+
 @pytest.fixture(scope="function")
 def job_id():
     return
@@ -62,6 +63,7 @@ def test_report_hunter_with_one(bson_library, mongo_host):
     _report_hunter(mongo_host, TEST_DB_NAME, TEST_LIB, run_once=True)
     expected = NotebookResultPending(job_id=job_id,
                                      report_name=report_name,
+                                     report_title=report_name,
                                      update_time=datetime.datetime(2018, 1, 12),
                                      job_start_time=datetime.datetime(2018, 1, 12))
     assert expected == get_report_cache(report_name, job_id)
@@ -80,6 +82,7 @@ def test_report_hunter_with_status_change(bson_library, mongo_host):
         _report_hunter(mongo_host, TEST_DB_NAME, TEST_LIB, run_once=True)
     expected = NotebookResultPending(job_id=job_id,
                                      report_name=report_name,
+                                     report_title=report_name,
                                      update_time=datetime.datetime(2018, 1, 12, 2, 30),
                                      job_start_time=datetime.datetime(2018, 1, 12, 2, 30))
     assert expected == get_report_cache(report_name, job_id)
@@ -90,6 +93,7 @@ def test_report_hunter_with_status_change(bson_library, mongo_host):
 
     expected = NotebookResultError(job_id=job_id,
                                    report_name=report_name,
+                                   report_title=report_name,
                                    status=JobStatus.CANCELLED,
                                    update_time=datetime.datetime(2018, 1, 12, 2, 32),
                                    job_start_time=datetime.datetime(2018, 1, 12, 2, 30),
@@ -119,6 +123,7 @@ def test_report_hunter_timeout(bson_library, mongo_host, status, time_later, sho
         _report_hunter(mongo_host, TEST_DB_NAME, TEST_LIB, run_once=True)
     expected = NotebookResultPending(job_id=job_id,
                                      report_name=report_name,
+                                     report_title=report_name,
                                      status=status,
                                      update_time=time_now,
                                      job_start_time=start_time)
@@ -132,6 +137,7 @@ def test_report_hunter_timeout(bson_library, mongo_host, status, time_later, sho
         mins = (time_later.total_seconds() / 60) - 1
         expected = NotebookResultError(job_id=job_id,
                                        report_name=report_name,
+                                       report_title=report_name,
                                        status=JobStatus.TIMEOUT,
                                        update_time=time_now,
                                        job_start_time=start_time,
@@ -158,6 +164,7 @@ def test_report_hunter_pending_to_done(bson_library, mongo_host):
         _report_hunter(mongo_host, TEST_DB_NAME, TEST_LIB, run_once=True)
     expected = NotebookResultPending(job_id=job_id,
                                      report_name=report_name,
+                                     report_title=report_name,
                                      status=JobStatus.SUBMITTED,
                                      update_time=datetime.datetime(2018, 1, 12, 2, 30),
                                      job_start_time=datetime.datetime(2018, 1, 12, 2, 30))
@@ -169,6 +176,7 @@ def test_report_hunter_pending_to_done(bson_library, mongo_host):
 
     expected = NotebookResultPending(job_id=job_id,
                                      report_name=report_name,
+                                     report_title=report_name,
                                      status=JobStatus.PENDING,
                                      update_time=datetime.datetime(2018, 1, 12, 2, 32),
                                      job_start_time=datetime.datetime(2018, 1, 12, 2, 30))
@@ -185,6 +193,7 @@ def test_report_hunter_pending_to_done(bson_library, mongo_host):
 
     expected = NotebookResultComplete(job_id=job_id,
                                       report_name=report_name,
+                                      report_title=report_name,
                                       status=JobStatus.DONE,
                                       update_time=datetime.datetime(2018, 1, 12, 2, 37),
                                       job_start_time=datetime.datetime(2018, 1, 12, 2, 30),

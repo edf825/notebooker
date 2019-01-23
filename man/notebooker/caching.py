@@ -1,7 +1,7 @@
 import retrying
 from werkzeug.contrib.cache import SimpleCache
 
-from man.notebooker.utils import _cache_key
+from man.notebooker.utils.caching import _cache_key
 
 cache = SimpleCache()
 

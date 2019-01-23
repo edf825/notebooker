@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/html">
         <head>
             <title>One-Click-Notebooks</title>
-
+            <link rel="shortcut icon" href="{{ url_for('static', filename='notebooker.png') }}">
             <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.3.2/dist/semantic.min.css">
             <link rel="stylesheet" href="https://cdn.datatables.net/1.10.19/css/jquery.dataTables.min.css">
             <link rel="stylesheet" href="{{ url_for('static', filename='one_click_notebooks.css') }}">
@@ -35,11 +35,11 @@
           <div class="header item white">
             <a href="/"><h1>One-Click-Notebooks</h1></a>
           </div>
-          <a class="item" id="runReport">
-            Run a Report
+          <a class="item" href="/">
+              Main Menu
           </a>
-          <a class="item" id="results" href="#" style="display: none">
-            Results
+          <a class="item" id="runReport">
+              Execute a Notebook
           </a>
         </div>
         </body>
@@ -54,7 +54,7 @@
                 <h4 class="ui header inverted">Execute a notebook:</h4>
             </div>
             {% for report in all_reports %}
-            <a class="item" href="/run_report/{{report}}">{{report.capitalize()}}</a>
+            <a class="item" href="/run_report/{{report}}">{{ ' '.join(report.capitalize().split('_')) }}</a>
             {% endfor %}
             <a class="item bottom" href="http://ahlgit.maninvestments.com/projects/DATA/repos/man.notebooker/browse/man/notebooker/notebook_templates/README.md">
                 <i class="plus icon"></i>
