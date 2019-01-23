@@ -90,6 +90,17 @@ def handle_overrides(overrides_string):
     return override_dict, issues
 
 
+def validate_title(title, issues):
+    # type: (AnyStr, List[str]) -> unicode
+    out_s = title.encode('utf-8')
+    forbidden_chars = list('"\'')
+    if any(forbidden in out_s for forbidden in forbidden_chars):
+        issues.append('This report has an invalid title ({}) - it must not have any of {}.'.format(
+            out_s, forbidden_chars
+        ))
+    return out_s
+
+
 @click.command()
 @click.option('--overrides')
 @click.option('--output')

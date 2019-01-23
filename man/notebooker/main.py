@@ -20,7 +20,7 @@ from man.notebooker import execute_notebook, results
 from man.notebooker.caching import set_cache, get_cache
 from man.notebooker.constants import OUTPUT_BASE_DIR, \
     TEMPLATE_BASE_DIR, JobStatus, CANCEL_MESSAGE
-from man.notebooker.handle_overrides import handle_overrides
+from man.notebooker.handle_overrides import handle_overrides, validate_title
 from man.notebooker.report_hunter import _report_hunter
 from man.notebooker.results import _get_job_results, all_available_results, _pdf_filename, get_all_result_keys
 from man.notebooker.utils.templates import get_all_possible_checks, _get_metadata_cell_idx, _get_preview
@@ -129,6 +129,7 @@ def run_checks_http(report_name):
     overrides = request.values.get('overrides')
     override_dict, issues = handle_overrides(overrides)
     report_title = request.values.get('report_title')
+    report_title = validate_title(report_title, issues)
     if issues:
         return jsonify({'status': 'Failed', 'content': ('\n'.join(issues))})
     job_id = run_report(report_name, report_title, override_dict)
@@ -162,7 +163,7 @@ def task_results_html(task_id, report_name):
     # - present the user with some info detailing the progress of the job, if it is still running.
     result = _get_job_results(task_id, report_name, result_serializer)
     if isinstance(result, results.NotebookResultError):
-        return '<p>This job resulted in an error: <br/><code style="white-space: pre-wrap;">{}</code></p>'.format(result.error_info)
+        return result.raw_html
     if isinstance(result, results.NotebookResultPending):
         return task_loading(report_name, task_id)
     return result.raw_html

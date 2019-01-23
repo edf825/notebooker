@@ -18,7 +18,7 @@ from man.notebooker.constants import JobStatus, CANCEL_MESSAGE, OUTPUT_BASE_DIR,
 from man.notebooker.results import NotebookResultComplete, NotebookResultSerializer, \
     NotebookResultError
 from man.notebooker.utils.notebook_execution import ipython_to_html, ipython_to_pdf, _output_ipynb_name, \
-    generate_ipynb_from_py, _output_dir
+    generate_ipynb_from_py, _output_dir, send_result_email
 
 logger = get_logger(__name__)
 
@@ -107,28 +107,28 @@ def run_report_worker(job_submit_time,
     except Exception:
         error_info = traceback.format_exc()
         logger.exception('%s report failed! (job id=%s)', report_name, job_id)
-        notebook_result = NotebookResultError(job_id=job_id,
-                                              job_start_time=job_submit_time,
-                                              report_name=report_name,
-                                              report_title=report_title,
-                                              error_info=error_info)
+        result = NotebookResultError(job_id=job_id,
+                                     job_start_time=job_submit_time,
+                                     report_name=report_name,
+                                     report_title=report_title,
+                                     error_info=error_info)
         logger.error('Report run failed. Saving error result to mongo library %s@%s...', MONGO_LIBRARY, MONGO_HOST)
-        result_serializer.save_check_result(notebook_result)
+        result_serializer.save_check_result(result)
         logger.info('Error result saved to mongo successfully.')
-        if attempts_remaining == 0:
+        if attempts_remaining > 0:
+            logger.info('Retrying report.')
+            return run_report_worker(job_submit_time,
+                                     report_name,
+                                     overrides,
+                                     result_serializer,
+                                     report_title=report_title,
+                                     job_id=job_id,
+                                     output_base_dir=output_base_dir,
+                                     template_base_dir=template_base_dir,
+                                     attempts_remaining=attempts_remaining - 1,
+                                     )
+        else:
             logger.info('Abandoning attempt to run report. It failed too many times.')
-            return notebook_result
-        logger.info('Retrying report.')
-        return run_report_worker(job_submit_time,
-                                 report_name,
-                                 overrides,
-                                 result_serializer,
-                                 report_title=report_title,
-                                 job_id=job_id,
-                                 output_base_dir=output_base_dir,
-                                 template_base_dir=template_base_dir,
-                                 attempts_remaining=attempts_remaining - 1,
-                                 )
     return result
 
 
@@ -143,6 +143,7 @@ def run_report_worker(job_submit_time,
 @click.option('--job-id', default=str(uuid.uuid4()))
 @click.option('--output-base-dir', default=OUTPUT_BASE_DIR)
 @click.option('--template-base-dir', default=TEMPLATE_BASE_DIR)
+@click.option('--mailto', default='')
 def main(report_name,
          overrides_as_json,
          report_title,
@@ -153,6 +154,7 @@ def main(report_name,
          job_id,
          output_base_dir,
          template_base_dir,
+         mailto,
          ):
     if report_name is None:
         raise ValueError('Error! Please provide a --report-name.')
@@ -177,6 +179,8 @@ def main(report_name,
         template_base_dir=template_base_dir,
         attempts_remaining=n_retries-1
     )
+    if mailto:
+        send_result_email(result, mailto)
     if isinstance(result, NotebookResultError):
         logger.warn('Notebook execution failed! Output was:')
         logger.warn(repr(result))
