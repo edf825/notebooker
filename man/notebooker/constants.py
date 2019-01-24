@@ -36,3 +36,9 @@ class JobStatus(Enum):
                 JobStatus.TIMEOUT, JobStatus.DELETED)
         }.get(s)
         return mapping
+
+
+# Variables for inputs from web
+EMAIL_SPACE_ERR_MSG = 'The email address specified had whitespace! Please fix this before resubmitting.'
+FORBIDDEN_INPUT_CHARS = list('"')
+FORBIDDEN_CHAR_ERR_MSG = 'This report has an invalid input ({}) - it must not contain any of {}.'

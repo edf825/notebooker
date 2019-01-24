@@ -20,10 +20,11 @@ from man.notebooker import execute_notebook, results
 from man.notebooker.caching import set_cache, get_cache
 from man.notebooker.constants import OUTPUT_BASE_DIR, \
     TEMPLATE_BASE_DIR, JobStatus, CANCEL_MESSAGE
-from man.notebooker.handle_overrides import handle_overrides, validate_title, validate_mailto
+from man.notebooker.handle_overrides import handle_overrides
 from man.notebooker.report_hunter import _report_hunter
 from man.notebooker.results import _get_job_results, all_available_results, _pdf_filename, get_all_result_keys
 from man.notebooker.utils.templates import get_all_possible_checks, _get_metadata_cell_idx, _get_preview
+from man.notebooker.utils.web import validate_mailto, validate_title
 
 flask_app = Flask(__name__)
 logger = get_logger(__name__)

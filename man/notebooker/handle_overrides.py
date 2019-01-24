@@ -90,27 +90,6 @@ def handle_overrides(overrides_string, issues):
     return override_dict
 
 
-def validate_title(title, issues):
-    # type: (AnyStr, List[str]) -> unicode
-    out_s = title.encode('utf-8')
-    forbidden_chars = list('"\'')
-    if any(forbidden in out_s for forbidden in forbidden_chars):
-        issues.append('This report has an invalid title ({}) - it must not have any of {}.'.format(
-            out_s, forbidden_chars
-        ))
-    return out_s
-
-
-def validate_mailto(mailto, issues):
-    # type: (AnyStr, List[str]) -> AnyStr
-    if not mailto:
-        return ''
-    mailto = mailto.strip()
-    if any(c.isspace() for c in mailto):
-        issues.append('The email address specified had whitespace! Please fix this before resubmitting.')
-    return mailto
-
-
 @click.command()
 @click.option('--overrides')
 @click.option('--output')
