@@ -14,6 +14,8 @@ from man.notebooker.utils import web
      'hello @ahl.com', [constants.EMAIL_SPACE_ERR_MSG], 'hello @ahl.com'),
     ('apostrophe',
      "o'neill@ahl.com", [], 'o\'neill@ahl.com'),
+    ('weird email address',
+     u'å∂ßåß∂@ahl.com', [], u'å∂ßåß∂@ahl.com'),
     ('forbidden char',
      'o"neill@ahl.com', ['This report has an invalid input (o"neill@ahl.com) - it must not contain any of [\'"\'].'], 'o\"neill@ahl.com'),
 ])
@@ -21,14 +23,14 @@ def test_validate_mailto(test_name, mailto, expected_issues, expected_mailto):
     issues = []
     actual_mailto = web.validate_mailto(mailto, issues)
     assert issues == expected_issues
-    assert actual_mailto == expected_mailto
+    assert actual_mailto == expected_mailto.encode('utf-8')
 
 
 @pytest.mark.parametrize('test_name, title, expected_issues, expected_mailto', [
     ('simple title',
      'adasdasda', [], 'adasdasda'),
-    # ('title with emojis',  --- requires new pytest-plugins https://github.com/manahl/pytest-plugins/pull/117
-    # unicode(u'😀 😁 😂 🤣 😃 😄 😅 😆'), [], unicode(u'😀 😁 😂 🤣 😃 😄 😅 😆')),
+    ('title with emojis',
+     u'😀 😁 😂', [], u'😀 😁 😂'),
     ('apostrophe',
      "''''''''''''''", [], "''''''''''''''"),
     ('forbidden char',
@@ -36,6 +38,6 @@ def test_validate_mailto(test_name, mailto, expected_issues, expected_mailto):
 ])
 def test_validate_title(test_name, title, expected_issues, expected_mailto):
     issues = []
-    actual_mailto = web.validate_title(title, issues)
+    actual_title = web.validate_title(title, issues)
     assert issues == expected_issues
-    assert actual_mailto == expected_mailto
+    assert actual_title == expected_mailto.encode('utf-8')
