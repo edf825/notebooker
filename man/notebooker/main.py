@@ -20,7 +20,7 @@ from man.notebooker import execute_notebook, results
 from man.notebooker.caching import set_cache, get_cache
 from man.notebooker.constants import OUTPUT_BASE_DIR, \
     TEMPLATE_BASE_DIR, JobStatus, CANCEL_MESSAGE
-from man.notebooker.handle_overrides import handle_overrides, validate_title
+from man.notebooker.handle_overrides import handle_overrides, validate_title, validate_mailto
 from man.notebooker.report_hunter import _report_hunter
 from man.notebooker.results import _get_job_results, all_available_results, _pdf_filename, get_all_result_keys
 from man.notebooker.utils.templates import get_all_possible_checks, _get_metadata_cell_idx, _get_preview
@@ -98,7 +98,7 @@ def _monitor_stderr(process, job_id):
     return ''.join(stderr)
 
 
-def run_report(report_name, report_title, overrides):
+def run_report(report_name, report_title, mailto, overrides):
     job_id = str(uuid.uuid4())
     job_start_time = datetime.datetime.now()
     result_serializer.save_check_stub(job_id, report_name,
@@ -113,6 +113,7 @@ def run_report(report_name, report_title, overrides):
                           '--template-base-dir', TEMPLATE_BASE_DIR,
                           '--report-name', report_name,
                           '--report-title', report_title,
+                          '--mailto', mailto,
                           '--overrides-as-json', json.dumps(overrides),
                           '--mongo-db-name', result_serializer.database_name,
                           '--mongo-host', result_serializer.mongo_host,
@@ -126,13 +127,16 @@ def run_report(report_name, report_title, overrides):
 
 @flask_app.route('/run_checks/<report_name>', methods=['POST', 'PUT'])
 def run_checks_http(report_name):
-    overrides = request.values.get('overrides')
-    override_dict, issues = handle_overrides(overrides)
-    report_title = request.values.get('report_title')
-    report_title = validate_title(report_title, issues)
+    issues = []
+    # Get and process override script
+    override_dict = handle_overrides(request.values.get('overrides'), issues)
+    # Find and cleanse the title of the report
+    report_title = validate_title(request.values.get('report_title'), issues)
+    # Get mailto email address
+    mailto = validate_mailto(request.values.get('mailto'), issues)
     if issues:
         return jsonify({'status': 'Failed', 'content': ('\n'.join(issues))})
-    job_id = run_report(report_name, report_title, override_dict)
+    job_id = run_report(report_name, report_title, mailto, override_dict)
     return (jsonify({'id': job_id}),
             202,  # HTTP Accepted code
             {'Location': url_for('task_status', report_name=report_name, task_id=job_id)})

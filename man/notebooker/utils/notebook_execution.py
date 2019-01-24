@@ -99,7 +99,8 @@ def send_result_email(result, mailto):
 
     if isinstance(result, NotebookResultComplete):
         # Attach PDF output to the email. Has to be saved to disk temporarily for the mail API to work.
-        pdf_path = os.path.join(tmp_dir, '{}.pdf'.format(result.job_id))
+        pdf_path = os.path.join(tmp_dir, '{}_{}.pdf'.format(result.report_name,
+                                                            result.job_start_time.strftime('%Y-%m-%dT%H%M%S')))
         with open(pdf_path, 'w') as f:
             f.write(result.pdf)
         attachments.append(pdf_path)

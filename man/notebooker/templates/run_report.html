@@ -20,18 +20,28 @@
             <div class="seven wide column">
                 <h1>Customise your report</h1>
                 <form class="ui form" id="run-check-form">
-                    <h3>Report Title:</h3>
-                    <input name="report_title" placeholder="{{ report_name }}" id="titleInput" width="100%"/>
-                    <h3>Existing parameters:</h3>
-                    <code>{{parameters_as_html|safe}}</code>
-                    <h3>Override parameters:</h3>
                     <div class="field">
-                        <label>Overrides</label>
+                        <h3>Report Title:</h3>
+                        <input name="report_title" placeholder="{{ report_name }}" id="titleInput" width="100%"/>
+                    </div>
+                    <div class="field">
+                        <h3>Existing parameters:</h3>
+                        <code>{{parameters_as_html|safe}}</code>
+                    </div>
+                    <div class="field">
+                        <h3>Override parameters:</h3>
                         <textarea name="overrides" id="overrides" placeholder="Write your overrides in python here.
 You can import anything, but ensure that in any x=y statements, y is JSON serialisable."></textarea>
                     </div>
                     <div class="field">
                         <input name="report_name" value="{{report_name}}" style="display:none">
+                    </div>
+                    <div class="field">
+                        <h3>Email to:</h3>
+                        <input name="mailto"
+                               placeholder="Comma-separated email address (optional)"
+                               id="titleInput"
+                               width="100%"/>
                     </div>
                     <button class="positive ui button" id="runCheck">Run Check</button>
                 </form>

@@ -70,10 +70,9 @@ def _handle_overrides_safe(overrides, output_path):
     return result
 
 
-def handle_overrides(overrides_string):
-    # type: (str) -> Tuple[Dict[str, Any], List[str]]
+def handle_overrides(overrides_string, issues):
+    # type: (str,  List[str]) -> Tuple[Dict[str, Any]]
     override_dict = {}
-    issues = []
     if overrides_string.strip():
         tmp_file = tempfile.mktemp()
         try:
@@ -83,11 +82,12 @@ def handle_overrides(overrides_string):
             with open(tmp_file, 'r') as f:
                 output_dict = pickle.load(f)
             logger.info('Got %s from pickle', output_dict)
-            override_dict, issues = output_dict['overrides'], output_dict['issues']
+            override_dict, _issues = output_dict['overrides'], output_dict['issues']
+            issues.extend(_issues)
             os.remove(tmp_file)
         except subprocess.CalledProcessError as cpe:
             issues.append(str(cpe.output))
-    return override_dict, issues
+    return override_dict
 
 
 def validate_title(title, issues):
@@ -99,6 +99,16 @@ def validate_title(title, issues):
             out_s, forbidden_chars
         ))
     return out_s
+
+
+def validate_mailto(mailto, issues):
+    # type: (AnyStr, List[str]) -> AnyStr
+    if not mailto:
+        return ''
+    mailto = mailto.strip()
+    if any(c.isspace() for c in mailto):
+        issues.append('The email address specified had whitespace! Please fix this before resubmitting.')
+    return mailto
 
 
 @click.command()
