@@ -1,0 +1,10 @@
+ahl.marketdata
+ahl.signals
+equities.core
+idi.datascience
+intervaltree
+man.secmaster
+matplotlib
+pytz
+seaborn
+tqdm
