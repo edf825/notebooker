@@ -20,14 +20,15 @@ def test_handle_overrides_handles_anything_cleanly_no_process_junk(text):
     # Check that it doesn't just crash with random input
     with mock.patch('man.notebooker.handle_overrides.subprocess.check_output') as popen:
         popen.side_effect = lambda args: mock.MagicMock(res=_handle_overrides_safe(args[4], args[6]))
-        handle_overrides(text)
+        handle_overrides(text, issues=[])
 
 
 @hypothesis.given(st.from_regex(VARIABLE_ASSIGNMENT_REGEX))
 def test_handle_overrides_handles_anything_cleanly_no_process_variable(text):
     with mock.patch('man.notebooker.handle_overrides.subprocess.check_output') as popen:
         popen.side_effect = lambda args: mock.MagicMock(res=_handle_overrides_safe(args[4], args[6]))
-        overrides, issues = handle_overrides(text)
+        issues = []
+        overrides = handle_overrides(text, issues)
     if any(t for t in text.split('\n') if t.strip()):
         assert len(issues) >= 1 or len(overrides) >= 1
     else:
@@ -57,7 +58,8 @@ def test_handle_overrides_handles_anything_cleanly_no_process_import(text):
         pickle.dump.side_effect = _fakepickle_dump
         pickle.load.side_effect = _fakepickle_load
         popen.side_effect = lambda args: mock.MagicMock(res=_handle_overrides_safe(args[4], args[6]))
-        overrides, issues = handle_overrides(text)
+        issues = []
+        overrides = handle_overrides(text, issues)
     if any(t for t in text.split('\n') if t.strip()):
         assert len(issues) >= 1 or len(overrides) >= 1
     else:
@@ -72,7 +74,8 @@ def test_handle_overrides_handles_anything_cleanly_no_process_import(text):
 def test_handle_overrides_handles_imports(input_txt):
     with mock.patch('man.notebooker.handle_overrides.subprocess.check_output') as popen:
         popen.side_effect = lambda args: mock.MagicMock(res=_handle_overrides_safe(args[4], args[6]))
-        overrides, issues = handle_overrides(input_txt)
+        issues = []
+        overrides = handle_overrides(input_txt, issues)
     assert overrides == {'d': datetime.datetime(2018, 1, 1)}
 
 
@@ -80,7 +83,8 @@ def test_handle_overrides_handles_imports(input_txt):
 def test_handle_overrides_handles_imports(input_txt):
     with mock.patch('man.notebooker.handle_overrides.subprocess.check_output') as popen:
         popen.side_effect = lambda args: mock.MagicMock(res=_handle_overrides_safe(args[4], args[6]))
-        overrides, issues = handle_overrides(input_txt)
+        issues = []
+        overrides = handle_overrides(input_txt, issues)
     assert overrides == {}
     assert issues == ['Could not JSON serialise a parameter ("d") - '
                       'this must be serialisable so that we can execute '

@@ -24,6 +24,7 @@ from man.notebooker.handle_overrides import handle_overrides
 from man.notebooker.report_hunter import _report_hunter
 from man.notebooker.results import _get_job_results, all_available_results, _pdf_filename, get_all_result_keys
 from man.notebooker.utils.templates import get_all_possible_checks, _get_metadata_cell_idx, _get_preview
+from man.notebooker.utils.web import validate_mailto, validate_title
 
 flask_app = Flask(__name__)
 logger = get_logger(__name__)
@@ -98,7 +99,7 @@ def _monitor_stderr(process, job_id):
     return ''.join(stderr)
 
 
-def run_report(report_name, report_title, overrides):
+def run_report(report_name, report_title, mailto, overrides):
     job_id = str(uuid.uuid4())
     job_start_time = datetime.datetime.now()
     result_serializer.save_check_stub(job_id, report_name,
@@ -113,6 +114,7 @@ def run_report(report_name, report_title, overrides):
                           '--template-base-dir', TEMPLATE_BASE_DIR,
                           '--report-name', report_name,
                           '--report-title', report_title,
+                          '--mailto', mailto,
                           '--overrides-as-json', json.dumps(overrides),
                           '--mongo-db-name', result_serializer.database_name,
                           '--mongo-host', result_serializer.mongo_host,
@@ -126,12 +128,16 @@ def run_report(report_name, report_title, overrides):
 
 @flask_app.route('/run_checks/<report_name>', methods=['POST', 'PUT'])
 def run_checks_http(report_name):
-    overrides = request.values.get('overrides')
-    override_dict, issues = handle_overrides(overrides)
-    report_title = request.values.get('report_title')
+    issues = []
+    # Get and process override script
+    override_dict = handle_overrides(request.values.get('overrides'), issues)
+    # Find and cleanse the title of the report
+    report_title = validate_title(request.values.get('report_title'), issues)
+    # Get mailto email address
+    mailto = validate_mailto(request.values.get('mailto'), issues)
     if issues:
         return jsonify({'status': 'Failed', 'content': ('\n'.join(issues))})
-    job_id = run_report(report_name, report_title, override_dict)
+    job_id = run_report(report_name, report_title, mailto, override_dict)
     return (jsonify({'id': job_id}),
             202,  # HTTP Accepted code
             {'Location': url_for('task_status', report_name=report_name, task_id=job_id)})
@@ -162,7 +168,7 @@ def task_results_html(task_id, report_name):
     # - present the user with some info detailing the progress of the job, if it is still running.
     result = _get_job_results(task_id, report_name, result_serializer)
     if isinstance(result, results.NotebookResultError):
-        return '<p>This job resulted in an error: <br/><code style="white-space: pre-wrap;">{}</code></p>'.format(result.error_info)
+        return result.raw_html
     if isinstance(result, results.NotebookResultPending):
         return task_loading(report_name, task_id)
     return result.raw_html

@@ -50,7 +50,8 @@ VARIABLE_ASSIGNMENT_REGEX = re.compile('^(?P<variable_name>[a-zA-Z_]+) *= *(?P<v
             ["Found an expression that did nothing! It has a value of type: <class '_ast.Call'>"]),
     ])
 def test_handle_overrides_normal(test_name, input_str, expected_output_values, expected_issues):
-    override_dict, issues = handle_overrides(input_str)
+    issues = []
+    override_dict = handle_overrides(input_str, issues)
     if sorted(issues) != sorted(expected_issues) and expected_issues:
         for expected_issue in expected_issues:
             fail_msg = 'Issue {} was not found in the list of issues: {}'.format(expected_issue, issues)

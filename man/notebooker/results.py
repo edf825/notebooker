@@ -46,6 +46,11 @@ class NotebookResultError(NotebookResultBase):
     update_time = attr.ib(default=datetime.datetime.now())
     report_title = attr.ib(default='')
 
+    @property
+    def raw_html(self):
+        return """<p>This job resulted in an error: <br/><code style="white-space: pre-wrap;">{}</code></p>""".format(
+            self.error_info)
+
 
 @attr.s(repr=False)
 class NotebookResultComplete(NotebookResultBase):
