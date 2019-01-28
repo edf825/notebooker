@@ -49,12 +49,22 @@
 {% macro sidebar(all_reports) %}
     <html>
         <body>
-        <div class="ui inverted labeled icon left inline vertical sidebar menu" id="runReportSidebar">
+        <div class="ui inverted left vertical sidebar menu runReportSidebar">
             <div class="item">
                 <h4 class="ui header inverted">Execute a notebook:</h4>
             </div>
-            {% for report in all_reports %}
-            <a class="item" href="/run_report/{{report}}">{{ ' '.join(report.capitalize().split('_')) }}</a>
+            {% for report, subreports in all_reports|dictsort() recursive %}
+                {% if subreports is none %}
+                    <a class="item" href="/run_report/{{report}}">{{ report }}</a>
+                {% else %}
+                    <div class="ui inverted dropdown item">
+                        <i class="dropdown icon"></i>
+                        {{ report }}
+                        <div class="menu">
+                            {{ loop(subreports|dictsort()) }}
+                        </div>
+                    </div>
+                {% endif %}
             {% endfor %}
             <a class="item bottom" href="http://ahlgit.maninvestments.com/projects/DATA/repos/man.notebooker/browse/man/notebooker/notebook_templates/README.md">
                 <i class="plus icon"></i>

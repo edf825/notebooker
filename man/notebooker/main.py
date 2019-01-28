@@ -60,7 +60,7 @@ def delete_report(job_id):
 # ------------------ Running checks ---------------- #
 
 
-@flask_app.route('/run_report/get_preview/<report_name>', methods=['GET'])
+@flask_app.route('/run_report/get_preview/<path:report_name>', methods=['GET'])
 def run_report_get_preview(report_name):
     # Handle the case where a rendered ipynb asks for "custom.css"
     if '.css' in report_name:
@@ -68,7 +68,7 @@ def run_report_get_preview(report_name):
     return _get_preview(report_name)
 
 
-@flask_app.route('/run_report/<report_name>', methods=['GET'])
+@flask_app.route('/run_report/<path:report_name>', methods=['GET'])
 def run_report_http(report_name):
     path = man.notebooker.utils.notebook_execution.generate_ipynb_from_py(TEMPLATE_BASE_DIR, report_name)
     nb = nbformat.read(path, as_version=nbformat.v4.nbformat)
@@ -127,7 +127,7 @@ def run_report(report_name, report_title, mailto, overrides):
     return job_id
 
 
-@flask_app.route('/run_checks/<report_name>', methods=['POST', 'PUT'])
+@flask_app.route('/run_checks/<path:report_name>', methods=['POST', 'PUT'])
 def run_checks_http(report_name):
     issues = []
     # Get and process override script
@@ -147,7 +147,7 @@ def run_checks_http(report_name):
 # ------------------- Serving results -------------------- #
 
 
-@flask_app.route('/results/<report_name>/<task_id>')
+@flask_app.route('/results/<path:report_name>/<task_id>')
 def task_results(task_id, report_name):
     result = _get_job_results(task_id, report_name, result_serializer, ignore_cache=True)
     return render_template('results.html',
@@ -161,7 +161,7 @@ def task_results(task_id, report_name):
                            all_reports=get_all_possible_checks())
 
 
-@flask_app.route('/result_html_render/<report_name>/<task_id>')
+@flask_app.route('/result_html_render/<path:report_name>/<task_id>')
 def task_results_html(task_id, report_name):
     # In this method, we either:
     # - present the HTML results, if the job has finished
@@ -175,7 +175,7 @@ def task_results_html(task_id, report_name):
     return result.raw_html
 
 
-@flask_app.route('/result_html_render/<report_name>/<task_id>/resources/<path:resource>')
+@flask_app.route('/result_html_render/<path:report_name>/<task_id>/resources/<path:resource>')
 def task_result_resources_html(task_id, resource, report_name):
     result = _get_job_results(task_id, report_name, result_serializer)
     if isinstance(result, results.NotebookResultComplete):
@@ -186,7 +186,7 @@ def task_result_resources_html(task_id, resource, report_name):
     return abort(404)
 
 
-@flask_app.route('/result_download_ipynb/<report_name>/<task_id>')
+@flask_app.route('/result_download_ipynb/<path:report_name>/<task_id>')
 def download_ipynb_result(task_id, report_name):
     result = _get_job_results(task_id, report_name, result_serializer)
     if isinstance(result, results.NotebookResultComplete):
@@ -197,7 +197,7 @@ def download_ipynb_result(task_id, report_name):
         abort(404)
 
 
-@flask_app.route('/result_download_pdf/<report_name>/<task_id>')
+@flask_app.route('/result_download_pdf/<path:report_name>/<task_id>')
 def download_pdf_result(task_id, report_name):
     result = _get_job_results(task_id, report_name, result_serializer)
     if isinstance(result, results.NotebookResultComplete):
@@ -233,7 +233,7 @@ def _get_job_status(task_id, report_name):
     return response
 
 
-@flask_app.route('/status/<report_name>/<task_id>')
+@flask_app.route('/status/<path:report_name>/<task_id>')
 def task_status(report_name, task_id):
     return jsonify(_get_job_status(task_id, report_name))
 
