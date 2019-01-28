@@ -13,7 +13,7 @@ import pandas as pd
 import numpy as np
 
 # + {"tags": ["parameters"]}
-n_points = 1050
+n_points = 1000
 # -
 
 idx = pd.date_range('1/1/2000', periods=n_points)
