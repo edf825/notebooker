@@ -1,19 +1,18 @@
 import datetime
-import decorator
 import freezegun
 import pytest
 import uuid
 
 from ahl.mongo import Mongoose
 from arctic.store.bson_store import BSON_STORE_TYPE
-from werkzeug.contrib.cache import SimpleCache
 
-from man.notebooker.caching import get_report_cache, cache
+from man.notebooker.caching import get_report_cache
 from man.notebooker.constants import JobStatus
 from man.notebooker.results import NotebookResultSerializer, NotebookResultPending, \
     NotebookResultError, NotebookResultComplete
 
 from man.notebooker.report_hunter import _report_hunter
+from tests.utils import cache_blaster
 
 pytest_plugins = ['ahl.testing.pytest.mongo_server']
 
@@ -28,16 +27,6 @@ def bson_library(mongo_server, mongo_host):
     l = m.get_library(TEST_LIB)
     l.create_index('_id')
     return l
-
-
-def cache_blaster(f):
-    def do_it(func, *args, **kwargs):
-        cache.clear()
-        result = func(*args, **kwargs)
-        print "Clearing cache"
-        cache.clear()
-        return result
-    return decorator.decorator(do_it, f)
 
 
 @pytest.fixture(scope="function")

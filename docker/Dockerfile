@@ -12,14 +12,19 @@ ENV PYTHON_EGG_CACHE /tmp/egg-cache
 
 ENV ENV_CHECK_VERSION=${ENV_CHECK_VERSION}
 ENV GOSU_VERSION=${GOSU_VERSION}
-RUN yum install -y ahl-gosu-${GOSU_VERSION} ahl-env-check-${ENV_CHECK_VERSION} && yum clean all
+RUN yum install -y ahl-gosu-${GOSU_VERSION} ahl-env-check-${ENV_CHECK_VERSION} git && yum clean all
 
 ARG VERSION
 
+ENV PY_TEMPLATE_DIR /etc/notebooker
+ENV GIT_REPO_TEMPLATE_DIR notebook_templates
+ENV NOTEBOOKER_TEMPLATE_GIT_URL http://ahldev:Dev1234@ahlgit.maninvestments.com/scm/data/man.notebooker.git
+ENV NOTEBOOK_REQUIREMENTS_FILE notebook_requirements.txt
+
 ADD dist /tmp/dist
 ADD install_*.sh /tmp/
-RUN /tmp/install_man_notebooker.sh && rm -f /tmp/install_man_notebooker.sh /tmp/dist/*.egg
 RUN /tmp/install_kernel.sh && rm -f /tmp/install_kernel.sh
+RUN /tmp/install_man_notebooker.sh && rm -f /tmp/install_man_notebooker.sh /tmp/dist/*.egg
 
 ADD bin/* /usr/bin/
 

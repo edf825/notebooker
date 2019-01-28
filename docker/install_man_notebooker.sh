@@ -11,7 +11,7 @@ yum -y install texlive-xetex \
                texlive-adjustbox \
                texlive-upquote \
                texlive-ulem \
-           && yum clean all
+           && yum clean all && rm -rf /var/cache/yum
 
 if ! req=$(ls /tmp/dist/*.egg 2>/dev/null); then
     req="man.notebooker==${VERSION}"

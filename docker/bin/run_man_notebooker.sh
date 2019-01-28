@@ -9,6 +9,8 @@ run_env_check \
     --env USER_ID \
     --env GROUP_ID \
 	--env OPERATING_USER \
+	--env PY_TEMPLATE_DIR \
+	--env GIT_REPO_TEMPLATE_DIR \
 	|| exit $?
 
 exec gosu ${USER_ID}:${GROUP_ID} "$@"
