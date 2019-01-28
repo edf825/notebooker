@@ -11,7 +11,11 @@ run_env_check \
 	--env OPERATING_USER \
 	--env PY_TEMPLATE_DIR \
 	--env GIT_REPO_TEMPLATE_DIR \
+	--env NOTEBOOKER_TEMPLATE_GIT_URL \
 	|| exit $?
 
+
+gosu ${USER_ID}:${GROUP_ID} /usr/bin/checkout_repo.sh
 exec gosu ${USER_ID}:${GROUP_ID} "$@"
+
 

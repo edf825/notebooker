@@ -62,7 +62,7 @@ def delete_report(job_id):
 
 @flask_app.route('/run_report/get_preview/<report_name>', methods=['GET'])
 def run_report_get_preview(report_name):
-    # Handle the case where a rendered ipynb asks for "custom.ss"
+    # Handle the case where a rendered ipynb asks for "custom.css"
     if '.css' in report_name:
         return ''
     return _get_preview(report_name)

@@ -23,6 +23,7 @@ ENV NOTEBOOK_REQUIREMENTS_FILE notebook_requirements.txt
 
 ADD dist /tmp/dist
 ADD install_*.sh /tmp/
+RUN /tmp/install_latex.sh && rm -f /tmp/install_latex.sh
 RUN /tmp/install_kernel.sh && rm -f /tmp/install_kernel.sh
 RUN /tmp/install_man_notebooker.sh && rm -f /tmp/install_man_notebooker.sh /tmp/dist/*.egg
 
