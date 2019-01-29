@@ -24,6 +24,9 @@ mongo_host = 'research'
 strategy_name = None
 symbols = ['ALPMED:CHNBCGS']
 columns = None
+max_stdev = 5
+max_missing_days = 5
+max_stale_days = 10
 
 # + {"active": "ipynb", "language": "javascript"}
 # IPython.OutputArea.auto_scroll_threshold = 9999;
@@ -37,6 +40,10 @@ data_checks.check_dataset(library_name,
                           symbols=symbols,
                           cols=columns,
                           plot_data=True,
-                          strategy_name=strategy_name)
+                          strategy_name=strategy_name,
+                          max_stdev=max_stdev,
+                          max_missing_days=max_missing_days,
+                          max_stale_days=max_stale_days,
+                         )
 
 
