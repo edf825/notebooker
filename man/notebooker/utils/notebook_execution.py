@@ -16,10 +16,9 @@ from traitlets.config import Config
 from typing import Any, Dict, AnyStr, Union
 
 from ahl.logging import get_logger
-
-from man.notebooker.caching import get_cache, set_cache
-from man.notebooker.constants import KERNEL_SPEC, PYTHON_TEMPLATE_DIR, REPORT_NAME_SEPARATOR
-from man.notebooker.results import NotebookResultComplete, NotebookResultError
+from man.notebooker.utils.caching import get_cache, set_cache
+from man.notebooker.constants import KERNEL_SPEC, PYTHON_TEMPLATE_DIR, REPORT_NAME_SEPARATOR, NotebookResultError, \
+    NotebookResultComplete
 
 logger = get_logger(__name__)
 

@@ -3,10 +3,10 @@ import time
 
 from ahl.logging import get_logger
 
-from man.notebooker import results
+import man.notebooker.serialization.mongoose
 from man.notebooker.constants import JobStatus, SUBMISSION_TIMEOUT, RUNNING_TIMEOUT
-from man.notebooker.results import _get_job_results, get_all_result_keys
-from man.notebooker.caching import get_report_cache, set_report_cache, get_cache, set_cache
+from man.notebooker.utils.results import _get_job_results, get_all_result_keys
+from man.notebooker.utils.caching import get_cache, get_report_cache, set_cache, set_report_cache
 
 logger = get_logger(__name__)
 
@@ -14,9 +14,9 @@ logger = get_logger(__name__)
 def _report_hunter(mongo_host, database_name, result_collection_name, run_once=False):
     # This is a function designed to run in a thread separately from the webapp. It updates the cache which the
     # web app reads from and performs some admin on pending/running jobs.
-    serializer = results.NotebookResultSerializer(mongo_host=mongo_host,
-                                                  database_name=database_name,
-                                                  result_collection_name=result_collection_name)
+    serializer = man.notebooker.serialization.mongoose.NotebookResultSerializer(mongo_host=mongo_host,
+                                                                                database_name=database_name,
+                                                                                result_collection_name=result_collection_name)
     if not get_cache('_STILL_ALIVE'):
         set_cache('_STILL_ALIVE', True)
     last_query = None

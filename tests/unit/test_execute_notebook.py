@@ -1,10 +1,10 @@
 import mock
 
 from man.notebooker import execute_notebook
-from ahl.testing.pytest.mongo_server import mongo_host
 from click.testing import CliRunner
 
-from man.notebooker.results import NotebookResultComplete, NotebookResultSerializer
+from man.notebooker.constants import NotebookResultComplete
+from man.notebooker.serialization.mongoose import NotebookResultSerializer
 
 
 def mock_nb_execute(input_path, output_path, **kw):

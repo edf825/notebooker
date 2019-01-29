@@ -7,10 +7,9 @@ import mock
 import os
 import pytest
 
-from man.notebooker.caching import set_cache, get_cache
-from man.notebooker.constants import TEMPLATE_BASE_DIR
+from man.notebooker.utils.caching import get_cache, set_cache
+from man.notebooker.constants import TEMPLATE_BASE_DIR, NotebookResultComplete
 
-from man.notebooker.results import NotebookResultComplete
 from man.notebooker.utils import notebook_execution
 from tests.utils import cache_blaster
 

@@ -2,7 +2,7 @@ import datetime
 import pytest
 import re
 
-from man.notebooker.handle_overrides import handle_overrides
+from man.notebooker.web.handle_overrides import handle_overrides
 
 IMPORT_REGEX = re.compile('^(from [a-zA-Z0-9_.]+ )?import (?P<import_target>[a-zA-Z0-9_.]+)( as (?P<name>.+))?$')
 VARIABLE_ASSIGNMENT_REGEX = re.compile('^(?P<variable_name>[a-zA-Z_]+) *= *(?P<value>.+)$')

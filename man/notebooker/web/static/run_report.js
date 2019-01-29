@@ -6,7 +6,7 @@ $(document).ready(function() {
         var reportName = $('input[name="report_name"]').val();
         $.ajax({
             type: "POST",
-            url: "/run_checks/" + reportName,
+            url: "/run_report/" + reportName,
             data: form.serialize(),
             success: function (data, status, request) {
                 if (data.status === "Failed") {

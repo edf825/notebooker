@@ -1,107 +1,47 @@
-import attr
 import datetime
+import functools
+import threading
+
 import gridfs
 import pymongo
-
 from ahl.logging import get_logger
 from ahl.mongo import Mongoose
-from ahl.mongo.auth import get_auth, authenticate
+from ahl.mongo.auth import authenticate
 from ahl.mongo.decorators import mongo_retry
-from flask import url_for
 from gridfs import NoFile
-from typing import AnyStr, Optional, Generator, Any, Dict, Union, List, Tuple
+from mkd.auth.mongo import get_auth
 
-from man.notebooker.caching import get_report_cache, set_report_cache, get_cache, set_cache
-from man.notebooker.constants import JobStatus
-from man.notebooker.exceptions import NotebookRunException
-
+from man.notebooker.constants import JobStatus, NotebookResultPending, NotebookResultError, NotebookResultComplete
 
 logger = get_logger(__name__)
+lock = threading.Lock()
 
 
-@attr.s()
-class NotebookResultBase(object):
-    job_id = attr.ib()
-    job_start_time = attr.ib()
-    report_name = attr.ib()
-    status = attr.ib(default=JobStatus.ERROR.value)
-
-    def saveable_output(self):
-        out = attr.asdict(self)
-        out['status'] = self.status.value
-        return out
+def synchronized(lock):
+    """ Synchronization decorator """
+    def wrapper(f):
+        @functools.wraps(f)
+        def inner_wrapper(*args, **kw):
+            with lock:
+                return f(*args, **kw)
+        return inner_wrapper
+    return wrapper
 
 
-@attr.s()
-class NotebookResultPending(NotebookResultBase):
-    status = attr.ib(default=JobStatus.PENDING)
-    update_time = attr.ib(default=datetime.datetime.now())
-    report_title = attr.ib(default='')
+class Singleton(type):
+    _instances = {}
 
-
-@attr.s()
-class NotebookResultError(NotebookResultBase):
-    status = attr.ib(default=JobStatus.ERROR)
-    error_info = attr.ib(default="")
-    update_time = attr.ib(default=datetime.datetime.now())
-    report_title = attr.ib(default='')
-
-    @property
-    def raw_html(self):
-        return """<p>This job resulted in an error: <br/><code style="white-space: pre-wrap;">{}</code></p>""".format(
-            self.error_info)
-
-
-@attr.s(repr=False)
-class NotebookResultComplete(NotebookResultBase):
-    job_start_time = attr.ib()
-    job_finish_time = attr.ib()
-    raw_html_resources = attr.ib(attr.Factory(dict))
-    status = attr.ib(default=JobStatus.DONE)
-    raw_ipynb_json = attr.ib(default="")
-    raw_html = attr.ib(default="")
-    update_time = attr.ib(default=datetime.datetime.now())
-    pdf = attr.ib(default="")
-    report_title = attr.ib(default='')
-
-    def html_resources(self):
-        # We have to save the raw images using Mongo GridFS - figure out where they will go here
-        resources = {}
-        for k, v in self.raw_html_resources.items():
-            if k == 'outputs':
-                resources[k] = list(v)
-            else:
-                resources[k] = v
-        return resources
-
-    def saveable_output(self):
-        return {'raw_ipynb_json': self.raw_ipynb_json,
-                'status': self.status.value,
-                'report_name': self.report_name,
-                'report_title': self.report_title,
-                'raw_html': self.raw_html,
-                'raw_html_resources': self.html_resources(),
-                'job_id': self.job_id,
-                'job_start_time': self.job_start_time,
-                'job_finish_time': self.job_finish_time,
-                'update_time': self.update_time}
-
-    def __repr__(self):
-        return 'NotebookResultComplete(job_id={job_id}, status={status}, report_name={report_name}, ' \
-               'job_start_time={job_start_time}, job_finish_time={job_finish_time}, update_time={update_time}, ' \
-               'report_title={report_title})'.format(
-            job_id=self.job_id, status=self.status, report_name=self.report_name, job_start_time=self.job_start_time,
-            job_finish_time=self.job_finish_time, update_time=self.update_time, report_title=self.report_title,
-        )
-
-
-def _pdf_filename(job_id):
-    # type: (str) -> str
-    return '{}.pdf'.format(job_id)
+    @synchronized(lock)
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
 
 
 class NotebookResultSerializer(object):
+    __metaclass__ = Singleton
     # This class is the interface between Mongo and the rest of the application
+
     def __init__(self,
                  database_name='mongoose_restech',
                  mongo_host='research',
@@ -275,62 +215,6 @@ class NotebookResultSerializer(object):
         self.update_check_status(job_id, JobStatus.DELETED)
 
 
-def _get_job_results(job_id,              # type: str
-                     report_name,         # type: str
-                     serializer,          # type: NotebookResultSerializer
-                     retrying=False,      # type: Optional[bool]
-                     ignore_cache=False,  # type: Optional[bool]
-                     ):
-    # type: (...) -> Union[NotebookResultError, NotebookResultComplete, NotebookResultPending]
-    current_result = get_report_cache(report_name, job_id)
-    if current_result and not ignore_cache:
-        logger.debug('Cache hit for job_id=%s, report_name=%s', job_id, report_name)
-        notebook_result = current_result
-    else:
-        notebook_result = serializer.get_check_result(job_id)
-        set_report_cache(report_name, job_id, notebook_result)
-
-    if not notebook_result:
-        err_info = 'Job results not found for report name={} / job id={}. ' \
-                 'Did you use an invalid job ID?'.format(report_name, job_id)
-        return NotebookResultError(job_id, error_info=err_info, report_name=report_name,
-                                   job_start_time=datetime.datetime.now())
-    if isinstance(notebook_result, str):
-        if not retrying:
-            return _get_job_results(job_id, report_name, serializer, retrying=True)
-        raise NotebookRunException('An unexpected string was found as a result. Please run your request again.')
-
-    return notebook_result
-
-
-def get_all_result_keys(serializer, limit=0, force_reload=False):
-    # type: (NotebookResultSerializer, Optional[int], Optional[bool]) -> List[Tuple[str, str]]
-    all_keys = get_cache(('all_result_keys', limit))
-    if not all_keys or force_reload:
-        all_keys = serializer.get_all_result_keys(limit=limit)
-        set_cache(('all_result_keys', limit), all_keys, timeout=1)
-    return all_keys
-
-
-def all_available_results(serializer,  # type: NotebookResultSerializer
-                          limit=50,
-                          ):
-    # type: (...) -> Dict[Tuple[str, str], Union[NotebookResultError, NotebookResultComplete, NotebookResultPending]]
-    all_keys = get_all_result_keys(serializer, limit=limit)
-    complete_jobs = {}
-    for report_name, job_id in all_keys:
-        result = _get_job_results(job_id, report_name, serializer)
-        report_name, job_id = result.report_name, result.job_id
-        result.result_url = url_for('task_results', task_id=job_id, report_name=report_name)
-        result.ipynb_url = url_for('download_ipynb_result', task_id=job_id, report_name=report_name)
-        result.pdf_url = url_for('download_pdf_result', task_id=job_id, report_name=report_name)
-        complete_jobs[(report_name, job_id)] = result
-    return complete_jobs
-
-
-def save_output_to_mongo(mongo_host,
-                         mongo_library,
-                         notebook_result):
-    # type: (str, str, NotebookResultComplete) -> None
-    serializer = NotebookResultSerializer(mongo_host=mongo_host, result_collection_name=mongo_library)
-    serializer.save_check_result(notebook_result)
+def _pdf_filename(job_id):
+    # type: (str) -> str
+    return '{}.pdf'.format(job_id)

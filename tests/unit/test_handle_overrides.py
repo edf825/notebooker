@@ -8,7 +8,7 @@ import pytest
 import re
 from typing import Any
 
-from man.notebooker.handle_overrides import handle_overrides, _handle_overrides_safe
+from man.notebooker.web.handle_overrides import handle_overrides, _handle_overrides_safe
 
 
 IMPORT_REGEX = re.compile('^(from [a-zA-Z0-9_.]+ )?import (?P<import_target>[a-zA-Z0-9_.]+)( as (?P<name>.+))?$')

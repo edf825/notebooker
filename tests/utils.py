@@ -1,6 +1,6 @@
 import decorator
 
-from man.notebooker.caching import cache
+from man.notebooker.utils.caching import cache
 
 
 def cache_blaster(f):

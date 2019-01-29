@@ -6,12 +6,11 @@ import uuid
 from ahl.mongo import Mongoose
 from arctic.store.bson_store import BSON_STORE_TYPE
 
-from man.notebooker.caching import get_report_cache
-from man.notebooker.constants import JobStatus
-from man.notebooker.results import NotebookResultSerializer, NotebookResultPending, \
-    NotebookResultError, NotebookResultComplete
+from man.notebooker.utils.caching import get_report_cache
+from man.notebooker.constants import JobStatus, NotebookResultPending, NotebookResultError, NotebookResultComplete
+from man.notebooker.serialization.mongoose import NotebookResultSerializer
 
-from man.notebooker.report_hunter import _report_hunter
+from man.notebooker.web.report_hunter import _report_hunter
 from tests.utils import cache_blaster
 
 pytest_plugins = ['ahl.testing.pytest.mongo_server']
