@@ -63,15 +63,8 @@ your .ipynb file, and raise a pull request to get your new notebook on the websi
 
 ## Testing your notebook
 
-Run your own one-click-notebook server by simply running:
-
-```bash
-python setup.py develop
-man_notebooker_webapp
-```
-
-You should be able to run your new report if it is in the
-correct directory, and your report requirements are listed in setup.cfg.
+Run your own one-click-notebook server by following the readme in the
+base repository.
 
 ## Adding a One-Click-Scheduled notebook
 
