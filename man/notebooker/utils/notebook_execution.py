@@ -132,18 +132,19 @@ def send_result_email(result, mailto):
     # type: (Union[NotebookResultComplete, NotebookResultError], AnyStr) -> None
     from_email = 'man.notebooker@man.com'
     to_email = mailto
-    try:
-        subject = u'Notebooker: {} report completed with status: {}'.format(result.report_title, result.status.value)
-    except UnicodeDecodeError:
-        subject = 'Notebooker: {} report completed with status: {}'.format(result.report_title, result.status.value)
+    report_title = result.report_title.decode('utf-8') if isinstance(result.report_title, bytes) else result.report_title
+    subject = u'Notebooker: {} report completed with status: {}'.format(report_title, result.status.value)
     body = result.raw_html
     attachments = []
     tmp_dir = tempfile.mkdtemp(dir=os.path.expanduser('~'))
 
     if isinstance(result, NotebookResultComplete):
         # Attach PDF output to the email. Has to be saved to disk temporarily for the mail API to work.
-        pdf_path = os.path.join(tmp_dir, u'{}_{}.pdf'.format(result.report_name.replace(os.sep, REPORT_NAME_SEPARATOR),
-                                                             result.job_start_time.strftime('%Y-%m-%dT%H%M%S')))
+        report_name = result.report_name.replace(os.sep, REPORT_NAME_SEPARATOR)
+        if isinstance(report_name, bytes):
+            report_name = report_name.decode('utf-8')
+        pdf_name = u'{}_{}.pdf'.format(report_name, result.job_start_time.strftime('%Y-%m-%dT%H%M%S'))
+        pdf_path = os.path.join(tmp_dir, pdf_name)
         with open(pdf_path, 'w') as f:
             f.write(result.pdf)
         attachments.append(pdf_path)
