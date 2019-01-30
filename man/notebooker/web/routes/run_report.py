@@ -14,7 +14,7 @@ from man.notebooker.utils.caching import get_cache, set_cache
 from man.notebooker.constants import TEMPLATE_BASE_DIR, JobStatus, OUTPUT_BASE_DIR
 from man.notebooker.web.handle_overrides import handle_overrides
 from man.notebooker.serialization.mongoose import NotebookResultSerializer
-from man.notebooker.utils.notebook_execution import generate_ipynb_from_py
+from man.notebooker.utils.conversion import generate_ipynb_from_py
 from man.notebooker.utils.templates import _get_preview, _get_metadata_cell_idx, get_all_possible_checks
 from man.notebooker.utils.web import validate_title, validate_mailto
 

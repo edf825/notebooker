@@ -10,7 +10,7 @@ from typing import Optional, Dict, Union
 
 from man.notebooker.utils.caching import get_cache, set_cache
 from man.notebooker.constants import TEMPLATE_BASE_DIR, PYTHON_TEMPLATE_DIR, REPORT_NAME_SEPARATOR
-from man.notebooker.utils.notebook_execution import generate_ipynb_from_py
+from man.notebooker.utils.conversion import generate_ipynb_from_py
 
 logger = get_logger(__name__)
 

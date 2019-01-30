@@ -15,8 +15,8 @@ def mock_nb_execute(input_path, output_path, **kw):
 
 def test_main(mongo_host):
     with mock.patch('man.notebooker.execute_notebook.pm.execute_notebook') as exec_nb, \
-         mock.patch('man.notebooker.utils.notebook_execution.jupytext.readf') as read_nb, \
-         mock.patch('man.notebooker.utils.notebook_execution.PDFExporter') as pdf_exporter:
+         mock.patch('man.notebooker.utils.conversion.jupytext.readf') as read_nb, \
+         mock.patch('man.notebooker.utils.conversion.PDFExporter') as pdf_exporter:
         pdf_contents = 'This is a PDF.'
         pdf_exporter().from_notebook_node.return_value = (pdf_contents, None)
         read_nb.return_value = {'cells': [], 'metadata': {}}

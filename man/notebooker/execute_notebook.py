@@ -16,8 +16,8 @@ from man.notebooker.utils.caching import get_cache
 from man.notebooker.constants import JobStatus, CANCEL_MESSAGE, OUTPUT_BASE_DIR, TEMPLATE_BASE_DIR, NotebookResultError, \
     NotebookResultComplete
 from man.notebooker.serialization.mongoose import NotebookResultSerializer
-from man.notebooker.utils.notebook_execution import ipython_to_html, ipython_to_pdf, _output_ipynb_name, \
-    generate_ipynb_from_py, _output_dir, send_result_email, mkdir_p
+from man.notebooker.utils.notebook_execution import _output_dir, send_result_email, mkdir_p
+from man.notebooker.utils.conversion import ipython_to_html, ipython_to_pdf, _output_ipynb_name, generate_ipynb_from_py
 
 logger = get_logger(__name__)
 
