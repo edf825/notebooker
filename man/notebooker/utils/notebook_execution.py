@@ -54,7 +54,6 @@ def _output_ipynb_name(report_name):
 
 def _git_pull_templates():
     repo = git.repo.Repo(os.environ['PY_TEMPLATE_DIR'])
-    repo.git.fetch()
     repo.git.pull('origin', 'master')
     return repo.commit('HEAD').hexsha
 

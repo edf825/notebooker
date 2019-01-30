@@ -79,3 +79,14 @@ NB: Your command must include the report name, the rest is optional.
 
 The results will be viewable on the web GUI, or you can optionally set
 an email address to which the output can be sent.
+
+
+## Important environment variables
+If you want to test the webapp as if it is using docker, you will want
+to set environment variables that point to the git repository. This
+section explains what each do:
+
+- PY_TEMPLATE_DIR: The directory which we are saving templates to
+- NOTEBOOKER_TEMPLATE_GIT_URL: The git URL (with credentials) to pull
+from the remote git repository which holds notebook templates
+- GIT_REPO_TEMPLATE_DIR: The directory within the git repo which holds templates

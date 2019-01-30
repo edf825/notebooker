@@ -38,6 +38,7 @@ def get_all_possible_checks():
         all_checks = get_directory_structure()
     else:
         logger.warn('Fetching all possible checks from local repo. New updates will not be retrieved from git.')
+        # Only import here because we don't actually want to import these if the app is working properly.
         import notebook_templates
         all_checks = get_directory_structure(os.path.abspath(notebook_templates.__path__[0]))
     return all_checks
