@@ -13,12 +13,11 @@ from typing import Any, Dict
 from ahl.logging import get_logger
 
 from man.notebooker.caching import get_cache
-from man.notebooker.constants import JobStatus, CANCEL_MESSAGE, OUTPUT_BASE_DIR, TEMPLATE_BASE_DIR, \
-    MONGO_HOST, MONGO_LIBRARY
+from man.notebooker.constants import JobStatus, CANCEL_MESSAGE, OUTPUT_BASE_DIR, TEMPLATE_BASE_DIR
 from man.notebooker.results import NotebookResultComplete, NotebookResultSerializer, \
     NotebookResultError
 from man.notebooker.utils.notebook_execution import ipython_to_html, ipython_to_pdf, _output_ipynb_name, \
-    generate_ipynb_from_py, _output_dir, send_result_email
+    generate_ipynb_from_py, _output_dir, send_result_email, mkdir_p
 
 logger = get_logger(__name__)
 
@@ -112,7 +111,8 @@ def run_report_worker(job_submit_time,
                                      report_name=report_name,
                                      report_title=report_title,
                                      error_info=error_info)
-        logger.error('Report run failed. Saving error result to mongo library %s@%s...', MONGO_LIBRARY, MONGO_HOST)
+        logger.error('Report run failed. Saving error result to mongo library %s@%s...',
+                     result_serializer.database_name, result_serializer.mongo_host)
         result_serializer.save_check_result(result)
         logger.info('Error result saved to mongo successfully.')
         if attempts_remaining > 0:
@@ -159,10 +159,8 @@ def main(report_name,
     if report_name is None:
         raise ValueError('Error! Please provide a --report-name.')
     report_title = report_title or report_name
-    logger.info('Creating %s', OUTPUT_BASE_DIR)
-    os.makedirs(OUTPUT_BASE_DIR)
-    logger.info('Creating %s', TEMPLATE_BASE_DIR)
-    os.makedirs(TEMPLATE_BASE_DIR)
+    logger.info('Creating %s', output_base_dir)
+    mkdir_p(output_base_dir)
     overrides = json.loads(overrides_as_json) if overrides_as_json else {}
     start_time = datetime.datetime.now()
     result_serializer = NotebookResultSerializer(database_name=mongo_db_name,

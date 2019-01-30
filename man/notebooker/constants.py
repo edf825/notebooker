@@ -2,14 +2,19 @@ import os
 import tempfile
 
 from enum import unique, Enum
-
+from typing import AnyStr
 
 SUBMISSION_TIMEOUT = 3
 RUNNING_TIMEOUT = 60
 OUTPUT_BASE_DIR = os.path.join(os.getenv('OUTPUT_DIR', tempfile.mkdtemp(dir=os.path.expanduser('~'))), 'results')
 TEMPLATE_BASE_DIR = os.path.join(os.getenv('TEMPLATE_DIR', tempfile.mkdtemp(dir=os.path.expanduser('~'))), 'templates')
-MONGO_HOST = 'research'
-MONGO_LIBRARY = 'NOTEBOOK_OUTPUT'
+PYTHON_TEMPLATE_DIR = os.path.join(os.environ['PY_TEMPLATE_DIR'],
+                                   os.environ['GIT_REPO_TEMPLATE_DIR']
+                                   ) if os.getenv('PY_TEMPLATE_DIR') else None  # If not None, we are likely in docker
+
+# NB: These env vars should come from the docker image.
+NOTEBOOKER_TEMPLATE_GIT_URL = os.getenv('NOTEBOOKER_TEMPLATE_GIT_URL')
+
 KERNEL_SPEC = {'display_name': os.getenv('NOTEBOOK_KERNEL_NAME', 'man_notebooker_kernel'),
                'language': 'python',
                'name': os.getenv('NOTEBOOK_KERNEL_NAME', 'man_notebooker_kernel')}

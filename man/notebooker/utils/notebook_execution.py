@@ -1,5 +1,7 @@
+import errno
 import shutil
 
+import git
 import jupytext
 import nbformat
 import os
@@ -14,7 +16,9 @@ from traitlets.config import Config
 from typing import Any, Dict, AnyStr, Union
 
 from ahl.logging import get_logger
-from man.notebooker.constants import KERNEL_SPEC
+
+from man.notebooker.caching import get_cache, set_cache
+from man.notebooker.constants import KERNEL_SPEC, PYTHON_TEMPLATE_DIR
 from man.notebooker.results import NotebookResultComplete, NotebookResultError
 
 logger = get_logger(__name__)
@@ -49,39 +53,75 @@ def _output_ipynb_name(report_name):
     return '{}.ipynb'.format(report_name)
 
 
-def _python_template(report_name):
-    # type: (str) -> str
-    return os.path.join('..', 'notebook_templates', '{}.py'.format(report_name))
+def _git_pull_templates():
+    repo = git.repo.Repo(os.environ['PY_TEMPLATE_DIR'])
+    repo.git.fetch()
+    repo.git.pull('origin', 'master')
+    return repo.commit('HEAD').hexsha
 
 
-def _ipynb_output_path(template_base_dir, report_name):
-    # type: (str, str) -> str
-    return os.path.join(template_base_dir, '{}.ipynb'.format(report_name))
+def _python_template(report_path):
+    # type: (AnyStr) -> AnyStr
+    file_name = '{}.py'.format(report_path)
+    return os.path.join(
+        PYTHON_TEMPLATE_DIR,
+        file_name,
+    )
+
+
+def _ipynb_output_path(template_base_dir, report_path, git_hex):
+    # type: (AnyStr, AnyStr, AnyStr) -> AnyStr
+    file_name = '{}.ipynb'.format(report_path)
+    return os.path.join(
+        template_base_dir,
+        git_hex,
+        file_name,
+    )
 
 
 def generate_ipynb_from_py(template_base_dir, report_name):
     # type: (str, str) -> str
-    python_input_filename = _python_template(report_name)
-    output_template = _ipynb_output_path(template_base_dir, report_name)
-    python_template = pkg_resources.resource_filename(__name__, python_input_filename)
+    # This method EITHER:
+    # Pulls the latest version of the notebook templates from git, and regenerates templates if there is a new HEAD
+    # OR: finds the local templates from the repository using a relative path
+    if PYTHON_TEMPLATE_DIR:
+        logger.info('Pulling latest notebook templates from git.')
+        try:
+            latest_sha = _git_pull_templates()
+            if get_cache('latest_sha') != latest_sha:
+                logger.info('Change detected in notebook template master!')
+                set_cache('latest_sha', latest_sha)
+            logger.info('Git pull done.')
+        except Exception as e:
+            logger.exception(e)
+
+        python_template_path = _python_template(report_name)
+        sha = get_cache('latest_sha') or 'OLD'
+        output_template_path = _ipynb_output_path(template_base_dir, report_name, sha)
+    else:
+        logger.warn('Loading from local location. This is only expected if you are running locally.')
+        python_template_path = pkg_resources.resource_filename(__name__,
+                                                               '../../../notebook_templates/{}.py'.format(report_name))
+        output_template_path = _ipynb_output_path(template_base_dir, report_name, '')
 
     try:
-        with open(output_template, 'r') as f:
+        with open(output_template_path, 'r') as f:
             if f.read():
-                logger.info('Loading ipynb from cached location: %s', output_template)
-                return output_template
+                logger.info('Loading ipynb from cached location: %s', output_template_path)
+                return output_template_path
     except IOError:
         pass
 
     # "touch" the output file
-    logger.info('Creating ipynb at: {}'.format(output_template))
-    with open(output_template, 'w') as f:
-        os.utime(output_template, None)
+    logger.info('Creating ipynb at: %s', output_template_path)
+    mkdir_p(os.path.dirname(output_template_path))
+    with open(output_template_path, 'w') as f:
+        os.utime(output_template_path, None)
 
-    jupytext_nb = jupytext.readf(python_template)
+    jupytext_nb = jupytext.readf(python_template_path)
     jupytext_nb['metadata']['kernelspec'] = KERNEL_SPEC  # Override the kernel spec since we want to run it..
-    jupytext.writef(jupytext_nb, output_template)
-    return output_template
+    jupytext.writef(jupytext_nb, output_template_path)
+    return output_template_path
 
 
 def _output_dir(output_base_dir, report_name, job_id):
@@ -92,7 +132,10 @@ def send_result_email(result, mailto):
     # type: (Union[NotebookResultComplete, NotebookResultError], AnyStr) -> None
     from_email = 'man.notebooker@man.com'
     to_email = mailto
-    subject = u'Notebooker: {} report completed with status: {}'.format(result.report_title, result.status.value)
+    try:
+        subject = u'Notebooker: {} report completed with status: {}'.format(result.report_title, result.status.value)
+    except UnicodeDecodeError:
+        subject = 'Notebooker: {} report completed with status: {}'.format(result.report_title, result.status.value)
     body = result.raw_html
     attachments = []
     tmp_dir = tempfile.mkdtemp(dir=os.path.expanduser('~'))
@@ -123,3 +166,13 @@ def send_result_email(result, mailto):
     mail(from_email, to_email, subject, msg, attachments=attachments)
 
     shutil.rmtree(tmp_dir)
+
+
+def mkdir_p(path):
+    try:
+        os.makedirs(path)
+    except OSError as exc:  # Python >2.5
+        if exc.errno == errno.EEXIST and os.path.isdir(path):
+            pass
+        else:
+            raise
