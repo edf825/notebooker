@@ -1,8 +1,9 @@
 import mock
 
-from man.notebooker import execute_notebook
+from ahl.testing.pytest.mongo_server import mongo_host
 from click.testing import CliRunner
 
+from man.notebooker import execute_notebook
 from man.notebooker.constants import NotebookResultComplete
 from man.notebooker.serialization.mongoose import NotebookResultSerializer
 

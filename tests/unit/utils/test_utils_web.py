@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import pytest
 
-from man.notebooker import constants, web
+from man.notebooker import constants
+from man.notebooker.utils import web
 
 
 @pytest.mark.parametrize('test_name, mailto, expected_issues, expected_mailto', [

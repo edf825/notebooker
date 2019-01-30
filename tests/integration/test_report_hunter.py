@@ -11,7 +11,7 @@ from man.notebooker.constants import JobStatus, NotebookResultPending, NotebookR
 from man.notebooker.serialization.mongoose import NotebookResultSerializer
 
 from man.notebooker.web.report_hunter import _report_hunter
-from tests.utils import cache_blaster
+from ..utils import cache_blaster
 
 pytest_plugins = ['ahl.testing.pytest.mongo_server']
 

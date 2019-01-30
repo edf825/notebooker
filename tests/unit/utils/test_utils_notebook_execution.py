@@ -11,7 +11,7 @@ from man.notebooker.utils.caching import get_cache, set_cache
 from man.notebooker.constants import TEMPLATE_BASE_DIR, NotebookResultComplete
 
 from man.notebooker.utils import notebook_execution
-from tests.utils import cache_blaster
+from ...utils import cache_blaster
 
 
 @pytest.mark.parametrize('test_name, job_id, report_name, report_title, expected_title, utf8encode', [
