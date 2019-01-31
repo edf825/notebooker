@@ -38,9 +38,9 @@ def _result_serializer():
     """
     if not hasattr(g, 'result_serializer'):
         g.result_serializer = NotebookResultSerializer(
-            mongo_host=get_cache('mongo_host'),
-            database_name=get_cache('database_name'),
-            result_collection_name=get_cache('result_collection_name'))
+            mongo_host=os.environ['MONGO_HOST'],
+            database_name=os.environ['DATABASE_NAME'],
+            result_collection_name=os.environ['RESULT_COLLECTION_NAME'])
     return g.result_serializer
 
 # ----------------- Main page -------------------- #
@@ -99,9 +99,9 @@ def start_app():
 
     setup_metrics(flask_app)
     all_report_refresher = threading.Thread(target=_report_hunter,
-                                            args=(get_cache('mongo_host'),
-                                                  get_cache('database_name'),
-                                                  get_cache('result_collection_name')))
+                                            args=(os.environ['MONGO_HOST'],
+                                                  os.environ['DATABASE_NAME'],
+                                                  os.environ['RESULT_COLLECTION_NAME']))
     all_report_refresher.daemon = True
     all_report_refresher.start()
 
@@ -121,10 +121,10 @@ def main(mongo_host, database_name, result_collection_name, debug, port):
 
     # Used by Prometheus metrics
     env = {'mktdatad': 'dev', 'research': 'res', 'mktdatas': 'pre', 'mktdatap': 'prod'}.get(mongo_host, 'research')
-    set_cache('env', env)
-    set_cache('mongo_host', mongo_host)
-    set_cache('database_name', database_name)
-    set_cache('result_collection_name', result_collection_name)
+    os.environ['NOTEBOOKER_HOST'] = os.getenv('NOTEBOOKER_HOST', env)
+    os.environ['MONGO_HOST'] = os.getenv('MONGO_HOST', mongo_host)
+    os.environ['DATABASE_NAME'] = os.getenv('DATABASE_NAME', database_name)
+    os.environ['RESULT_COLLECTION_NAME'] = os.getenv('RESULT_COLLECTION_NAME', result_collection_name)
 
     host = '0.0.0.0'
     start_app()

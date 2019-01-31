@@ -1,5 +1,6 @@
 import datetime
 import json
+import os
 import subprocess
 import sys
 import threading
@@ -66,9 +67,9 @@ def _monitor_stderr(process, job_id):
 def run_report(report_name, report_title, mailto, overrides):
     job_id = str(uuid.uuid4())
     job_start_time = datetime.datetime.now()
-    result_serializer = NotebookResultSerializer(mongo_host=get_cache('mongo_host'),
-                                                 database_name=get_cache('database_name'),
-                                                 result_collection_name=get_cache('result_collection_name'))
+    result_serializer = NotebookResultSerializer(mongo_host=os.environ['MONGO_HOST'],
+                                                 database_name=os.environ['DATABASE_NAME'],
+                                                 result_collection_name=os.environ['RESULT_COLLECTION_NAME'])
     result_serializer.save_check_stub(job_id, report_name,
                                       report_title=report_title,
                                       job_start_time=job_start_time,

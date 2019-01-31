@@ -16,9 +16,9 @@ logger = get_logger(__name__)
 # ------------------- Serving results -------------------- #
 
 def _result_serializer():
-    return NotebookResultSerializer(mongo_host=get_cache('mongo_host'),
-                                    database_name=get_cache('database_name'),
-                                    result_collection_name=get_cache('result_collection_name'))
+    return NotebookResultSerializer(mongo_host=os.environ['MONGO_HOST'],
+                                    database_name=os.environ['DATABASE_NAME'],
+                                    result_collection_name=os.environ['RESULT_COLLECTION_NAME'])
 
 
 @serve_results_bp.route('/results/<path:report_name>/<task_id>')
