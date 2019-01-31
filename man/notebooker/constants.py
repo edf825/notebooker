@@ -19,6 +19,7 @@ KERNEL_SPEC = {'display_name': os.getenv('NOTEBOOK_KERNEL_NAME', 'man_notebooker
                'language': 'python',
                'name': os.getenv('NOTEBOOK_KERNEL_NAME', 'man_notebooker_kernel')}
 CANCEL_MESSAGE = 'The webapp shut down while this job was running. Please resubmit with the same parameters.'
+REPORT_NAME_SEPARATOR = '|'
 
 
 @unique

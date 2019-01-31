@@ -1,6 +1,9 @@
 $(document).ready(function() {
-    $(activeTab).addClass('active').show();
-    $('#runReport').click(function(){
-        $('#runReportSidebar').sidebar('toggle');
-    })
+
+    let sb = $('.ui.left.sidebar');
+    sb.sidebar({
+    transition: 'overlay'
+    });
+    sb.sidebar('attach events', '#runReport');
+    $('.ui .dropdown').dropdown();
 });

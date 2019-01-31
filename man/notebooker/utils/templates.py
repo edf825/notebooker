@@ -6,35 +6,41 @@ import pkg_resources
 from ahl.logging import get_logger
 from nbconvert import HTMLExporter
 from traitlets.config import Config
-from typing import Optional
+from typing import Optional, Dict, Union
 
 from man.notebooker.caching import get_cache, set_cache
-from man.notebooker.constants import TEMPLATE_BASE_DIR, PYTHON_TEMPLATE_DIR
+from man.notebooker.constants import TEMPLATE_BASE_DIR, PYTHON_TEMPLATE_DIR, REPORT_NAME_SEPARATOR
 from man.notebooker.utils.notebook_execution import generate_ipynb_from_py
 
 logger = get_logger(__name__)
 
 
-def find_templates():
-    all_templates = []
-    to_inspect = [PYTHON_TEMPLATE_DIR]
-    while to_inspect:
-        curr = to_inspect.pop(0)
-        try:
-            to_inspect += [os.path.join(curr, f) for f in os.listdir(curr)]
-        except OSError:
-            if os.path.splitext(curr)[1] == '.py' and os.path.basename(curr) != '__init__.py':
-                all_templates.append(os.path.relpath(curr, PYTHON_TEMPLATE_DIR).replace('.py', ''))
-    return all_templates
+def get_directory_structure(starting_point=PYTHON_TEMPLATE_DIR):
+    # type: (Optional[str]) -> Dict[str, Union[Dict, None]]
+    """
+    Creates a nested dictionary that represents the folder structure of rootdir
+    """
+    all_dirs = {}
+    rootdir = starting_point.rstrip(os.sep)
+    start = rootdir.rfind(os.sep) + 1
+    for path, dirs, files in os.walk(rootdir):
+        folders = path[start:].split(os.sep)
+        subdir = {os.sep.join(folders[1:] + [f.replace('.py', '')]): None
+                  for f in files
+                  if '.py' in f and '__init__' not in f}
+        parent = reduce(dict.get, folders[:-1], all_dirs)
+        parent[folders[-1]] = subdir
+    return all_dirs[rootdir[start:]]
 
 
 def get_all_possible_checks():
     if PYTHON_TEMPLATE_DIR:
-        return find_templates()
-    logger.warn('Fetching all possible checks from local repo. New updates will not be retrieved from git.')
-    import notebook_templates
-    pkg_path = notebook_templates.__path__
-    return [module for (_, module, _) in pkgutil.iter_modules(pkg_path)]
+        all_checks = get_directory_structure()
+    else:
+        logger.warn('Fetching all possible checks from local repo. New updates will not be retrieved from git.')
+        import notebook_templates
+        all_checks = get_directory_structure(os.path.abspath(notebook_templates.__path__[0]))
+    return all_checks
 
 
 def _get_metadata_cell_idx(notebook):

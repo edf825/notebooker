@@ -18,6 +18,7 @@ sudo yum install texlive-xetex \
                texlive-upquote \
                texlive-ulem
 python setup.py develop
+pyinstall $(cat ./notebook_templates/notebook_requirements.txt)
 python -m ipykernel install --user --name=one_click_notebooks_kernel
 man_notebooker_webapp --port 11828 --mongo-host mktdatad --debug
 ```
