@@ -35,6 +35,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import pytz
 from ahl.logging import logger
+from ahl.mongo import MONGOOSE_DB
 from intervaltree import IntervalTree
 from typing import List, Optional, AnyStr, DefaultDict
 
@@ -69,6 +70,7 @@ def lookup_secmaster_for_ast(sec_master_api, routes, ast):
 
 
 title = u'Coverage Analysis {} | AST -> {}'.format(region, target_identifier)
+MONGOOSE_DB.db_connect(cluster)
 
 # Equities Centaur
 trading_filter = get_trading_filter(region,
