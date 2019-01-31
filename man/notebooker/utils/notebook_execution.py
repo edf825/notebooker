@@ -1,9 +1,7 @@
 import errno
 import shutil
-
 import os
 import tempfile
-
 import re
 from ahl.mail import mail
 from typing import AnyStr, Union

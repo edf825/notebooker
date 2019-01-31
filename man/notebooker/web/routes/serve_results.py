@@ -60,7 +60,6 @@ def task_result_resources_html(task_id, resource, report_name):
     return abort(404)
 
 
-# @REQUEST_LATENCY.labels(ENV).time()
 @serve_results_bp.route('/result_download_ipynb/<path:report_name>/<task_id>')
 def download_ipynb_result(task_id, report_name):
     result = _get_job_results(task_id, report_name, _result_serializer())
@@ -72,7 +71,6 @@ def download_ipynb_result(task_id, report_name):
         abort(404)
 
 
-# @REQUEST_LATENCY.labels(ENV).time()
 @serve_results_bp.route('/result_download_pdf/<path:report_name>/<task_id>')
 def download_pdf_result(task_id, report_name):
     result = _get_job_results(task_id, report_name, _result_serializer())
@@ -95,15 +93,16 @@ def task_loading(report_name, task_id):
                            )
 
 
-def _get_job_status(task_id, report_name):
+def _get_job_status(job_id, report_name):
     # Continuously polled for updates by the user client, until the notebook has completed execution (or errored).
-    job_result = _get_job_results(task_id, report_name, _result_serializer(), ignore_cache=True)
-    output = get_cache(('run_output', task_id)) or ''
+    job_result = _get_job_results(job_id, report_name, _result_serializer(), ignore_cache=True)
+    key = u'run_output_{}'.format(job_id)
+    output = get_cache(key) or ''
     if job_result is None:
         return {'status': 'Job not found. Did you use an old job ID?'}
     if job_result.status in (JobStatus.DONE, JobStatus.ERROR, JobStatus.TIMEOUT, JobStatus.CANCELLED):
         response = {'status': job_result.status.value,
-                    'results_url': url_for('serve_results_bp.task_results', report_name=report_name, task_id=task_id)}
+                    'results_url': url_for('serve_results_bp.task_results', report_name=report_name, task_id=job_id)}
     else:
         response = {'status': job_result.status.value, 'run_output': output}
     return response

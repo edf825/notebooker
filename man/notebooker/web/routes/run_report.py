@@ -56,7 +56,8 @@ def _monitor_stderr(process, job_id):
         line = process.stderr.readline()
         stderr.append(line)
         logger.info(line)  # So that we have it in the log, not just in memory.
-        set_cache(('run_output', job_id), ''.join(stderr))
+        key = u'run_output_{}'.format(job_id)
+        set_cache(key, ''.join(stderr))
         if line == '' and process.poll() is not None:
             break
     return ''.join(stderr)
@@ -91,7 +92,7 @@ def run_report(report_name, report_title, mailto, overrides):
     return job_id
 
 
-@run_report_bp.route('/run_report/<path:report_name>', methods=['POST', 'PUT'])
+@run_report_bp.route('/run_report/<path:report_name>', methods=['POST'])
 def run_checks_http(report_name):
     issues = []
     # Get and process override script

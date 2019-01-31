@@ -20,7 +20,6 @@ def _get_job_results(job_id,              # type: str
     # type: (...) -> Union[constants.NotebookResultError, constants.NotebookResultComplete, constants.NotebookResultPending]
     current_result = get_report_cache(report_name, job_id)
     if current_result and not ignore_cache:
-        logger.debug('Cache hit for job_id=%s, report_name=%s', job_id, report_name)
         notebook_result = current_result
     else:
         notebook_result = serializer.get_check_result(job_id)
@@ -49,7 +48,7 @@ def get_all_result_keys(serializer, limit=0, force_reload=False):
 
 
 def all_available_results(serializer,  # type: NotebookResultSerializer
-                          limit=50,
+                          limit=50,  # type: Optional[int]
                           ):
     # type: (...) -> Dict[Tuple[str, str], Union[constants.NotebookResultError, constants.NotebookResultComplete, constants.NotebookResultPending]]
     all_keys = get_all_result_keys(serializer, limit=limit)

@@ -3,18 +3,17 @@ import socket
 from flask import request, Blueprint, make_response
 import time
 
-from prometheus_client import CollectorRegistry, Histogram, Counter, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import REGISTRY, Histogram, Counter, generate_latest, CONTENT_TYPE_LATEST
 
 from man.notebooker.utils.caching import get_cache
 
-METRICS_REGISTRY = CollectorRegistry()
 REQUEST_LATENCY = Histogram('man_notebooker_request_latency_seconds',
                             'Flask request latency',
-                            registry=METRICS_REGISTRY,
+                            registry=REGISTRY,
                             labelnames=['env', 'path', 'hostname'])
 REQUEST_COUNT = Counter('man_notebooker_request_count',
                         'Flask request count',
-                        registry=METRICS_REGISTRY,
+                        registry=REGISTRY,
                         labelnames=['env', 'method', 'path', 'http_status', 'hostname'])
 
 prometheus_bp = Blueprint('prometheus', __name__)
@@ -47,6 +46,6 @@ def setup_metrics(app):
 
 @prometheus_bp.route('/metrics')
 def metrics():
-    response = make_response(generate_latest(METRICS_REGISTRY), 200)
+    response = make_response(generate_latest(REGISTRY), 200)
     response.headers[str('Content-type')] = CONTENT_TYPE_LATEST
     return response

@@ -1,7 +1,9 @@
 import retrying
-from werkzeug.contrib.cache import SimpleCache
+from werkzeug.contrib.cache import FileSystemCache
 
-cache = SimpleCache()
+from man.notebooker.constants import CACHE_DIR
+
+cache = FileSystemCache(CACHE_DIR)
 
 
 def _cache_key(report_name, job_id):
@@ -11,7 +13,7 @@ def _cache_key(report_name, job_id):
 @retrying.retry(stop_max_attempt_number=3)
 def get_cache(key):
     global cache
-    return cache.get(key)
+    return cache.get(str(key))
 
 
 def get_report_cache(report_name, job_id):
@@ -21,7 +23,7 @@ def get_report_cache(report_name, job_id):
 @retrying.retry(stop_max_attempt_number=3)
 def set_cache(key, value, timeout=0):
     global cache
-    cache.set(key, value, timeout=timeout)
+    cache.set(str(key), value, timeout=timeout)
 
 
 def set_report_cache(report_name, job_id, value):
