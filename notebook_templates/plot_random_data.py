@@ -11,9 +11,10 @@
 # %matplotlib inline
 import pandas as pd
 import numpy as np
+import random
 
 # + {"tags": ["parameters"]}
-n_points = 1000
+n_points = random.choice(range(1, 1000))
 # -
 
 idx = pd.date_range('1/1/2000', periods=n_points)
