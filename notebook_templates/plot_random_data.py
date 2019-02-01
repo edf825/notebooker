@@ -14,7 +14,7 @@ import numpy as np
 import random
 
 # + {"tags": ["parameters"]}
-n_points = random.choice(range(10, 1000))
+n_points = random.choice(range(50, 1000))
 # -
 
 idx = pd.date_range('1/1/2000', periods=n_points)
