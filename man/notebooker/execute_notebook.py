@@ -85,8 +85,8 @@ def run_report_worker(job_submit_time,
                       attempts_remaining=2
                       ):
     job_id = job_id or str(uuid.uuid4())
-    still_alive = get_cache('_STILL_ALIVE')
-    if still_alive is False:
+    stop_execution = os.getenv('NOTEBOOKER_APP_STOPPING')
+    if stop_execution:
         logger.info('Aborting attempt to run %s, jobid=%s as app is shutting down.', report_name, job_id)
         result_serializer.update_check_status(job_id, JobStatus.CANCELLED, error_info=CANCEL_MESSAGE)
         return

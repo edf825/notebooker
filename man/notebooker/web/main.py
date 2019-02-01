@@ -76,7 +76,7 @@ def _cancel_all_jobs():
 @atexit.register
 def _cleanup_on_exit():
     global all_report_refresher
-    set_cache('_STILL_ALIVE', False)
+    os.environ['NOTEBOOKER_APP_STOPPING'] = '1'
     _cancel_all_jobs()
     shutil.rmtree(OUTPUT_BASE_DIR)
     shutil.rmtree(TEMPLATE_BASE_DIR)
@@ -90,8 +90,9 @@ def _cleanup_on_exit():
 
 
 def start_app():
-    set_cache('_STILL_ALIVE', True)
     global all_report_refresher
+    if os.getenv('NOTEBOOKER_APP_STOPPING'):
+        del os.environ['NOTEBOOKER_APP_STOPPING']
     logger.info('Creating %s', OUTPUT_BASE_DIR)
     mkdir_p(OUTPUT_BASE_DIR)
     logger.info('Creating %s', TEMPLATE_BASE_DIR)

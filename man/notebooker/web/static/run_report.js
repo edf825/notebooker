@@ -2,7 +2,7 @@ $(document).ready(function() {
 
     $('#run-check-form').submit(function (e) {
         let form = $(this);
-        $('#runCheck').removeClass('active').addClass('disabled');
+        $('#runReportButton').removeClass('active').addClass('disabled');
         $('.message').hide();
         $('#parametersDimmer').show();
         var reportName = $('input[name="report_name"]').val();
@@ -14,7 +14,7 @@ $(document).ready(function() {
                 if (data.status === "Failed") {
                     $('#errorMsg').text(data.content);
                     $('#errorPopup').show();
-                    $('#runCheck').removeClass('disabled').addClass('active');
+                    $('#runReportButton').removeClass('disabled').addClass('active');
                     $('#parametersDimmer').hide();
                 }
                 else {
@@ -29,7 +29,7 @@ $(document).ready(function() {
                 console.log(jqXHR);
                 console.log(textStatus);
                 console.log(errorThrown);
-                $('#runCheck').removeClass('disabled').addClass('active');
+                $('#runReportButton').removeClass('disabled').addClass('active');
                 $('#parametersDimmer').hide();
             }
         });
