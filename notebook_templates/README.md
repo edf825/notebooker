@@ -60,6 +60,19 @@ to override any of the values in this cell using one-click-notebooks.
 10. Once you're happy, commit the .py file that has been generated alongside
 your .ipynb file, and raise a pull request to get your new notebook on the website!
 
+### Alternatively
+If you have a notebook with a parameters tag which you simply want to convert,
+you can do the following:
+
+```
+cd ~/work
+git clone ssh://git@ahlgit.maninvestments.com:7999/data/man.notebooker.git
+convert_ipynb_to_py nb1.ipynb nb2.ipynb --output-dir man.notebooker/notebook_templates
+```
+
+You will then have a repository at ~/work/man.notebooker which has the
+changes you need.
+
 
 ## Testing your notebook
 
