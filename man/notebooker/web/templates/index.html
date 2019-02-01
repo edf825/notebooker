@@ -3,10 +3,13 @@
 {{ header.ocnHeader() }}
 
 <html>
+<head>
+    <script type="application/javascript" src="{{ url_for('static', filename='index.js') }}"></script>
+</head>
 <body>
 
     {{ header.sidebar(all_reports) }}
-    <div class="ui container">
+    <div class="ui container" style="display:none" id="indexTableContainer">
         <table id="resultsTable" class="ui sortable selectable celled table">
             <thead>
                 <th>Title</th>

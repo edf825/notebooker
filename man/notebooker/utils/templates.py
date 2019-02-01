@@ -8,9 +8,9 @@ from nbconvert import HTMLExporter
 from traitlets.config import Config
 from typing import Optional, Dict, Union
 
-from man.notebooker.caching import get_cache, set_cache
+from man.notebooker.utils.caching import get_cache, set_cache
 from man.notebooker.constants import TEMPLATE_BASE_DIR, PYTHON_TEMPLATE_DIR, REPORT_NAME_SEPARATOR
-from man.notebooker.utils.notebook_execution import generate_ipynb_from_py
+from man.notebooker.utils.conversion import generate_ipynb_from_py
 
 logger = get_logger(__name__)
 
@@ -38,6 +38,7 @@ def get_all_possible_checks():
         all_checks = get_directory_structure()
     else:
         logger.warn('Fetching all possible checks from local repo. New updates will not be retrieved from git.')
+        # Only import here because we don't actually want to import these if the app is working properly.
         import notebook_templates
         all_checks = get_directory_structure(os.path.abspath(notebook_templates.__path__[0]))
     return all_checks
@@ -63,7 +64,7 @@ def _get_preview(report_name):
     nb = nbformat.read(path, as_version=nbformat.v4.nbformat)
     metadata_idx = _get_metadata_cell_idx(nb)
     conf = Config()
-    conf.HTMLExporter.template_file = pkg_resources.resource_filename(__name__, '../templates/notebook_preview.tpl')
+    conf.HTMLExporter.template_file = pkg_resources.resource_filename(__name__, '../web/templates/notebook_preview.tpl')
     exporter = HTMLExporter(config=conf)
     html = ''
     if metadata_idx is not None:

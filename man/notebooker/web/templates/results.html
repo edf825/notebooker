@@ -3,28 +3,24 @@
 {{ header.ocnHeader() }}
 
 <html>
-<head>
-    <script>
-      function resizeIframe(obj) {
-        obj.style.height = obj.contentWindow.document.body.scrollHeight + 'px';
-        obj.style.width = obj.contentWindow.document.body.scrollWidth + 'px';
-      }
-    </script>
-</head>
 <body>
     {{ header.sidebar(all_reports) }}
     <div class="ui container">
         <h1>Task Results</h1>
         <h2>{{ result.report_title }}</h2>
         <div class="ui grid">
-            <iframe
-                    class="thirteen wide column"
-                    src="{{ html_render }}"
-                    style="width:100%; border:none;" onload="resizeIframe(this)"
-                    id="resultsIframe"
-                    scrolling="no">
-
-            </iframe>
+            <div class="thirteen wide column">
+                <div class="ui active inverted dimmer iframeLoadingDimmer">
+                    <div class="ui text loader">Loading</div>
+                </div>
+                <iframe
+                        id="resultsIframe"
+                        src="{{ html_render }}"
+                        style="width:100%; border:none; display:none" onload="iframeLoaded(this)"
+                        class="iframeToLoad"
+                        scrolling="no">
+                </iframe>
+            </div>
             <div class="three wide column">
                 <h4>Report was submitted at:</h4> {{result.job_start_time}}
                 {% if result.job_finish_time %}

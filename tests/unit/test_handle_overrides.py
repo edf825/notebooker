@@ -8,7 +8,7 @@ import pytest
 import re
 from typing import Any
 
-from man.notebooker.handle_overrides import handle_overrides, _handle_overrides_safe
+from man.notebooker.web.handle_overrides import handle_overrides, _handle_overrides_safe
 
 
 IMPORT_REGEX = re.compile('^(from [a-zA-Z0-9_.]+ )?import (?P<import_target>[a-zA-Z0-9_.]+)( as (?P<name>.+))?$')
@@ -18,14 +18,14 @@ VARIABLE_ASSIGNMENT_REGEX = re.compile('^(?P<variable_name>[a-zA-Z_]+) *= *(?P<v
 @hypothesis.given(st.text())
 def test_handle_overrides_handles_anything_cleanly_no_process_junk(text):
     # Check that it doesn't just crash with random input
-    with mock.patch('man.notebooker.handle_overrides.subprocess.check_output') as popen:
+    with mock.patch('man.notebooker.web.handle_overrides.subprocess.check_output') as popen:
         popen.side_effect = lambda args: mock.MagicMock(res=_handle_overrides_safe(args[4], args[6]))
         handle_overrides(text, issues=[])
 
 
 @hypothesis.given(st.from_regex(VARIABLE_ASSIGNMENT_REGEX))
 def test_handle_overrides_handles_anything_cleanly_no_process_variable(text):
-    with mock.patch('man.notebooker.handle_overrides.subprocess.check_output') as popen:
+    with mock.patch('man.notebooker.web.handle_overrides.subprocess.check_output') as popen:
         popen.side_effect = lambda args: mock.MagicMock(res=_handle_overrides_safe(args[4], args[6]))
         issues = []
         overrides = handle_overrides(text, issues)
@@ -53,8 +53,8 @@ def _fakepickle_load(file):
 @hypothesis.given(st.from_regex(IMPORT_REGEX))
 @hypothesis.settings(max_examples=30)
 def test_handle_overrides_handles_anything_cleanly_no_process_import(text):
-    with mock.patch('man.notebooker.handle_overrides.subprocess.check_output') as popen, \
-         mock.patch('man.notebooker.handle_overrides.pickle') as pickle:
+    with mock.patch('man.notebooker.web.handle_overrides.subprocess.check_output') as popen, \
+         mock.patch('man.notebooker.web.handle_overrides.pickle') as pickle:
         pickle.dump.side_effect = _fakepickle_dump
         pickle.load.side_effect = _fakepickle_load
         popen.side_effect = lambda args: mock.MagicMock(res=_handle_overrides_safe(args[4], args[6]))
@@ -72,7 +72,7 @@ def test_handle_overrides_handles_anything_cleanly_no_process_import(text):
                                        'from datetime import datetime;d=datetime.now()',
                                        'from datetime import datetime as dt;d=dt.now()'])
 def test_handle_overrides_handles_imports(input_txt):
-    with mock.patch('man.notebooker.handle_overrides.subprocess.check_output') as popen:
+    with mock.patch('man.notebooker.web.handle_overrides.subprocess.check_output') as popen:
         popen.side_effect = lambda args: mock.MagicMock(res=_handle_overrides_safe(args[4], args[6]))
         issues = []
         overrides = handle_overrides(input_txt, issues)
@@ -81,7 +81,7 @@ def test_handle_overrides_handles_imports(input_txt):
 
 @pytest.mark.parametrize('input_txt', ['import datetime;d=datetime.datetime(10, 1, 1)'])
 def test_handle_overrides_handles_imports(input_txt):
-    with mock.patch('man.notebooker.handle_overrides.subprocess.check_output') as popen:
+    with mock.patch('man.notebooker.web.handle_overrides.subprocess.check_output') as popen:
         popen.side_effect = lambda args: mock.MagicMock(res=_handle_overrides_safe(args[4], args[6]))
         issues = []
         overrides = handle_overrides(input_txt, issues)

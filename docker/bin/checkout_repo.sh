@@ -1,5 +1,7 @@
 #!/bin/bash
-pushd ${PY_TEMPLATE_DIR}
+echo "Checking out repo to $1"
+mkdir -p $1
+pushd $1
 git init
 git remote add origin "${NOTEBOOKER_TEMPLATE_GIT_URL}"
 git config core.sparseCheckout true

@@ -14,5 +14,5 @@ run_env_check \
     --env NOTEBOOKER_TEMPLATE_GIT_URL \
     || exit $?
 
-gosu ${USER_ID}:${GROUP_ID} /usr/bin/checkout_repo.sh
+gosu ${USER_ID}:${GROUP_ID} /usr/bin/checkout_repo.sh ${PY_TEMPLATE_DIR}
 exec gosu ${USER_ID}:${GROUP_ID} "$@"

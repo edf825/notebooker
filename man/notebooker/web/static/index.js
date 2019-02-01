@@ -1,5 +1,7 @@
 $(document).ready( function () {
-    $('#resultsTable').DataTable({order: [[3, 'desc']]});
+    let rt = $('#resultsTable');
+    rt.DataTable({order: [[3, 'desc']]});
+    $('#indexTableContainer').fadeIn();
     $('.deletebutton').click(function(clicked) {
         var to_delete = clicked.target.closest('button').id.split('_')[1];
         console.log('Deleting ' + to_delete);

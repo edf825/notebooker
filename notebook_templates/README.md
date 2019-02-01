@@ -60,6 +60,19 @@ to override any of the values in this cell using one-click-notebooks.
 10. Once you're happy, commit the .py file that has been generated alongside
 your .ipynb file, and raise a pull request to get your new notebook on the website!
 
+### Alternatively
+If you have a notebook with a parameters tag which you simply want to convert,
+you can do the following:
+
+```
+cd ~/work
+git clone ssh://git@ahlgit.maninvestments.com:7999/data/man.notebooker.git
+convert_ipynb_to_py nb1.ipynb nb2.ipynb --output-dir man.notebooker/notebook_templates
+```
+
+You will then have a repository at ~/work/man.notebooker which has the
+changes you need.
+
 
 ## Testing your notebook
 
@@ -79,3 +92,14 @@ NB: Your command must include the report name, the rest is optional.
 
 The results will be viewable on the web GUI, or you can optionally set
 an email address to which the output can be sent.
+
+
+## Important environment variables
+If you want to test the webapp as if it is using docker, you will want
+to set environment variables that point to the git repository. This
+section explains what each do:
+
+- PY_TEMPLATE_DIR: The directory which we are saving templates to
+- NOTEBOOKER_TEMPLATE_GIT_URL: The git URL (with credentials) to pull
+from the remote git repository which holds notebook templates
+- GIT_REPO_TEMPLATE_DIR: The directory within the git repo which holds templates
