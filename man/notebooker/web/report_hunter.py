@@ -1,4 +1,5 @@
 import datetime
+import os
 import time
 
 from ahl.logging import get_logger
@@ -17,10 +18,8 @@ def _report_hunter(mongo_host, database_name, result_collection_name, run_once=F
     serializer = man.notebooker.serialization.mongoose.NotebookResultSerializer(mongo_host=mongo_host,
                                                                                 database_name=database_name,
                                                                                 result_collection_name=result_collection_name)
-    if not get_cache('_STILL_ALIVE'):
-        set_cache('_STILL_ALIVE', True)
     last_query = None
-    while get_cache('_STILL_ALIVE'):
+    while not os.getenv('NOTEBOOKER_APP_STOPPING'):
         try:
             ct = 0
             # First, check we have all keys that are available and populate their entries
