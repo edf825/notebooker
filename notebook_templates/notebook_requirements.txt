@@ -7,4 +7,3 @@ man.secmaster
 matplotlib
 pytz
 seaborn
-tqdm
