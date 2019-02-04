@@ -1,6 +1,50 @@
-# How to add a one-click-notebook
+# How to add parameters to a notebook
 
-## You will need:
+## Parameters cell
+When you have a notebook which you are happy with, you may want to add
+a parameters cell. To do this:
+
+1. Enable viewing tags by selecting View > Cell Toolbar > Tags
+
+2. Set one of the cells to have the tag "parameters". This will allow you
+to override any of the values in this cell using man.notebooker
+
+# Deploying your notebook
+
+## Easiest
+
+1. Install the extension:
+```
+# Clone the notebooker repository
+git clone ssh://git@ahlgit.maninvestments.com:7999/data/man.notebooker.git
+
+# Change directory to the notebooker base dir
+cd man.notebooker
+
+# Install the jupyter extension
+jupyter bundlerextension enable --py notebooker_extension.bundler --user
+
+# Start a jupyter notebook session
+jupyter notebook --no-browser --ip=0.0.0.0
+```
+
+2. Within the ipython notebook webapp, deploy the changed file using
+the menu under _File > Deploy as > To BitBucket as .py_.
+
+## Easy
+If you have a notebook with a parameters tag which you simply want to convert,
+you can do the following:
+
+```
+cd ~/work
+git clone ssh://git@ahlgit.maninvestments.com:7999/data/man.notebooker.git
+convert_ipynb_to_py nb1.ipynb nb2.ipynb --output-dir man.notebooker/notebook_templates
+```
+
+You will then have a repository at ~/work/man.notebooker which has the
+changes you need.
+
+## Tricky
 
 If you have already set up an environment, you can start at step (5).
 
@@ -26,8 +70,7 @@ echo 'c.ContentsManager.default_jupytext_formats = "ipynb,py"' >> ~/.jupyter/jup
 ```
 
 4. If you haven't already, run the following in a virtualenv which has
-all your desired libraries installed (e.g. ahl.lab). Note the kernel
-*must* be called "one_click_notebooks_kernel".
+all your desired libraries installed (e.g. ahl.lab).
 
 ```bash
 pyinstall ipykernel
@@ -48,38 +91,16 @@ to login with a token:
     http://0.0.0.0:8889/?token=YOUR_UNIQUE_TOKEN
 ```
 
-7. Create a new notebook in
-man/notebooker/notebook_templates with your
+7. Create a new notebook in notebook_templates with your
 "one_click_notebooks_kernel" kernel
 
-8. Enable viewing tags by selecting View > Cell Toolbar > Tags
 
-9. Set one of the cells to have the tag "parameters". This will allow you
-to override any of the values in this cell using one-click-notebooks.
+# Testing your notebook
 
-10. Once you're happy, commit the .py file that has been generated alongside
-your .ipynb file, and raise a pull request to get your new notebook on the website!
-
-### Alternatively
-If you have a notebook with a parameters tag which you simply want to convert,
-you can do the following:
-
-```
-cd ~/work
-git clone ssh://git@ahlgit.maninvestments.com:7999/data/man.notebooker.git
-convert_ipynb_to_py nb1.ipynb nb2.ipynb --output-dir man.notebooker/notebook_templates
-```
-
-You will then have a repository at ~/work/man.notebooker which has the
-changes you need.
-
-
-## Testing your notebook
-
-Run your own one-click-notebook server by following the readme in the
+Run your own man.notebooker server by following the readme in the
 base repository.
 
-## Adding a One-Click-Scheduled notebook
+# Adding a One-Click-Scheduled notebook
 
 Add a one-click-scheduling job which calls the `man_execute_notebook`
 entrypoint, like so:

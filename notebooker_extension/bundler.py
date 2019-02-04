@@ -33,12 +33,6 @@ def get_git_repo(path):
     return repo
 
 
-def git_rebase_on_master(repo):
-    repo.git.stash()
-    repo.git.pull('origin', 'master')
-    repo.git.stash('pop')
-
-
 def connect_to_stash(repo, credentials):
     # type: (git.Repo, Credentials) -> stashy.Client
     # Get the hostname of our BitBucket instance
@@ -125,7 +119,6 @@ def bundle(handler, model):
     """
     try:
         repo = get_git_repo(model['path'])
-        # git_rebase_on_master(repo)
 
         # Jupytext - convert .ipynb to .py
         py_file = do_convert_to_py(model['path'])
