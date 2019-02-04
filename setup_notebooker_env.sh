@@ -16,7 +16,6 @@ pyinstall $(cat ./notebook_templates/notebook_requirements.txt)
 python -m ipykernel install --user --name=one_click_notebooks_kernel
 man_notebooker_webapp --port 11828 --mongo-host mktdatad --debug &
 
-cd notebook_templates
 # Install the jupyter extension
 jupyter bundlerextension enable --py notebooker_extension.bundler --user
 
