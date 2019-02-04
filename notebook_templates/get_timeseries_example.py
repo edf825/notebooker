@@ -26,7 +26,7 @@ from ahl.mongo import MONGOOSE_DB
 symbols = ['SPT:EURUSD', 'SWP:EURUSD', 'ORF:EURUSD', 'SPT:USDCAD', 'SWP:USDCAD', ]
 library = 'CLS_FX_VOLUME'
 columns = ['volume']
-mongo_host = 'mktdatap'
+mongo_host = 'research'
 # -
 
 amd.enable_trading_mode(False)
