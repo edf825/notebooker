@@ -122,3 +122,4 @@ def generate_py_from_ipynb(ipynb_path, output_dir='.'):
     ipynb = jupytext.readf(ipynb_path)
     jupytext.writef(ipynb, output_path)
     logger.info('Successfully converted %s -> %s', ipynb_path, output_path)
+    return output_path
