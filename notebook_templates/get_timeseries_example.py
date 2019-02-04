@@ -23,7 +23,7 @@ import ahl.marketdata as amd
 from ahl.mongo import MONGOOSE_DB
 
 # + {"tags": ["parameters"]}
-symbols = ['SPT:EURUSD', 'SWP:EURUSD', 'ORF:EURUSD', 'SPT:USDCAD', 'SWP:USDCAD']
+symbols = ['SPT:EURUSD', 'SWP:EURUSD', 'ORF:EURUSD', 'SPT:USDCAD', 'SWP:USDCAD', ]
 library = 'CLS_FX_VOLUME'
 columns = ['volume']
 mongo_host = 'mktdatap'
