@@ -1,22 +1,27 @@
-import git, os, uuid, stashy, re, json, traceback
+import git
+import json
+import os
+import re
+import stashy
+import traceback
+import uuid
 from ahl.manorapass import get_credentials, Credentials
 from typing import Optional, List, Dict, Any
 
 from man.notebooker.utils.conversion import generate_py_from_ipynb
 
-
-def _jupyter_bundlerextension_paths():
-    return [{
-        'name': 'bitbucket_bundler',                    # unique bundler name
-        'label': 'To BitBucket as .py',                   # human-redable menu item label
-        'module_name': 'notebooker_extension.bundler',   # module containing bundle()
-        'group': 'deploy',                          # group under 'deploy' or 'download' menu
-    }]
-
-
 PROJECT_KEY = 'DATA'
 REPOSITORY = 'man.notebooker'
 BRANCH_NAME = '{user}/extension-submission-{id}'
+
+
+def _jupyter_bundlerextension_paths():
+    return [{
+        'group': 'deploy',  # group under 'deploy' or 'download' menu
+        'label': 'To BitBucket as .py',  # human-redable menu item label
+        'name': 'bitbucket_bundler',  # unique bundler name
+        'module_name': 'notebooker_extension.bundler',  # module containing bundle()
+    }]
 
 
 def get_git_repo(path):
@@ -153,5 +158,3 @@ def bundle(handler, model):
                        'which you have checked out locally.<br/><br/>' + traceback.format_exc().replace('\n', '<br/>'))
         print(traceback.format_exc())
         return
-
-
