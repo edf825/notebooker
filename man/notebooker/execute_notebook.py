@@ -8,7 +8,7 @@ import click
 import os
 import papermill as pm
 import traceback
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from ahl.logging import get_logger
 
@@ -16,7 +16,7 @@ from man.notebooker.utils.caching import get_cache
 from man.notebooker.constants import JobStatus, CANCEL_MESSAGE, OUTPUT_BASE_DIR, TEMPLATE_BASE_DIR, NotebookResultError, \
     NotebookResultComplete
 from man.notebooker.serialization.mongoose import NotebookResultSerializer
-from man.notebooker.utils.notebook_execution import _output_dir, send_result_email, mkdir_p
+from man.notebooker.utils.notebook_execution import _output_dir, send_result_email, mkdir_p, _cleanup_dirs
 from man.notebooker.utils.conversion import ipython_to_html, ipython_to_pdf, _output_ipynb_name, generate_ipynb_from_py
 
 logger = get_logger(__name__)
@@ -24,27 +24,23 @@ logger = get_logger(__name__)
 
 def run_checks(job_id,  # type: str
                job_start_time,  # type: datetime.datetime
-               report_name,  # type: str
+               template_name,  # type: str
                report_title,  # type: str
                output_base_dir,  # type: str
                template_base_dir,  # type: str
-               result_serializer,  # type: NotebookResultSerializer
                overrides,  # type: Dict[Any, Any]
+               export_pdf=True,  # type: Optional[bool]
                ):
     # type: (...) -> NotebookResultComplete
-    result_serializer.update_check_status(job_id,
-                                          report_name=report_name,
-                                          job_start_time=job_start_time,
-                                          status=JobStatus.PENDING)
 
-    output_dir = _output_dir(output_base_dir, report_name, job_id)
-    output_ipynb = _output_ipynb_name(report_name)
+    output_dir = _output_dir(output_base_dir, template_name, job_id)
+    output_ipynb = _output_ipynb_name(template_name)
 
     if not os.path.isdir(output_dir):
         logger.info('Making dir @ {}'.format(output_dir))
         os.makedirs(output_dir)
 
-    ipynb_raw_path = generate_ipynb_from_py(template_base_dir, report_name)
+    ipynb_raw_path = generate_ipynb_from_py(template_base_dir, template_name)
     ipynb_executed_path = os.path.join(output_dir, output_ipynb)
 
     logger.info('Executing notebook at {} using parameters {} --> {}'.format(ipynb_raw_path, overrides, output_ipynb))
@@ -57,7 +53,7 @@ def run_checks(job_id,  # type: str
 
     logger.info('Saving output notebook as HTML from {}'.format(ipynb_executed_path))
     html, resources = ipython_to_html(ipynb_executed_path, job_id)
-    pdf = ipython_to_pdf(raw_executed_ipynb, report_title)
+    pdf = ipython_to_pdf(raw_executed_ipynb, report_title) if export_pdf else None
 
     notebook_result = NotebookResultComplete(job_id=job_id,
                                              job_start_time=job_start_time,
@@ -66,11 +62,9 @@ def run_checks(job_id,  # type: str
                                              raw_ipynb_json=raw_executed_ipynb,
                                              raw_html=html,
                                              pdf=pdf,
-                                             report_name=report_name,
+                                             report_name=template_name,
                                              report_title=report_title,
                                              )
-    result_serializer.save_check_result(notebook_result)
-    logger.info('Saved result to mongo successfully.')
     return notebook_result
 
 
@@ -93,16 +87,20 @@ def run_report_worker(job_submit_time,
     try:
         logger.info('Calculating a new %s ipynb with parameters: %s (attempts remaining: %s)', report_name, overrides,
                     attempts_remaining)
-        result = run_checks(
-            job_id,
-            job_submit_time,
-            report_name,
-            report_title,
-            output_base_dir,
-            template_base_dir,
-            result_serializer,
-            overrides)
+        result_serializer.update_check_status(job_id,
+                                              report_name=report_name,
+                                              job_start_time=job_submit_time,
+                                              status=JobStatus.PENDING)
+        result = run_checks(job_id,
+                            job_submit_time,
+                            report_name,
+                            report_title,
+                            output_base_dir,
+                            template_base_dir,
+                            overrides)
         logger.info('Successfully got result.')
+        result_serializer.save_check_result(result)
+        logger.info('Saved result to mongo successfully.')
     except Exception:
         error_info = traceback.format_exc()
         logger.exception('%s report failed! (job id=%s)', report_name, job_id)
@@ -207,7 +205,10 @@ ValueError: Error! Please provide a --report-name.
     args_to_execute = [sys.executable, '-m', __name__] + sys.argv[1:]
     logger.info('Recieved a request to run a report with the following parameters:')
     logger.info(args_to_execute)
-    return subprocess.Popen(args_to_execute).wait()
+    try:
+        subprocess.Popen(args_to_execute).wait()
+    finally:
+        _cleanup_dirs()
 
 
 if __name__ == '__main__':

@@ -16,7 +16,7 @@ from man.notebooker.constants import TEMPLATE_BASE_DIR, JobStatus, OUTPUT_BASE_D
 from man.notebooker.web.handle_overrides import handle_overrides
 from man.notebooker.serialization.mongoose import NotebookResultSerializer
 from man.notebooker.utils.conversion import generate_ipynb_from_py
-from man.notebooker.utils.templates import _get_preview, _get_metadata_cell_idx, get_all_possible_checks
+from man.notebooker.utils.templates import _get_preview, _get_metadata_cell_idx, get_all_possible_templates
 from man.notebooker.utils.web import validate_title, validate_mailto
 
 run_report_bp = Blueprint('run_report_bp', __name__)
@@ -48,7 +48,7 @@ def run_report_http(report_name):
                            has_prefix=has_prefix,
                            has_suffix=has_suffix,
                            report_name=report_name,
-                           all_reports=get_all_possible_checks())
+                           all_reports=get_all_possible_templates())
 
 
 def _monitor_stderr(process, job_id):

@@ -7,7 +7,7 @@ from man.notebooker.utils.caching import get_cache
 from man.notebooker.constants import JobStatus, NotebookResultError, NotebookResultPending, NotebookResultComplete
 from man.notebooker.serialization.mongoose import NotebookResultSerializer, _pdf_filename
 from man.notebooker.utils.results import _get_job_results, get_all_result_keys
-from man.notebooker.utils.templates import get_all_possible_checks
+from man.notebooker.utils.templates import get_all_possible_templates
 
 serve_results_bp = Blueprint('serve_results_bp', __name__)
 logger = get_logger(__name__)
@@ -32,7 +32,7 @@ def task_results(task_id, report_name):
                            html_render=url_for('serve_results_bp.task_results_html', report_name=report_name, task_id=task_id),
                            ipynb_url=url_for('serve_results_bp.download_ipynb_result', report_name=report_name, task_id=task_id),
                            pdf_url=url_for('serve_results_bp.download_pdf_result', report_name=report_name, task_id=task_id),
-                           all_reports=get_all_possible_checks())
+                           all_reports=get_all_possible_templates())
 
 
 @serve_results_bp.route('/result_html_render/<path:report_name>/<task_id>')

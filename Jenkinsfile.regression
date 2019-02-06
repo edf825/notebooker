@@ -1,0 +1,37 @@
+def installKernel = { medusaVersion ->
+  def venvDir = getVenvDir(medusaVersion)
+  pyInstall('ipykernel', venvDir)
+  withActivate("python -m ipykernel install --name=man_notebooker_kernel --user",
+               venvDir)
+}
+
+
+def regression = {
+  pyTest 'tests/regression', "-m 'not compress and not serial'"
+}
+
+
+withEnv(['REGRESSION_TESTING="true"']) {
+    ahlPython {
+        acquireDotsDb(){
+            buildLabel='ts2-el7'
+            labels='ts2-el7'
+            dockerImages: []
+            buildPinnedEgg = false
+            medusaVersions = ["27-3"]
+            publicProject = true
+            preventPushEgg = true
+            coverage = false
+            preBuildStages = [
+                [name: 'Installing ipython kernel',
+                 body: installKernel
+                 ]
+            ]
+            testStages =  [
+                [name: 'Template Regression tests',
+                 body: regression
+                 ]
+            ]
+        }
+    }
+}
