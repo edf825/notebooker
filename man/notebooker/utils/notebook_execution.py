@@ -8,7 +8,7 @@ from typing import AnyStr, Union
 
 from ahl.logging import get_logger
 from man.notebooker.constants import REPORT_NAME_SEPARATOR, NotebookResultError, \
-    NotebookResultComplete
+    NotebookResultComplete, OUTPUT_BASE_DIR, TEMPLATE_BASE_DIR, CACHE_DIR
 
 logger = get_logger(__name__)
 
@@ -66,3 +66,9 @@ def mkdir_p(path):
             pass
         else:
             raise
+
+
+def _cleanup_dirs():
+    for d in (OUTPUT_BASE_DIR, TEMPLATE_BASE_DIR, CACHE_DIR):
+        if os.path.exists(d):
+            shutil.rmtree(d)

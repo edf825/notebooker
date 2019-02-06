@@ -6,7 +6,7 @@ import pkg_resources
 from nbconvert import HTMLExporter, PDFExporter
 from nbconvert.exporters.exporter import ResourcesDict
 from traitlets.config import Config
-from typing import AnyStr, Dict, Any
+from typing import AnyStr, Dict, Any, Optional
 
 from man.notebooker.constants import REPORT_NAME_SEPARATOR, PYTHON_TEMPLATE_DIR, KERNEL_SPEC
 from man.notebooker.utils.caching import get_cache, set_cache
@@ -67,8 +67,8 @@ def _ipynb_output_path(template_base_dir, report_path, git_hex):
     )
 
 
-def generate_ipynb_from_py(template_base_dir, report_name):
-    # type: (str, str) -> str
+def generate_ipynb_from_py(template_base_dir, report_name, warn_on_local=True):
+    # type: (str, str, Optional[bool]) -> str
     # This method EITHER:
     # Pulls the latest version of the notebook templates from git, and regenerates templates if there is a new HEAD
     # OR: finds the local templates from the repository using a relative path
@@ -87,7 +87,8 @@ def generate_ipynb_from_py(template_base_dir, report_name):
         sha = get_cache('latest_sha') or 'OLD'
         output_template_path = _ipynb_output_path(template_base_dir, report_path, sha)
     else:
-        logger.warn('Loading from local location. This is only expected if you are running locally.')
+        if warn_on_local:
+            logger.warn('Loading from local location. This is only expected if you are running locally.')
         python_template_path = pkg_resources.resource_filename(__name__,
                                                                '../../../notebook_templates/{}.py'.format(report_path))
         output_template_path = _ipynb_output_path(template_base_dir, report_path, '')

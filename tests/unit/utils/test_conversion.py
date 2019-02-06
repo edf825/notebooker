@@ -10,45 +10,47 @@ from man.notebooker.constants import TEMPLATE_BASE_DIR
 from man.notebooker import convert_to_py
 from man.notebooker.utils import conversion
 from man.notebooker.utils.caching import set_cache, get_cache
+from man.notebooker.utils.notebook_execution import _cleanup_dirs
 from tests.utils import cache_blaster
 
 
 @cache_blaster
 def test_generate_ipynb_from_py():
-    set_cache('latest_sha', 'fake_sha_early')
-
     python_dir = tempfile.mkdtemp()
+    try:
+        set_cache('latest_sha', 'fake_sha_early')
 
-    os.mkdir(python_dir + '/extra_path')
-    with open(os.path.join(python_dir, 'extra_path', 'test_report.py'), 'w') as f:
-        f.write('#hello world\n')
 
-    with mock.patch('man.notebooker.utils.conversion._git_pull_templates') as pull:
-        conversion.PYTHON_TEMPLATE_DIR = python_dir
-        pull.return_value = 'fake_sha_early'
-        conversion.generate_ipynb_from_py(TEMPLATE_BASE_DIR, 'extra_path/test_report')
-        pull.return_value = 'fake_sha_later'
-        conversion.generate_ipynb_from_py(TEMPLATE_BASE_DIR, 'extra_path/test_report')
-        conversion.generate_ipynb_from_py(TEMPLATE_BASE_DIR, 'extra_path/test_report')
+        os.mkdir(python_dir + '/extra_path')
+        with open(os.path.join(python_dir, 'extra_path', 'test_report.py'), 'w') as f:
+            f.write('#hello world\n')
 
-    assert get_cache('latest_sha') == 'fake_sha_later'
-    expected_ipynb_path = os.path.join(
-        TEMPLATE_BASE_DIR,
-        'fake_sha_early',
-        'extra_path',
-        'test_report.ipynb'
-    )
-    assert os.path.exists(expected_ipynb_path), '.ipynb was not generated as expected!'
-    expected_ipynb_path = os.path.join(
-        TEMPLATE_BASE_DIR,
-        'fake_sha_later',
-        'extra_path',
-        'test_report.ipynb'
-    )
-    assert os.path.exists(expected_ipynb_path), '.ipynb was not generated as expected!'
+        with mock.patch('man.notebooker.utils.conversion._git_pull_templates') as pull:
+            conversion.PYTHON_TEMPLATE_DIR = python_dir
+            pull.return_value = 'fake_sha_early'
+            conversion.generate_ipynb_from_py(TEMPLATE_BASE_DIR, 'extra_path/test_report')
+            pull.return_value = 'fake_sha_later'
+            conversion.generate_ipynb_from_py(TEMPLATE_BASE_DIR, 'extra_path/test_report')
+            conversion.generate_ipynb_from_py(TEMPLATE_BASE_DIR, 'extra_path/test_report')
 
-    shutil.rmtree(TEMPLATE_BASE_DIR)
-    shutil.rmtree(python_dir)
+        assert get_cache('latest_sha') == 'fake_sha_later'
+        expected_ipynb_path = os.path.join(
+            TEMPLATE_BASE_DIR,
+            'fake_sha_early',
+            'extra_path',
+            'test_report.ipynb'
+        )
+        assert os.path.exists(expected_ipynb_path), '.ipynb was not generated as expected!'
+        expected_ipynb_path = os.path.join(
+            TEMPLATE_BASE_DIR,
+            'fake_sha_later',
+            'extra_path',
+            'test_report.ipynb'
+        )
+        assert os.path.exists(expected_ipynb_path), '.ipynb was not generated as expected!'
+    finally:
+        _cleanup_dirs()
+        shutil.rmtree(python_dir)
 
 
 def test_generate_py_from_ipynb():

@@ -3,7 +3,6 @@ import logging
 import time
 
 import os
-import shutil
 import threading
 
 import click
@@ -13,11 +12,11 @@ from gevent.pywsgi import WSGIServer
 
 from man.notebooker.utils.caching import get_cache, set_cache
 from man.notebooker.constants import OUTPUT_BASE_DIR, \
-    TEMPLATE_BASE_DIR, JobStatus, CANCEL_MESSAGE, CACHE_DIR
+    TEMPLATE_BASE_DIR, JobStatus, CANCEL_MESSAGE
 from man.notebooker.serialization.mongoose import NotebookResultSerializer
 from man.notebooker.utils.results import all_available_results
-from man.notebooker.utils.notebook_execution import mkdir_p
-from man.notebooker.utils.templates import get_all_possible_checks
+from man.notebooker.utils.notebook_execution import mkdir_p, _cleanup_dirs
+from man.notebooker.utils.templates import get_all_possible_templates
 from man.notebooker.web.report_hunter import _report_hunter
 from man.notebooker.web.routes.prometheus import setup_metrics, prometheus_bp
 from man.notebooker.web.routes.run_report import run_report_bp
@@ -55,7 +54,7 @@ def index():
     with flask_app.app_context():
         result =  render_template('index.html',
                                   all_jobs=all_available_results(_result_serializer(), limit),
-                                  all_reports=get_all_possible_checks(),
+                                  all_reports=get_all_possible_templates(),
                                   n_results_available=_result_serializer().n_all_results(),
                                   donevalue=JobStatus.DONE,  # needed so we can check if a result is available
                                   )
@@ -78,9 +77,7 @@ def _cleanup_on_exit():
     global all_report_refresher
     os.environ['NOTEBOOKER_APP_STOPPING'] = '1'
     _cancel_all_jobs()
-    shutil.rmtree(OUTPUT_BASE_DIR)
-    shutil.rmtree(TEMPLATE_BASE_DIR)
-    shutil.rmtree(CACHE_DIR)
+    _cleanup_dirs()
     if all_report_refresher:
         # Wait until it terminates.
         logger.info('Stopping "report hunter" thread.')

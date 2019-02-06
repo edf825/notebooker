@@ -6,7 +6,12 @@ def integration = {
   pyTest 'tests/integration', "-m 'not compress and not serial'"
 }
 
+def sanity = {
+  pyTest 'tests/sanity', "-m 'not compress and not serial'"
+}
+
 env.PYTHONPATH = '.:..'  // So that the src directory can be used as a dir
+
 
 ahlPython {
     buildLabel='ts2-el7'
@@ -15,8 +20,10 @@ ahlPython {
     dockerPath = 'docker'
     medusaVersions = ["27-3"]
     publicProject = true
-
     testStages =  [
+        [name: 'Sanity checks',
+         body: sanity,
+        ],
         [name: 'Unit',
          body: unit,
         ],

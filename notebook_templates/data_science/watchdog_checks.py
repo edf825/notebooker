@@ -26,7 +26,7 @@ symbols = ['ALPMED:CHNBCGS']
 columns = None
 max_stdev = 5
 max_missing_days = 5
-max_stale_days = 10
+max_stale_days = 5
 
 # + {"active": "ipynb", "language": "javascript"}
 # IPython.OutputArea.auto_scroll_threshold = 9999;

@@ -26,6 +26,7 @@ region = 'US'  # Trading filter region used by the equities.centaur.data.get_sto
 trading_filter_type = 'swift_trading_filter'  # Trading filter type to be used by the get_stocks_item
 date_start = datetime.datetime(2016, 1, 1)  # Optionally set this to a date from which you want to make the plot
 target_identifier = 'DXLID'  # This is the target identifier. e.g. DXLID for mappings from AST to DXLID
+symbol_limit = 25  # Limit the number of symbols we are converting to save time..! 0 for all symbols.
 # -
 
 # %matplotlib inline
@@ -77,6 +78,10 @@ trading_filter = get_trading_filter(region,
                                     filter_type=trading_filter_type,
                                     start_date=date_start)  # This is the only source for the trading filter as of now.
 all_symbols_ever = list(trading_filter.columns)
+if symbol_limit:
+    import random
+    random.shuffle(all_symbols_ever)
+    all_symbols_ever = all_symbols_ever[:symbol_limit]
 
 # Security Master
 sec_master_api = SecurityMasterAPI.from_cluster(cluster)
