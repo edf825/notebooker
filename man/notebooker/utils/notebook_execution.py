@@ -32,11 +32,12 @@ def send_result_email(result, mailto):
         report_name = result.report_name.replace(os.sep, REPORT_NAME_SEPARATOR)
         if isinstance(report_name, bytes):
             report_name = report_name.decode('utf-8')
-        pdf_name = u'{}_{}.pdf'.format(report_name, result.job_start_time.strftime('%Y-%m-%dT%H%M%S'))
-        pdf_path = os.path.join(tmp_dir, pdf_name)
-        with open(pdf_path, 'w') as f:
-            f.write(result.pdf)
-        attachments.append(pdf_path)
+        if result.pdf:
+            pdf_name = u'{}_{}.pdf'.format(report_name, result.job_start_time.strftime('%Y-%m-%dT%H%M%S'))
+            pdf_path = os.path.join(tmp_dir, pdf_name)
+            with open(pdf_path, 'w') as f:
+                f.write(result.pdf)
+            attachments.append(pdf_path)
 
         # Embed images into the email as attachments with "cid" links.
         for resource_path, resource in result.raw_html_resources.get('outputs', {}).items():

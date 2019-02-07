@@ -8,7 +8,7 @@ import uuid
 
 import nbformat
 from ahl.logging import get_logger
-from flask import render_template, request, jsonify, url_for, Blueprint
+from flask import render_template, request, jsonify, url_for, Blueprint, abort
 
 from man.notebooker import execute_notebook
 from man.notebooker.utils.caching import get_cache, set_cache
@@ -64,7 +64,8 @@ def _monitor_stderr(process, job_id):
     return ''.join(stderr)
 
 
-def run_report(report_name, report_title, mailto, overrides):
+def run_report(report_name, report_title, mailto, overrides, generate_pdf_output=True):
+    # Actually start the job in earnest.
     job_id = str(uuid.uuid4())
     job_start_time = datetime.datetime.now()
     result_serializer = NotebookResultSerializer(mongo_host=os.environ['MONGO_HOST'],
@@ -73,7 +74,11 @@ def run_report(report_name, report_title, mailto, overrides):
     result_serializer.save_check_stub(job_id, report_name,
                                       report_title=report_title,
                                       job_start_time=job_start_time,
-                                      status=JobStatus.SUBMITTED)
+                                      status=JobStatus.SUBMITTED,
+                                      overrides=overrides,
+                                      mailto=mailto,
+                                      generate_pdf_output=generate_pdf_output,
+                                      )
     p = subprocess.Popen([sys.executable,
                           '-m', execute_notebook.__name__,
                           '--job-id', job_id,
@@ -86,6 +91,7 @@ def run_report(report_name, report_title, mailto, overrides):
                           '--mongo-db-name', result_serializer.database_name,
                           '--mongo-host', result_serializer.mongo_host,
                           '--result-collection-name', result_serializer.result_collection_name,
+                          '--pdf-output' if generate_pdf_output else '--no-pdf-output',
                           ], stderr=subprocess.PIPE)
     stderr_thread = threading.Thread(target=_monitor_stderr, args=(p, job_id, ))
     stderr_thread.daemon = True
@@ -108,3 +114,29 @@ def run_checks_http(report_name):
     return (jsonify({'id': job_id}),
             202,  # HTTP Accepted code
             {'Location': url_for('serve_results_bp.task_status', report_name=report_name, task_id=job_id)})
+
+
+def _rerun_report(task_id):
+    result_serializer = NotebookResultSerializer(mongo_host=os.environ['MONGO_HOST'],
+                                                 database_name=os.environ['DATABASE_NAME'],
+                                                 result_collection_name=os.environ['RESULT_COLLECTION_NAME'])
+    result = result_serializer.get_check_result(task_id)
+    if not result:
+        abort(404)
+    prefix = 'Rerun of '
+    title = result.report_title if result.report_title.startswith(prefix) else (prefix + result.report_title)
+    new_job_id = run_report(
+        result.report_name,
+        title,
+        result.mailto,
+        result.overrides,
+        generate_pdf_output=result.generate_pdf_output,
+    )
+    return new_job_id
+
+
+@run_report_bp.route('/rerun_report/<task_id>/<path:report_name>', methods=['POST'])
+def rerun_report(task_id, report_name):
+    new_job_id = _rerun_report(task_id)
+    return jsonify({'results_url': url_for('serve_results_bp.task_results',
+                                           report_name=report_name, task_id=new_job_id)})

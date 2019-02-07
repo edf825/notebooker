@@ -1,19 +1,17 @@
 import decorator
 
-from man.notebooker.utils.caching import cache
+from werkzeug.contrib.cache import SimpleCache
+
+from man.notebooker.utils import caching
 from man.notebooker.utils.templates import get_all_possible_templates
 
 
 def cache_blaster(f):
     def blast_it(func, *args, **kwargs):
-        cache.clear()
+        caching.cache = SimpleCache()
         result = func(*args, **kwargs)
         print "Clearing cache"
-        try:
-            cache.clear()
-        except (IOError, OSError):
-            # If the cache has already been blasted, never mind!
-            pass
+        caching.cache.clear()
         return result
     return decorator.decorator(blast_it, f)
 

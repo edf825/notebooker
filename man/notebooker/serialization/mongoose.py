@@ -10,8 +10,10 @@ from ahl.mongo.auth import authenticate
 from ahl.mongo.decorators import mongo_retry
 from gridfs import NoFile
 from mkd.auth.mongo import get_auth
+from typing import Union, Optional, Dict, Any, AnyStr, List, Tuple, Generator
 
-from man.notebooker.constants import JobStatus, NotebookResultPending, NotebookResultError, NotebookResultComplete
+from man.notebooker.constants import JobStatus, NotebookResultPending, NotebookResultError, NotebookResultComplete, \
+    NotebookResultBase
 
 logger = get_logger(__name__)
 
@@ -64,9 +66,17 @@ class NotebookResultSerializer(object):
                 existing[k] = v
             self._save_raw_to_db(existing)
 
-    def save_check_stub(self, job_id, report_name, report_title='',
-                        job_start_time=None, status=JobStatus.PENDING):
-        # type: (str, str, Optional[str], Optional[datetime.datetime], Optional[JobStatus]) -> None
+    def save_check_stub(self,
+                        job_id,  # type: str
+                        report_name,  # type: str
+                        report_title='',  # type: Optional[str]
+                        job_start_time=None,  # type: Optional[datetime.datetime]
+                        status=JobStatus.PENDING,  # type: Optional[JobStatus]
+                        overrides=None,  # type: Optional[Dict[Any, Any]]
+                        mailto='',  # type: Optional[str]
+                        generate_pdf_output=True,  # type: Optional[bool]
+                        ):
+        # type: (...) -> None
         # Call this when we are just starting a check
         job_start_time = job_start_time or datetime.datetime.now()
         report_title = report_title or report_name
@@ -74,7 +84,10 @@ class NotebookResultSerializer(object):
                                                status=status,
                                                report_title=report_title,
                                                job_start_time=job_start_time,
-                                               report_name=report_name)
+                                               report_name=report_name,
+                                               mailto=mailto,
+                                               generate_pdf_output=generate_pdf_output,
+                                               overrides=overrides or {})
         self._save_to_db(pending_result)
 
     def save_check_result(self, notebook_result):
@@ -110,16 +123,19 @@ class NotebookResultSerializer(object):
                }.get(job_status)
         if cls is None:
             return None
+
         if job_status == JobStatus.DONE:
-            outputs = {}
-            for filename in result.get('raw_html_resources', {}).get('outputs', []):
-                outputs[filename] = self.result_data_store.get_last_version(filename).read()
+            def read_file(path):
+                try:
+                    return self.result_data_store.get_last_version(path).read()
+                except NoFile:
+                    logger.error('Could not find file %s in %s', path, self.result_data_store)
+                    return ''
+            outputs = {path: read_file(path) for path in result.get('raw_html_resources', {}).get('outputs', [])}
             result['raw_html_resources']['outputs'] = outputs
-            pdf_filename = _pdf_filename(job_id)
-            try:
-                result['pdf'] = self.result_data_store.get_last_version(pdf_filename).read()
-            except NoFile:
-                pass
+            if result.get('generate_pdf_output') is not False:
+                pdf_filename = _pdf_filename(job_id)
+                result['pdf'] = read_file(pdf_filename)
 
         if cls == NotebookResultComplete:
             notebook_result = NotebookResultComplete(
@@ -133,7 +149,10 @@ class NotebookResultSerializer(object):
                 raw_ipynb_json=result['raw_ipynb_json'],
                 raw_html=result['raw_html'],
                 pdf=result.get('pdf', ''),
+                overrides=result.get('overrides', {}),
+                generate_pdf_output=result.get('generate_pdf_output', True),
                 report_title=result.get('report_title', result['report_name']),
+                mailto=result.get('mailto', ''),
             )
         elif cls == NotebookResultPending:
             notebook_result = NotebookResultPending(
@@ -142,7 +161,10 @@ class NotebookResultSerializer(object):
                 report_name=result['report_name'],
                 status=job_status,
                 update_time=result['update_time'],
+                overrides=result.get('overrides', {}),
+                generate_pdf_output=result.get('generate_pdf_output', True),
                 report_title=result.get('report_title', result['report_name']),
+                mailto=result.get('mailto', ''),
             )
 
         elif cls == NotebookResultError:
@@ -153,7 +175,10 @@ class NotebookResultSerializer(object):
                 status=job_status,
                 update_time=result['update_time'],
                 error_info=result['error_info'],
+                overrides=result.get('overrides', {}),
+                generate_pdf_output=result.get('generate_pdf_output', True),
                 report_title=result.get('report_title', result['report_name']),
+                mailto=result.get('mailto', ''),
             )
         else:
             raise ValueError('Could not deserialise {} into result object.'.format(result))

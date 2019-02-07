@@ -12,25 +12,7 @@ from man.notebooker.serialization.mongoose import NotebookResultSerializer
 
 from man.notebooker.web.report_hunter import _report_hunter
 from ..utils import cache_blaster
-
-pytest_plugins = ['ahl.testing.pytest.mongo_server']
-
-TEST_DB_NAME = 'mongoose_restest'
-TEST_LIB = 'NB_OUTPUT'
-
-
-@pytest.fixture
-def bson_library(mongo_server, mongo_host):
-    m = Mongoose(mongo_host)
-    m.initialize_library(TEST_LIB, BSON_STORE_TYPE)
-    l = m.get_library(TEST_LIB)
-    l.create_index('_id')
-    return l
-
-
-@pytest.fixture(scope="function")
-def job_id():
-    return
+from .conftest import TEST_DB_NAME, TEST_LIB
 
 
 @cache_blaster
@@ -173,8 +155,9 @@ def test_report_hunter_pending_to_done(bson_library, mongo_host):
     with freezegun.freeze_time(datetime.datetime(2018, 1, 12, 2, 37)):
         serializer.update_check_status(job_id,
                                        JobStatus.DONE,
-                                       raw_html_resources={'outputs':{}},
+                                       raw_html_resources={u'outputs':{}},
                                        job_finish_time=datetime.datetime.now(),
+                                       pdf='',
                                        raw_ipynb_json='[]',
                                        raw_html='')
         _report_hunter(mongo_host, TEST_DB_NAME, TEST_LIB, run_once=True)
@@ -187,7 +170,9 @@ def test_report_hunter_pending_to_done(bson_library, mongo_host):
                                       job_start_time=datetime.datetime(2018, 1, 12, 2, 30),
                                       job_finish_time=datetime.datetime(2018, 1, 12, 2, 37),
                                       raw_html='',
-                                      raw_html_resources={'outputs':{}},
+                                      raw_html_resources={u'outputs':{}},
                                       raw_ipynb_json='[]'
                                       )
+    print(expected)
+    print(get_report_cache(report_name, job_id))
     assert expected == get_report_cache(report_name, job_id)

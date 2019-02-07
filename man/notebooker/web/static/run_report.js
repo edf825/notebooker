@@ -25,7 +25,6 @@ $(document).ready(function() {
             error: function(jqXHR, textStatus, errorThrown){
                 $('#errorMsg').text(jqXHR.status + ' ' + textStatus + ' ' + errorThrown);
                 $('#errorPopup').show();
-                // $('#errorMsg');
                 console.log(jqXHR);
                 console.log(textStatus);
                 console.log(errorThrown);
@@ -35,11 +34,4 @@ $(document).ready(function() {
         });
         return false;
     });
-    $('.message .close')
-      .on('click', function() {
-        $(this)
-          .closest('.message')
-          .hide()
-        ;
-      });
 });

@@ -124,6 +124,10 @@ def main(mongo_host, database_name, result_collection_name, debug, port):
     os.environ['DATABASE_NAME'] = os.getenv('DATABASE_NAME', database_name)
     os.environ['RESULT_COLLECTION_NAME'] = os.getenv('RESULT_COLLECTION_NAME', result_collection_name)
 
+    flask_app.config.update(
+        TEMPLATES_AUTO_RELOAD=debug,
+    )
+
     host = '0.0.0.0'
     start_app()
     http_server = WSGIServer((host, port), flask_app)

@@ -31,3 +31,11 @@ code {
 .ui.inverted.dropdown .item {
     color: white;
 }
+
+.buttontd {
+    text-align: center !important;
+}
+
+td button i {
+    margin: 0 !important;
+}
