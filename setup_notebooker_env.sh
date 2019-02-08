@@ -14,4 +14,4 @@ sudo yum install -y texlive-xetex \
 python setup.py develop
 pyinstall $(cat ./notebook_templates/notebook_requirements.txt)
 python -m ipykernel install --user --name=one_click_notebooks_kernel
-man_notebooker_webapp --port 11828 --mongo-host mktdatad --debug
+man_notebooker_webapp --port 11828 --mongo-host mktdatad --debug --database-name mongoose_$USER
