@@ -9,73 +9,67 @@
 <body>
 
     {{ header.sidebar(all_reports) }}
-    <div class="ui container" style="display:none" id="indexTableContainer">
-        <table id="resultsTable" class="ui sortable selectable celled table">
-            <thead>
-                <th>Title</th>
-                <th>Report Template Name</th>
-                <th>Status</th>
-                <th>Start Time</th>
-                <th>Completion Time</th>
-                <th>Results</th>
-                <th>Download ipynb</th>
-                <th>Download pdf</th>
-                <th>Rerun report</th>
-                <th>Delete Result</th>
-            </thead>
-            <tbody>
-            {% for ((report_name, job_id), result) in all_jobs.items() %}
-                <tr>
-                    <td>{{ result.report_title }}</td>
-                    <td>{{ result.report_name }}</td>
-                    <td>{{ result.status.value }}</td>
-                    <td>{{ result.job_start_time }}</td>
-                    <td>{{ result.job_finish_time }}</td>
-                    <td class="buttontd"><button onclick="location.href='{{ result.result_url }}'"
-                                type="button" class="ui button blue">Result</button>
-                    </td>
-                    <td class="buttontd">
-                        {% if result.status == donevalue %}
-                            <button onclick="location.href='{{ result.ipynb_url }}'"
-                                    type="button" class="ui button centered green"><i class="download icon"></i></button>
-                        {% endif %}
-                    </td>
-                    <td class="buttontd">
-                        {% if result.pdf %}
-                            <button onclick="location.href='{{ result.pdf_url }}'"
-                                    type="button" class="ui button green"><i class="download icon"></i></button>
-                        {% endif %}
-                    </td>
-                    <td class="buttontd">
-                        {% if result.overrides %}
+    <div class="ui centered grid" style="display:none" id="indexTableContainer">
+        <div class="twelve wide column">
+            <table id="resultsTable" class="ui sortable selectable padded table">
+                <thead>
+                    <th>Title</th>
+                    <th>Report Template Name</th>
+                    <th>Status</th>
+                    <th>Start Time</th>
+                    <th>Completion Time</th>
+                    <th>Results</th>
+                    <th>Download pdf</th>
+                    <th>Rerun report</th>
+                    <th>Delete Result</th>
+                </thead>
+                <tbody>
+                {% for ((report_name, job_id), result) in all_jobs.items() %}
+                    <tr>
+                        <td>{{ result.report_title }}</td>
+                        <td>{{ result.report_name }}</td>
+                        <td>{{ result.status.value }}</td>
+                        <td class="datetd">{{ result.job_start_time.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                        <td class="datetd">{{ result.job_finish_time.strftime('%Y-%m-%d %H:%M:%S') if result.job_finish_time else '' }}</td>
+                        <td class="buttontd"><button onclick="location.href='{{ result.result_url }}'"
+                                    type="button" class="ui button blue">Result</button>
+                        </td>
+
+                        <td class="buttontd">
+                            {% if result.pdf %}
+                                <button onclick="location.href='{{ result.pdf_url }}'"
+                                        type="button" class="ui button green"><i class="download icon"></i></button>
+                            {% endif %}
+                        </td>
+                        <td class="buttontd">
                             <button onclick="rerunReport('{{ result.job_id }}', '{{ result.rerun_url }}')"
                                 type="button" class="ui yellow button rerunButton"><i class="redo alternate icon"></i>Rerun</button>
-                        {% endif %}
-                    </td>
-                    <td class="buttontd">
-                        <button type="button" class="ui button red deletebutton" id="delete_{{ result.job_id }}">
-                            <i class="trash icon"></i>
-                        </button>
-                    </td>
-                </tr>
-            {% endfor %}
-            </tbody>
-        </table>
-        <div>
-            <button class="ui button black" onclick="location.href=window.location.href+'/?limit=0'">
-                Load all {{ n_results_available }} results
-            </button>
+                        </td>
+                        <td class="buttontd">
+                            <button type="button" class="ui button red deletebutton" id="delete_{{ result.job_id }}">
+                                <i class="trash icon"></i>
+                            </button>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <div>
+                <button class="ui button black" onclick="location.href=window.location.href+'/?limit=0'">
+                    Load all {{ n_results_available }} results
+                </button>
+            </div>
         </div>
-    </div>
-    <div class="ui modal" id="deleteModal">
-      <div class="header">Delete report</div>
-      <div class="content">
-        <p>Are you sure you wish to delete this report?</p>
-      </div>
-      <div class="actions">
-        <div class="ui approve button red">Delete</div>
-        <div class="ui cancel button">Cancel</div>
-      </div>
+        <div class="ui modal" id="deleteModal">
+          <div class="header">Delete report</div>
+          <div class="content">
+            <p>Are you sure you wish to delete this report?</p>
+          </div>
+          <div class="actions">
+            <div class="ui approve button red">Delete</div>
+            <div class="ui cancel button">Cancel</div>
+          </div>
+        </div>
     </div>
 </body>
 </html>
