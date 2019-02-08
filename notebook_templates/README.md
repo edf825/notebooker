@@ -22,6 +22,8 @@ git clone ssh://git@ahlgit.maninvestments.com:7999/data/man.notebooker.git
 cd man.notebooker
 
 # Install the jupyter extension
+python setup.py develop
+easy_install jupyter
 jupyter bundlerextension enable --py notebooker_extension.bundler --user
 
 # Start a jupyter notebook session
