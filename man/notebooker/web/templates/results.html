@@ -16,7 +16,8 @@
                 <iframe
                         id="resultsIframe"
                         src="{{ html_render }}"
-                        style="width:100%; border:none; display:none" onload="iframeLoaded(this)"
+                        style="width:100%; border:none;"
+                        onload="iframeLoaded(this)"
                         class="iframeToLoad"
                         scrolling="no">
                 </iframe>
@@ -48,10 +49,11 @@
                             <li class="item">{{ k }} = {{ v }}</li>
                         {% endfor %}
                     </div>
-                    <br/>
-                    <button onclick="rerunReport('{{ result.job_id }}', '{{ rerun_url }}')"
-                                type="button" class="ui blue button rerunButton"><i class="redo alternate icon"></i>Rerun</button>
                 {% endif %}
+                <br/>
+                <br/>
+                <button onclick="rerunReport('{{ result.job_id }}', '{{ rerun_url }}')"
+                            type="button" class="ui blue button rerunButton"><i class="redo alternate icon"></i>Rerun</button>
 
             </div>
         <br/>
