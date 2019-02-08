@@ -3,7 +3,6 @@ $(document).ready(function() {
     var last_data = undefined;
     let load_status = function() {
         if (typeof last_data !== "undefined" && typeof last_data.results_url !== "undefined") {
-            console.log(last_data);
             clearInterval(intervalId);
             top.window.location.href = last_data.results_url;
         }
@@ -23,8 +22,6 @@ $(document).ready(function() {
             error: function(xhr, error){
                 $('h2').text(xhr.responseJSON.status);
                 $('.loader').hide();
-                console.log(xhr);
-                console.log(error);
                 clearInterval(intervalId);
             }
         })

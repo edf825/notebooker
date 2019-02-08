@@ -29,7 +29,8 @@ def run_checks(job_id,  # type: str
                output_base_dir,  # type: str
                template_base_dir,  # type: str
                overrides,  # type: Dict[Any, Any]
-               export_pdf=True,  # type: Optional[bool]
+               generate_pdf_output=True,  # type: Optional[bool]
+               mailto='',  # type: Optional[str]
                ):
     # type: (...) -> NotebookResultComplete
 
@@ -53,7 +54,7 @@ def run_checks(job_id,  # type: str
 
     logger.info('Saving output notebook as HTML from {}'.format(ipynb_executed_path))
     html, resources = ipython_to_html(ipynb_executed_path, job_id)
-    pdf = ipython_to_pdf(raw_executed_ipynb, report_title) if export_pdf else None
+    pdf = ipython_to_pdf(raw_executed_ipynb, report_title) if generate_pdf_output else ''
 
     notebook_result = NotebookResultComplete(job_id=job_id,
                                              job_start_time=job_start_time,
@@ -61,9 +62,12 @@ def run_checks(job_id,  # type: str
                                              raw_html_resources=resources,
                                              raw_ipynb_json=raw_executed_ipynb,
                                              raw_html=html,
+                                             mailto=mailto,
                                              pdf=pdf,
+                                             generate_pdf_output=generate_pdf_output,
                                              report_name=template_name,
                                              report_title=report_title,
+                                             overrides=overrides,
                                              )
     return notebook_result
 
@@ -76,7 +80,9 @@ def run_report_worker(job_submit_time,
                       job_id=None,
                       output_base_dir=OUTPUT_BASE_DIR,
                       template_base_dir=TEMPLATE_BASE_DIR,
-                      attempts_remaining=2
+                      attempts_remaining=2,
+                      mailto='',
+                      generate_pdf_output=True,
                       ):
     job_id = job_id or str(uuid.uuid4())
     stop_execution = os.getenv('NOTEBOOKER_APP_STOPPING')
@@ -97,7 +103,10 @@ def run_report_worker(job_submit_time,
                             report_title,
                             output_base_dir,
                             template_base_dir,
-                            overrides)
+                            overrides,
+                            mailto=mailto,
+                            generate_pdf_output=generate_pdf_output,
+                            )
         logger.info('Successfully got result.')
         result_serializer.save_check_result(result)
         logger.info('Saved result to mongo successfully.')
@@ -108,7 +117,11 @@ def run_report_worker(job_submit_time,
                                      job_start_time=job_submit_time,
                                      report_name=report_name,
                                      report_title=report_title,
-                                     error_info=error_info)
+                                     error_info=error_info,
+                                     overrides=overrides,
+                                     mailto=mailto,
+                                     generate_pdf_output=generate_pdf_output,
+                                     )
         logger.error('Report run failed. Saving error result to mongo library %s@%s...',
                      result_serializer.database_name, result_serializer.mongo_host)
         result_serializer.save_check_result(result)
@@ -124,6 +137,8 @@ def run_report_worker(job_submit_time,
                                      output_base_dir=output_base_dir,
                                      template_base_dir=template_base_dir,
                                      attempts_remaining=attempts_remaining - 1,
+                                     mailto=mailto,
+                                     generate_pdf_output=generate_pdf_output,
                                      )
         else:
             logger.info('Abandoning attempt to run report. It failed too many times.')
@@ -142,6 +157,7 @@ def run_report_worker(job_submit_time,
 @click.option('--output-base-dir', default=OUTPUT_BASE_DIR)
 @click.option('--template-base-dir', default=TEMPLATE_BASE_DIR)
 @click.option('--mailto', default='')
+@click.option('--pdf-output/--no-pdf-output', default=True)
 def main(report_name,
          overrides_as_json,
          report_title,
@@ -153,6 +169,7 @@ def main(report_name,
          output_base_dir,
          template_base_dir,
          mailto,
+         pdf_output,
          ):
     if report_name is None:
         raise ValueError('Error! Please provide a --report-name.')
@@ -173,7 +190,9 @@ def main(report_name,
         job_id=job_id,
         output_base_dir=output_base_dir,
         template_base_dir=template_base_dir,
-        attempts_remaining=n_retries-1
+        attempts_remaining=n_retries-1,
+        mailto=mailto,
+        generate_pdf_output=pdf_output,
     )
     if mailto:
         send_result_email(result, mailto)

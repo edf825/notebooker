@@ -32,6 +32,7 @@ def task_results(task_id, report_name):
                            html_render=url_for('serve_results_bp.task_results_html', report_name=report_name, task_id=task_id),
                            ipynb_url=url_for('serve_results_bp.download_ipynb_result', report_name=report_name, task_id=task_id),
                            pdf_url=url_for('serve_results_bp.download_pdf_result', report_name=report_name, task_id=task_id),
+                           rerun_url=url_for('run_report_bp.rerun_report', report_name=report_name, task_id=task_id),
                            all_reports=get_all_possible_templates())
 
 
@@ -42,11 +43,11 @@ def task_results_html(task_id, report_name):
     # - present the error, if the job has failed
     # - present the user with some info detailing the progress of the job, if it is still running.
     result = _get_job_results(task_id, report_name, _result_serializer())
-    if isinstance(result, NotebookResultError):
+    if isinstance(result, (NotebookResultError, NotebookResultComplete)):
         return result.raw_html
     if isinstance(result, NotebookResultPending):
         return task_loading(report_name, task_id)
-    return result.raw_html
+    abort(404)
 
 
 @serve_results_bp.route('/result_html_render/<path:report_name>/<task_id>/resources/<path:resource>')
@@ -57,7 +58,7 @@ def task_result_resources_html(task_id, resource, report_name):
         resource_path = os.path.join(task_id, 'resources', resource)
         if resource_path in html_resources.get('outputs', {}):
             return html_resources['outputs'][resource_path]
-    return abort(404)
+    abort(404)
 
 
 @serve_results_bp.route('/result_download_ipynb/<path:report_name>/<task_id>')

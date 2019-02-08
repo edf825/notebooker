@@ -22,6 +22,6 @@ def test_execution_of_templates(template_name):
                    OUTPUT_BASE_DIR,
                    TEMPLATE_BASE_DIR,
                    {},
-                   export_pdf=False)
+                   generate_pdf_output=False)
     finally:
         _cleanup_dirs()
