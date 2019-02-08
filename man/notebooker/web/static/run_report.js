@@ -18,16 +18,12 @@ $(document).ready(function() {
                     $('#parametersDimmer').hide();
                 }
                 else {
-                    console.log(data, status, request);
                     window.location.href = '/results/' + reportName + '/' + data.id;
                 }
             },
             error: function(jqXHR, textStatus, errorThrown){
                 $('#errorMsg').text(jqXHR.status + ' ' + textStatus + ' ' + errorThrown);
                 $('#errorPopup').show();
-                console.log(jqXHR);
-                console.log(textStatus);
-                console.log(errorThrown);
                 $('#runReportButton').removeClass('disabled').addClass('active');
                 $('#parametersDimmer').hide();
             }

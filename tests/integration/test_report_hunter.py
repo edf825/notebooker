@@ -173,6 +173,4 @@ def test_report_hunter_pending_to_done(bson_library, mongo_host):
                                       raw_html_resources={u'outputs':{}},
                                       raw_ipynb_json='[]'
                                       )
-    print(expected)
-    print(get_report_cache(report_name, job_id))
     assert expected == get_report_cache(report_name, job_id)

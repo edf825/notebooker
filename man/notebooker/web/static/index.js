@@ -4,7 +4,6 @@ $(document).ready( function () {
     $('#indexTableContainer').fadeIn();
     $('.deletebutton').click(function(clicked) {
         var to_delete = clicked.target.closest('button').id.split('_')[1];
-        console.log('Deleting ' + to_delete);
         $('#deleteModal').modal({
             closable  : true,
             onDeny    : function(){
@@ -16,7 +15,6 @@ $(document).ready( function () {
                     url: '/delete_report/' + to_delete,  // We get this from loading.html, which comes from flask
                     dataType: 'json',
                     success: function(data, status, request) {
-                        console.log(data);
                         if (data.status === 'error') {
                             $('#errorMsg').text(data.content);
                             $('#errorPopup').show();

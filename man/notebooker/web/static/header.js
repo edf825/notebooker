@@ -23,7 +23,6 @@ function rerunReport(jobId, rerunUrl) {
         url: rerunUrl,
         dataType: 'json',
         success: function(data, status, request) {
-            console.log(data);
             window.location.href = data.results_url;
         },
         error: function(xhr, textStatus, errorThrown){

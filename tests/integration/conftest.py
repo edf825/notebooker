@@ -16,8 +16,3 @@ def bson_library(mongo_server, mongo_host):
     l = m.get_library(TEST_LIB)
     l.create_index('_id')
     return l
-
-
-@pytest.fixture(scope="function")
-def job_id():
-    return

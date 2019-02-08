@@ -10,7 +10,6 @@ def cache_blaster(f):
     def blast_it(func, *args, **kwargs):
         caching.cache = SimpleCache()
         result = func(*args, **kwargs)
-        print "Clearing cache"
         caching.cache.clear()
         return result
     return decorator.decorator(blast_it, f)
