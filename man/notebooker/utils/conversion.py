@@ -88,7 +88,7 @@ def generate_ipynb_from_py(template_base_dir, report_name, warn_on_local=True):
         output_template_path = _ipynb_output_path(template_base_dir, report_path, sha)
     else:
         if warn_on_local:
-            logger.warn('Loading from local location. This is only expected if you are running locally.')
+            logger.warning('Loading from local location. This is only expected if you are running locally.')
         python_template_path = pkg_resources.resource_filename(__name__,
                                                                '../../../notebook_templates/{}.py'.format(report_path))
         output_template_path = _ipynb_output_path(template_base_dir, report_path, '')

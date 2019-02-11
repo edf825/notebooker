@@ -1,6 +1,5 @@
 import datetime
-import functools
-import threading
+from builtins import object
 
 import gridfs
 import pymongo
@@ -57,7 +56,7 @@ class NotebookResultSerializer(object):
         # type: (str, JobStatus, **Any) -> None
         existing = self.library.find_one({'job_id': job_id})
         if not existing:
-            logger.warn("Couldn't update check status to {} for job id {} since it is not in the database.".format(
+            logger.warning("Couldn't update check status to {} for job id {} since it is not in the database.".format(
                 status, job_id
             ))
         else:
@@ -100,9 +99,13 @@ class NotebookResultSerializer(object):
         if notebook_result.status == JobStatus.DONE:
             if notebook_result.raw_html_resources and 'outputs' in notebook_result.raw_html_resources:
                 for filename, binary_data in notebook_result.raw_html_resources['outputs'].items():
-                    self.result_data_store.put(binary_data, filename=filename)
+                    self.result_data_store.put(binary_data,
+                                               filename=filename,
+                                               encoding='utf-8')
             if notebook_result.pdf:
-                self.result_data_store.put(notebook_result.pdf, filename=_pdf_filename(notebook_result.job_id))
+                self.result_data_store.put(notebook_result.pdf,
+                                           filename=_pdf_filename(notebook_result.job_id),
+                                           encoding='utf-8')
 
     @mongo_retry
     def get_check_result(self, job_id):

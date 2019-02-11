@@ -29,6 +29,7 @@ def send_result_email(result, mailto):
 
     if isinstance(result, NotebookResultComplete):
         # Attach PDF output to the email. Has to be saved to disk temporarily for the mail API to work.
+        print(result.report_name, os.sep, REPORT_NAME_SEPARATOR)
         report_name = result.report_name.replace(os.sep, REPORT_NAME_SEPARATOR)
         if isinstance(report_name, bytes):
             report_name = report_name.decode('utf-8')

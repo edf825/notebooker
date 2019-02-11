@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 import ast
 import json
 import os
@@ -14,17 +15,13 @@ from ahl.logging import get_logger
 logger = get_logger(__name__)
 
 
-def _handle_overrides_safe(overrides, output_path):
-    # type: (AnyStr, str) -> Dict[str, Union[Dict[str, Any], List[str]]]
+def _handle_overrides_safe(raw_python, output_path):
+    # type: (AnyStr, AnyStr) -> Dict[AnyStr, Union[Dict[AnyStr, Any], List[AnyStr]]]
     # This function executes the given python (in "overrides") and returns the
     # evaluated variables as a dictionary. Problems are returned as "issues" in a list.
     issues = []
     result = {'overrides': {}, 'issues': issues}
-    try:
-        raw_python = overrides.encode('utf-8')
-    except UnicodeDecodeError:
-        raw_python = str(overrides)
-    logger.info('Parsing the following as raw python:\n{}'.format(raw_python))
+    logger.info('Parsing the following as raw python:\n%s', raw_python)
     try:
         # Parse the python input as a Abstract Syntax Tree (this is what python itself does)
         parsed_module = ast.parse(raw_python)
@@ -55,23 +52,23 @@ def _handle_overrides_safe(overrides, output_path):
 
     if not issues:
         try:
-            with open(output_path, 'w') as f:
+            with open(output_path, 'wb') as f:
                 logger.info('Dumping to %s: %s', output_path, result)
-                pickle.dump(result, f)
+                pickle.dump(json.dumps(result), f)
             return result
         except TypeError as e:
             issues.append('Could not pickle: {}. All input must be picklable (sorry!). '
                           'Error: {}'.format(str(result), str(e)))
     if issues:
-        with open(output_path, 'w') as f:
+        with open(output_path, 'wb') as f:
             result = {'overrides': {}, 'issues': issues}
             logger.info('Dumping to %s: %s', output_path, result)
-            pickle.dump(result, f)
+            pickle.dump(json.dumps(result), f)
     return result
 
 
 def handle_overrides(overrides_string, issues):
-    # type: (str,  List[str]) -> Tuple[Dict[str, Any]]
+    # type: (AnyStr,  List[AnyStr]) -> Tuple[Dict[AnyStr, Any]]
     override_dict = {}
     if overrides_string.strip():
         tmp_file = tempfile.mktemp()
@@ -79,8 +76,8 @@ def handle_overrides(overrides_string, issues):
             subprocess.check_output([sys.executable, '-m',  __name__,
                                      '--overrides', overrides_string,
                                      '--output', tmp_file])
-            with open(tmp_file, 'r') as f:
-                output_dict = pickle.load(f)
+            with open(tmp_file, 'rb') as f:
+                output_dict = json.loads(pickle.load(f))
             logger.info('Got %s from pickle', output_dict)
             override_dict, _issues = output_dict['overrides'], output_dict['issues']
             issues.extend(_issues)

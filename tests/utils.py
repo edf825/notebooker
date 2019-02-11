@@ -25,4 +25,5 @@ def _gen_all_templates(template_dict):
 
 
 def _all_templates():
-    return list(_gen_all_templates(get_all_possible_templates(warn_on_local=False)))
+    templates = list(_gen_all_templates(get_all_possible_templates(warn_on_local=False)))
+    return templates
