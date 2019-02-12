@@ -1,5 +1,7 @@
+from __future__ import unicode_literals
 import datetime
 
+from six import PY2, PY3
 import freezegun
 import mock
 import hypothesis
@@ -11,8 +13,8 @@ from typing import Any
 from man.notebooker.web.handle_overrides import handle_overrides, _handle_overrides_safe
 
 
-IMPORT_REGEX = re.compile('^(from [a-zA-Z0-9_.]+ )?import (?P<import_target>[a-zA-Z0-9_.]+)( as (?P<name>.+))?$')
-VARIABLE_ASSIGNMENT_REGEX = re.compile('^(?P<variable_name>[a-zA-Z_]+) *= *(?P<value>.+)$')
+IMPORT_REGEX = re.compile(r'^(from [a-zA-Z0-9_.]+ )?import (?P<import_target>[a-zA-Z0-9_.]+)( as (?P<name>.+))?$')
+VARIABLE_ASSIGNMENT_REGEX = re.compile(r'^(?P<variable_name>[a-zA-Z_]+) *= *(?P<value>.+)$')
 
 
 @hypothesis.given(st.text())
@@ -67,28 +69,31 @@ def test_handle_overrides_handles_anything_cleanly_no_process_import(text):
 
 
 @freezegun.freeze_time(datetime.datetime(2018, 1, 1))
-@pytest.mark.parametrize('input_txt', ['import datetime;d=datetime.datetime.now()',
-                                       'import datetime as dt;d=dt.datetime.now()',
-                                       'from datetime import datetime;d=datetime.now()',
-                                       'from datetime import datetime as dt;d=dt.now()'])
+@pytest.mark.parametrize('input_txt', ['import datetime;d=datetime.datetime.now().isoformat()',
+                                       'import datetime as dt;d=dt.datetime.now().isoformat()',
+                                       'from datetime import datetime;d=datetime.now().isoformat()',
+                                       'from datetime import datetime as dt;d=dt.now().isoformat()'])
 def test_handle_overrides_handles_imports(input_txt):
     with mock.patch('man.notebooker.web.handle_overrides.subprocess.check_output') as popen:
         popen.side_effect = lambda args: mock.MagicMock(res=_handle_overrides_safe(args[4], args[6]))
         issues = []
         overrides = handle_overrides(input_txt, issues)
-    assert overrides == {'d': datetime.datetime(2018, 1, 1)}
+    assert overrides == {'d': datetime.datetime(2018, 1, 1).isoformat()}
 
 
 @pytest.mark.parametrize('input_txt', ['import datetime;d=datetime.datetime(10, 1, 1)'])
-def test_handle_overrides_handles_imports(input_txt):
+def test_handle_overrides_handles_imports_with_issues(input_txt):
     with mock.patch('man.notebooker.web.handle_overrides.subprocess.check_output') as popen:
         popen.side_effect = lambda args: mock.MagicMock(res=_handle_overrides_safe(args[4], args[6]))
         issues = []
         overrides = handle_overrides(input_txt, issues)
     assert overrides == {}
+    if PY3:
+        error_string = "Object of type 'datetime' is not JSON serializable, Value: 0010-01-01 00:00:00"
+    else:
+        error_string = 'datetime.datetime(10, 1, 1, 0, 0) is not JSON serializable, Value: 0010-01-01 00:00:00'
     assert issues == ['Could not JSON serialise a parameter ("d") - '
                       'this must be serialisable so that we can execute '
                       'the notebook with it! '
-                      '(Error: datetime.datetime(10, 1, 1, 0, 0) is not JSON serializable, '
-                      'Value: 0010-01-01 00:00:00)']
+                      '(Error: {})'.format(error_string)]
 

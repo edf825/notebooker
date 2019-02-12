@@ -197,8 +197,8 @@ def main(report_name,
     if mailto:
         send_result_email(result, mailto)
     if isinstance(result, NotebookResultError):
-        logger.warn('Notebook execution failed! Output was:')
-        logger.warn(repr(result))
+        logger.warning('Notebook execution failed! Output was:')
+        logger.warning(repr(result))
         raise Exception(result.error_info)
     return result
 

@@ -1,6 +1,8 @@
 import os
 import nbformat
 import pkg_resources
+from functools import reduce
+
 from ahl.logging import get_logger
 from nbconvert import HTMLExporter
 from traitlets.config import Config
@@ -13,6 +15,21 @@ from man.notebooker.utils.conversion import generate_ipynb_from_py
 logger = get_logger(__name__)
 
 
+def _valid_dirname(d):
+    return (
+        '__init__' not in d and
+        '__pycache__' not in d
+    )
+
+
+def _valid_filename(f):
+    return (
+        f.endswith('.py') and
+        '__init__' not in f and
+        '__pycache__' not in f
+    )
+
+
 def get_directory_structure(starting_point=PYTHON_TEMPLATE_DIR):
     # type: (Optional[str]) -> Dict[str, Union[Dict, None]]
     """
@@ -22,10 +39,12 @@ def get_directory_structure(starting_point=PYTHON_TEMPLATE_DIR):
     rootdir = starting_point.rstrip(os.sep)
     start = rootdir.rfind(os.sep) + 1
     for path, dirs, files in os.walk(rootdir):
+        if not _valid_dirname(path):
+            continue
         folders = path[start:].split(os.sep)
         subdir = {os.sep.join(folders[1:] + [f.replace('.py', '')]): None
                   for f in files
-                  if f.endswith('.py') and '__init__' not in f}
+                  if _valid_filename(f)}
         parent = reduce(dict.get, folders[:-1], all_dirs)
         parent[folders[-1]] = subdir
     return all_dirs[rootdir[start:]]
@@ -36,7 +55,7 @@ def get_all_possible_templates(warn_on_local=True):
         all_checks = get_directory_structure()
     else:
         if warn_on_local:
-            logger.warn('Fetching all possible checks from local repo. New updates will not be retrieved from git.')
+            logger.warning('Fetching all possible checks from local repo. New updates will not be retrieved from git.')
         # Only import here because we don't actually want to import these if the app is working properly.
         import notebook_templates
         all_checks = get_directory_structure(os.path.abspath(notebook_templates.__path__[0]))

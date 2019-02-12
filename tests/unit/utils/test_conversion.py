@@ -20,7 +20,6 @@ def test_generate_ipynb_from_py():
     try:
         set_cache('latest_sha', 'fake_sha_early')
 
-
         os.mkdir(python_dir + '/extra_path')
         with open(os.path.join(python_dir, 'extra_path', 'test_report.py'), 'w') as f:
             f.write('#hello world\n')

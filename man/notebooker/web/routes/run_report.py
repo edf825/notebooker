@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 import datetime
 import json
 import os
@@ -54,11 +55,12 @@ def run_report_http(report_name):
 def _monitor_stderr(process, job_id):
     stderr = []
     while True:
-        line = process.stderr.readline()
+        line = process.stderr.readline().decode('utf-8')
         stderr.append(line)
         logger.info(line)  # So that we have it in the log, not just in memory.
-        key = u'run_output_{}'.format(job_id)
-        set_cache(key, ''.join(stderr))
+        key = 'run_output_{}'.format(job_id)
+        all_output = ''.join(stderr)
+        set_cache(key, all_output)
         if line == '' and process.poll() is not None:
             break
     return ''.join(stderr)

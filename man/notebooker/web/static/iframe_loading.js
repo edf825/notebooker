@@ -7,4 +7,5 @@ var iframeLoaded = function(iframe) {
     $(".iframeToLoad").show();
     resizeIframe(iframe);
     $('.iframeLoadingDimmer').removeClass('active').addClass('disabled');
+
 };

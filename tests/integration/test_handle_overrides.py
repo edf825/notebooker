@@ -1,6 +1,7 @@
 import datetime
 import pytest
 import re
+from six import PY2
 
 from man.notebooker.web.handle_overrides import handle_overrides
 
@@ -26,8 +27,10 @@ VARIABLE_ASSIGNMENT_REGEX = re.compile('^(?P<variable_name>[a-zA-Z_]+) *= *(?P<v
             'import datetime\nd = datetime.datetime(2018, 1, 1)',
             {},
             ['Could not JSON serialise a parameter ("d") - this must be serialisable so that we can '
-             'execute the notebook with it! (Error: datetime.datetime(2018, 1, 1, 0, 0) is not JSON '
-             'serializable, Value: 2018-01-01 00:00:00)']),
+             'execute the notebook with it! (Error: {})'.format(
+                'datetime.datetime(2018, 1, 1, 0, 0) is not JSON serializable, Value: 2018-01-01 00:00:00' if PY2 else
+                'Object of type \'datetime\' is not JSON serializable, Value: 2018-01-01 00:00:00'
+            )]),
         (
             'Successfully importing and using a library',
             'import datetime\nd = datetime.datetime(2018, 1, 1).isoformat()',
@@ -42,7 +45,7 @@ VARIABLE_ASSIGNMENT_REGEX = re.compile('^(?P<variable_name>[a-zA-Z_]+) *= *(?P<v
             'Failing importing and using an un-imported library',
             'import datetimes\nd = datetime.datetime(2018, 1, 1)',
             {},
-            ['An error was encountered: No module named datetimes']),
+            ['An error was encountered: No module named {}'.format("datetimes" if PY2 else "'datetimes'")]),
         (
             'Importing but just using an expression',
             'import datetime;datetime.datetime(2018, 1, 1)',

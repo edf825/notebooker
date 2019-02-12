@@ -14,6 +14,6 @@ To run your own version of the webapp:
     * MONGOOSE_DB = research
     * LIBRARY = jbannister.NOTEBOOK_OUTPUT
     * LIBRARY_TYPE = BSONStore
-  
+
+
 2. Run [setup_notebooker_env.sh](setup_notebooker_env.sh).
-```
