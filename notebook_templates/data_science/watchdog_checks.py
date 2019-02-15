@@ -33,7 +33,7 @@ max_stale_days = 5
 # -
 
 # %matplotlib inline
-from idi.datascience.tools import data_checks
+from man.datascience.tools import data_checks
 
 data_checks.check_dataset(library_name,
                           mongo_host=mongo_host,
