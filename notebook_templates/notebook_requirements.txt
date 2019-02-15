@@ -2,7 +2,7 @@ ahl.marketdata
 ahl.signals
 equities.core
 equities.centaur
-idi.datascience
+man.datascience
 intervaltree
 man.secmaster
 matplotlib
