@@ -9,7 +9,6 @@
 # ---
 
 # %matplotlib inline
-from plotly import __version__
 import numpy as np
 from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot
 init_notebook_mode(connected=False)
