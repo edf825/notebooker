@@ -8,3 +8,4 @@ man.secmaster
 matplotlib
 pytz
 seaborn
+plotly
