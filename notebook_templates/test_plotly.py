@@ -15,7 +15,7 @@ init_notebook_mode(connected=False)
 
 # + {"tags": ["parameters"]}
 x_n = 2000
-y_n = 2000
+y_n = 2070
 # -
 
 x = np.random.randn(x_n)
