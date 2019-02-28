@@ -94,6 +94,7 @@ def test_run_report(bson_library, mongo_host, workspace):
         _check_report_output(job_id, serialiser, overrides=overrides,
                              report_name=report_name, report_title=report_title,
                              mailto=mailto)
+        assert job_id == serialiser.get_latest_job_id_for_name_and_params(report_name, overrides)
 
 
 @cache_blaster
@@ -121,3 +122,5 @@ def test_run_report_and_rerun(bson_library, mongo_host, workspace):
         _check_report_output(new_job_id, serialiser, overrides=overrides,
                              report_name=report_name, report_title='Rerun of ' + report_title,
                              mailto=mailto, generate_pdf_output=False)
+        assert new_job_id == serialiser.get_latest_job_id_for_name_and_params(report_name, overrides)
+        assert not {job_id, new_job_id} - set(serialiser.get_all_job_ids_for_name_and_params(report_name, overrides))
