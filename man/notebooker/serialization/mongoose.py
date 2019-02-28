@@ -202,14 +202,29 @@ class NotebookResultSerializer(object):
                 yield self.get_check_result(res['job_id'])
 
     @mongo_retry
-    def get_all_result_keys(self, limit=0):
+    def get_all_result_keys(self, limit=0, mongo_filter=None):
         # type: (Optional[int]) -> List[Tuple[str, str]]
         keys = []
-        query = {'status': {'$ne': JobStatus.DELETED.value}}
+        base_filter = {'status': {'$ne': JobStatus.DELETED.value}}
+        if mongo_filter:
+            base_filter.update(mongo_filter)
         projection = {'report_name': 1, 'job_id': 1, '_id': 0}
-        for result in self.library.find(query, projection).sort('update_time', -1).limit(limit):
+        for result in self.library.find(base_filter, projection).sort('update_time', -1).limit(limit):
             keys.append((result['report_name'], result['job_id']))
         return keys
+
+    @mongo_retry
+    def get_all_job_ids_for_name_and_params(self, report_name, params):
+        # type: (str, Dict) -> List[str]
+        """ Get all the result ids for a given name and parameters, newest first """
+        return [x[1] for x in self.get_all_result_keys(mongo_filter={'report_name': report_name, 'overrides': params})]
+
+    @mongo_retry
+    def get_latest_job_id_for_name_and_params(self, report_name, params):
+        # type: (str, Dict) -> Optional[str]
+        """ Get the latest result id for a given name and parameters """
+        all_job_ids = self.get_all_job_ids_for_name_and_params(report_name, params)
+        return all_job_ids[0] if all_job_ids else None
 
     @mongo_retry
     def n_all_results(self):
