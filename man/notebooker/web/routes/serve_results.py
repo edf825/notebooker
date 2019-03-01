@@ -1,12 +1,12 @@
 import os
 import traceback
 from ahl.logging import get_logger
-from flask import render_template, jsonify, url_for, Blueprint, Response, abort
-
+from flask import render_template, jsonify, url_for, Blueprint, Response, abort, request
+from typing import Union, Any
 from man.notebooker.utils.caching import get_cache
-from man.notebooker.constants import JobStatus, NotebookResultError, NotebookResultPending, NotebookResultComplete
+from man.notebooker.constants import JobStatus, NotebookResultError, NotebookResultPending, NotebookResultComplete, NotebookResultBase
 from man.notebooker.serialization.mongoose import NotebookResultSerializer, _pdf_filename
-from man.notebooker.utils.results import _get_job_results, get_all_result_keys
+from man.notebooker.utils.results import _get_job_results, get_all_result_keys, get_latest_job_results
 from man.notebooker.utils.templates import get_all_possible_templates
 
 serve_results_bp = Blueprint('serve_results_bp', __name__)
@@ -36,18 +36,43 @@ def task_results(task_id, report_name):
                            all_reports=get_all_possible_templates())
 
 
+def _process_result_or_abort(result):
+    # type: (NotebookResultBase) -> Union[str, Any]
+    if isinstance(result, (NotebookResultError, NotebookResultComplete)):
+        return result.raw_html
+    if isinstance(result, NotebookResultPending):
+        return task_loading(result.report_name, result.job_id)
+    abort(404)
+
+
 @serve_results_bp.route('/result_html_render/<path:report_name>/<task_id>')
 def task_results_html(task_id, report_name):
     # In this method, we either:
     # - present the HTML results, if the job has finished
     # - present the error, if the job has failed
     # - present the user with some info detailing the progress of the job, if it is still running.
-    result = _get_job_results(task_id, report_name, _result_serializer())
-    if isinstance(result, (NotebookResultError, NotebookResultComplete)):
-        return result.raw_html
-    if isinstance(result, NotebookResultPending):
-        return task_loading(report_name, task_id)
-    abort(404)
+    return _process_result_or_abort(_get_job_results(task_id, report_name, _result_serializer()))
+
+
+@serve_results_bp.route('/result_html_render/<path:report_name>/latest')
+def latest_parameterised_task_results_html(report_name):
+    # In this method, we either:
+    # - present the HTML results, if the job has finished
+    # - present the error, if the job has failed
+    # - present the user with some info detailing the progress of the job, if it is still running.
+    params = {k: (v[0] if len(v) == 1 else v) for k, v in request.args.iterlists()}
+    result = get_latest_job_results(report_name, params, _result_serializer())
+    return _process_result_or_abort(result)
+
+
+@serve_results_bp.route('/result_html_render/<path:report_name>/latest-all')
+def latest_task_results_html(report_name):
+    # In this method, we either:
+    # - present the HTML results, if the job has finished
+    # - present the error, if the job has failed
+    # - present the user with some info detailing the progress of the job, if it is still running.
+    # Will ignore all paramterisation of the report and get the latest of any run for a given report name
+    return _process_result_or_abort(get_latest_job_results(report_name, None, _result_serializer()))
 
 
 @serve_results_bp.route('/result_html_render/<path:report_name>/<task_id>/resources/<path:resource>')
