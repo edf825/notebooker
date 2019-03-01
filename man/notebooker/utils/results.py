@@ -41,6 +41,24 @@ def _get_job_results(job_id,              # type: str
     return notebook_result
 
 
+def get_latest_job_results(report_name,         # type: str
+                           params,              # type: Optional[Dict]
+                           serializer,          # type: NotebookResultSerializer
+                           retrying=False,      # type: Optional[bool]
+                           ignore_cache=False,  # type: Optional[bool]
+                           ):
+    # type: (...) -> constants.NotebookResultBase
+    latest_job_id = serializer.get_latest_job_id_for_name_and_params(report_name, params)
+    if not latest_job_id:
+        err_info = 'No job results found for report name={} with params={}'.format(report_name, params)
+        return constants.NotebookResultError(latest_job_id,
+                                             error_info=err_info,
+                                             report_name=report_name,
+                                             overrides=params,
+                                             job_start_time=datetime.datetime.now())
+    return _get_job_results(latest_job_id, report_name, serializer, retrying, ignore_cache)
+
+
 def get_all_result_keys(serializer, limit=0, force_reload=False):
     # type: (NotebookResultSerializer, Optional[int], Optional[bool]) -> List[Tuple[str, str]]
     all_keys = get_cache(('all_result_keys', limit))

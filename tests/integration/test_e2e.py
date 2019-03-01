@@ -95,6 +95,7 @@ def test_run_report(bson_library, mongo_host, workspace):
                              report_name=report_name, report_title=report_title,
                              mailto=mailto)
         assert job_id == serialiser.get_latest_job_id_for_name_and_params(report_name, overrides)
+        assert job_id == serialiser.get_latest_job_id_for_name_and_params(report_name, None)
 
 
 @cache_blaster

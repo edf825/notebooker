@@ -215,13 +215,16 @@ class NotebookResultSerializer(object):
 
     @mongo_retry
     def get_all_job_ids_for_name_and_params(self, report_name, params):
-        # type: (str, Dict) -> List[str]
+        # type: (str, Optional[Dict]) -> List[str]
         """ Get all the result ids for a given name and parameters, newest first """
-        return [x[1] for x in self.get_all_result_keys(mongo_filter={'report_name': report_name, 'overrides': params})]
+        mongo_filter = {'report_name': report_name}
+        if params is not None:
+            mongo_filter['overrides'] = params
+        return [x[1] for x in self.get_all_result_keys(mongo_filter=mongo_filter)]
 
     @mongo_retry
     def get_latest_job_id_for_name_and_params(self, report_name, params):
-        # type: (str, Dict) -> Optional[str]
+        # type: (str, Optional[Dict]) -> Optional[str]
         """ Get the latest result id for a given name and parameters """
         all_job_ids = self.get_all_job_ids_for_name_and_params(report_name, params)
         return all_job_ids[0] if all_job_ids else None
