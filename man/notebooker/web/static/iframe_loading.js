@@ -1,11 +1,9 @@
-var resizeIframe = function (obj) {
-    obj.style.height = obj.contentWindow.document.body.scrollHeight + 'px';
-    obj.style.width = obj.contentWindow.document.body.scrollWidth + 'px';
-};
-
 var iframeLoaded = function(iframe) {
     $(".iframeToLoad").show();
-    resizeIframe(iframe);
+    setInterval(function(){
+            iframe.style.height = iframe.contentWindow.document.body.scrollHeight + 'px';
+            iframe.style.width  = iframe.contentWindow.document.body.scrollWidth  + 'px';
+    }, 1);
     $('.iframeLoadingDimmer').removeClass('active').addClass('disabled');
 
 };
