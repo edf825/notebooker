@@ -17,6 +17,7 @@ def ipython_to_html(ipynb_path, job_id):
     # type: (str, str) -> (nbformat.NotebookNode, Dict[str, Any])
     c = Config()
     c.HTMLExporter.preprocessors = ['nbconvert.preprocessors.ExtractOutputPreprocessor']
+    c.HTMLExporter.template_file = pkg_resources.resource_filename(__name__, '../web/templates/notebooker_html_output.tpl')
     html_exporter_with_figs = HTMLExporter(config=c)
 
     with open(ipynb_path, 'r') as nb_file:
