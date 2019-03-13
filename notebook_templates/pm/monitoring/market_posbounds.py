@@ -26,8 +26,8 @@ from ahl.logging import logger
 
 with pm_cache_enable():
     positions = monitoring.get_all_market_positions()
-    max_sim_signal = monitoring.get_all_max_signals()
-    fund_mults_and_constraints = monitoring.get_all_fund_mults_and_constraints()
+    max_sim_signal = monitoring.get_max_signal_sim()
+    fund_mults_and_constraints = monitoring.get_fund_mults_and_constraints()
 
 # Compute market-level posbounds
 desired_posbounds = max_sim_signal * fund_mults_and_constraints
