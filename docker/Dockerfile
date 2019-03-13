@@ -25,6 +25,7 @@ ADD dist /tmp/dist
 ADD install_*.sh /tmp/
 ADD bin/* /usr/bin/
 RUN /tmp/install_latex.sh && rm -f /tmp/install_latex.sh
+RUN /tmp/install_pandoc.sh && rm -f /tmp/install_pandoc.sh
 RUN /tmp/install_kernel.sh && rm -f /tmp/install_kernel.sh
 RUN /tmp/install_man_notebooker.sh && rm -f /tmp/install_man_notebooker.sh /tmp/dist/*.egg
 
