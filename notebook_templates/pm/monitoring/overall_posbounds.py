@@ -29,8 +29,8 @@ import pandas as pd
 
 with pm_cache_enable():
     positions = monitoring.get_all_market_positions()
-    max_sim_signal = monitoring.get_all_max_signals()
-    fund_mults_and_constraints = monitoring.get_all_fund_mults_and_constraints()
+    max_sim_signal = monitoring.get_max_signal_sim()
+    fund_mults_and_constraints = monitoring.get_fund_mults_and_constraints()
 
 temp_posbounds = atd.get_posbounds_all()
 multi_contracts = atd.get_multi_contracts()
@@ -43,7 +43,12 @@ strat_mkt_positions = positions.sum(level=['strategy', 'market'], axis=1, min_co
 scaled_positions = strat_mkt_positions * fund_mults_and_constraints
 desired_posbounds_with_temp = posbound_functions.apply_temp_posbounds(desired_posbounds, temp_posbounds)
 mkt_desired_posbound = posbound_functions.get_market_posbounds(desired_posbounds, multi_contracts)
-mkt_desired_posbound_with_temp = posbound_functions.get_market_posbounds(desired_posbounds_with_temp, multi_contracts)
+mkt_desired_posbound_with_temp_long = posbound_functions.get_market_posbounds(
+    desired_posbounds_with_temp.xs('long', level=2, axis=1), multi_contracts)
+mkt_desired_posbound_with_temp_short = posbound_functions.get_market_posbounds(
+    desired_posbounds_with_temp.xs('short', level=2, axis=1), multi_contracts)
+mkt_desired_posbound_with_temp = pd.concat([mkt_desired_posbound_with_temp_long,
+                                            -1.0 * mkt_desired_posbound_with_temp_short], axis=1).max(axis=1)
 mkt_slim = pd.Series(softlimits).reindex_like(mkt_desired_posbound)
 
 # Compute some derived fields
