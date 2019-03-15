@@ -26,7 +26,6 @@ import pandas as pd
 
 
 # Load up data
-
 with pm_cache_enable():
     positions = monitoring.get_all_market_positions()
     max_sim_signal = monitoring.get_max_signal_sim()
@@ -37,7 +36,6 @@ multi_contracts = atd.get_multi_contracts()
 softlimits = atd.get_softlimits_all()
 
 # Compute market-level posbounds
-
 desired_posbounds = max_sim_signal * fund_mults_and_constraints
 strat_mkt_positions = positions.sum(level=['strategy', 'market'], axis=1, min_count=1)
 scaled_positions = strat_mkt_positions * fund_mults_and_constraints
@@ -52,7 +50,6 @@ mkt_desired_posbound_with_temp = pd.concat([mkt_desired_posbound_with_temp_long,
 mkt_slim = pd.Series(softlimits).reindex_like(mkt_desired_posbound)
 
 # Compute some derived fields
-
 overallocation = mkt_desired_posbound / mkt_slim.replace(0, np.nan)
 overallocation_with_temp = mkt_desired_posbound_with_temp / mkt_slim.replace(0, np.nan)
 market_description = positions_functions.get_position_group_label(mkt_desired_posbound.index, 'client_reporting_label')
@@ -60,14 +57,13 @@ sectors = positions_functions.get_position_group_label(mkt_desired_posbound.inde
 num_strats_traded_in = positions_functions.get_num_strats_traded_in(positions, multi_contracts)
 
 # Create result structure
-
 res = pd.concat([mkt_desired_posbound, mkt_desired_posbound_with_temp, mkt_slim, overallocation,
                  overallocation_with_temp, market_description, num_strats_traded_in],
                 axis=1,
                 keys=['desired_posbound', 'desired_posbound_with_temp', 'slim', 'overallocation',
                       'overallocation_with_temp', 'market_description', 'num_strats_traded_in'])
-# TODO: use new searching facility
-res['link'] = res.index.map(lambda x: '<a href="mkt_{}" target="_blank">market notebook</a>'.format(x))
+res['link'] = res.index.map(lambda market: '<a href="../market_posbounds/latest?mkt={}" '
+                                           'target="_blank">market notebook</a>'.format(market))
 primary_cols = ['market_description', 'num_strats_traded_in', 'link']
 res = res.reindex(columns=primary_cols + res.columns.drop(primary_cols).tolist())
 

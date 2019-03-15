@@ -23,7 +23,6 @@ import numpy as np
 from ahl.logging import logger
 
 # Load up initial data
-
 with pm_cache_enable():
     positions = monitoring.get_all_market_positions()
     max_sim_signal = monitoring.get_max_signal_sim()
