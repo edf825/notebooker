@@ -36,7 +36,7 @@
                         </td>
 
                         <td class="buttontd">
-                            {% if result.pdf %}
+                            {% if result.generate_pdf_output %}
                                 <button onclick="location.href='{{ result.pdf_url }}'"
                                         type="button" class="ui button green"><i class="download icon"></i></button>
                             {% endif %}
