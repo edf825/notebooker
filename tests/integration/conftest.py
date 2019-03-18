@@ -14,5 +14,4 @@ def bson_library(mongo_server, mongo_host):
     m = Mongoose(mongo_host)
     m.initialize_library(TEST_LIB, BSON_STORE_TYPE)
     l = m.get_library(TEST_LIB)
-    l.create_index('_id')
     return l
