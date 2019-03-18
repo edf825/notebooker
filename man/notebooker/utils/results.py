@@ -72,10 +72,10 @@ def all_available_results(serializer,  # type: NotebookResultSerializer
                           limit=50,  # type: Optional[int]
                           ):
     # type: (...) -> Dict[Tuple[str, str], constants.NotebookResultBase]
-    all_keys = get_all_result_keys(serializer, limit=limit)
+    # all_keys = get_all_result_keys(serializer, limit=limit)
+    all_results = serializer.get_all_results(limit=limit, load_payload=False)
     complete_jobs = {}
-    for report_name, job_id in all_keys:
-        result = _get_job_results(job_id, report_name, serializer)
+    for result in all_results:
         report_name, job_id = result.report_name, result.job_id
         result.result_url = url_for('serve_results_bp.task_results', task_id=job_id, report_name=report_name)
         result.ipynb_url = url_for('serve_results_bp.download_ipynb_result', task_id=job_id, report_name=report_name)

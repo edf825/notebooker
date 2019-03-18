@@ -107,10 +107,8 @@ class NotebookResultSerializer(object):
                                            filename=_pdf_filename(notebook_result.job_id),
                                            encoding='utf-8')
 
-    @mongo_retry
-    def get_check_result(self, job_id):
-        # type: (AnyStr) -> Optional[Union[NotebookResultError, NotebookResultComplete, NotebookResultPending]]
-        result = self.library.find_one({'job_id': job_id}, {'_id': 0})
+    def _convert_result(self, result, load_payload=True):
+        # type: (Dict, Optional[bool]) -> Optional[NotebookResultBase]
         if not result:
             return None
 
@@ -127,7 +125,7 @@ class NotebookResultSerializer(object):
         if cls is None:
             return None
 
-        if job_status == JobStatus.DONE:
+        if load_payload and job_status == JobStatus.DONE:
             def read_file(path):
                 try:
                     return self.result_data_store.get_last_version(path).read()
@@ -136,8 +134,8 @@ class NotebookResultSerializer(object):
                     return ''
             outputs = {path: read_file(path) for path in result.get('raw_html_resources', {}).get('outputs', [])}
             result['raw_html_resources']['outputs'] = outputs
-            if result.get('generate_pdf_output') is not False:
-                pdf_filename = _pdf_filename(job_id)
+            if result.get('generate_pdf_output'):
+                pdf_filename = _pdf_filename(result['job_id'])
                 result['pdf'] = read_file(pdf_filename)
 
         if cls == NotebookResultComplete:
@@ -148,9 +146,9 @@ class NotebookResultSerializer(object):
                 status=job_status,
                 update_time=result['update_time'],
                 job_finish_time=result['job_finish_time'],
-                raw_html_resources=result['raw_html_resources'],
-                raw_ipynb_json=result['raw_ipynb_json'],
-                raw_html=result['raw_html'],
+                raw_html_resources=result.get('raw_html_resources'),
+                raw_ipynb_json=result.get('raw_ipynb_json'),
+                raw_html=result.get('raw_html'),
                 pdf=result.get('pdf', ''),
                 overrides=result.get('overrides', {}),
                 generate_pdf_output=result.get('generate_pdf_output', True),
@@ -189,17 +187,24 @@ class NotebookResultSerializer(object):
         return notebook_result
 
     @mongo_retry
-    def get_all_results(self, since=None, limit=100, mongo_filter=None):
-        # type: (Optional[datetime.datetime], Optional[int], Optional[Dict]) -> Generator[NotebookResultBase]
+    def get_check_result(self, job_id):
+        # type: (AnyStr) -> Optional[Union[NotebookResultError, NotebookResultComplete, NotebookResultPending]]
+        result = self.library.find_one({'job_id': job_id}, {'_id': 0})
+        return self._convert_result(result)
+
+    @mongo_retry
+    def get_all_results(self, since=None, limit=100, mongo_filter=None, load_payload=True):
+        # type: (Optional[datetime.datetime], Optional[int], Optional[Dict], Optional[bool]) -> Generator[NotebookResultBase]
         base_filter = {'status': {'$ne': JobStatus.DELETED.value}}
         if mongo_filter:
             base_filter.update(mongo_filter)
         if since:
             base_filter.update({'update_time': {'$gt': since}})
-        results = self.library.find(base_filter, {'job_id': 1}).limit(limit)
+        projection = {'_id': 0} if load_payload else {'raw_html_resources': 0, 'raw_html': 0, 'raw_ipynb_json': 0, '_id': 0}
+        results = self.library.find(base_filter, projection).sort('update_time', -1).limit(limit)
         for res in results:
             if res:
-                yield self.get_check_result(res['job_id'])
+                yield self._convert_result(res, load_payload=load_payload)
 
     @mongo_retry
     def get_all_result_keys(self, limit=0, mongo_filter=None):
