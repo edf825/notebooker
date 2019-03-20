@@ -33,15 +33,10 @@ with pm_cache_enable():
     max_sim_signal = monitoring.get_max_signal_sim()
     fund_mults_and_constraints = monitoring.get_fund_mults_and_constraints()
 
-# not from cache while 
-fund_mults_and_constraints = monitoring.get_fund_mults_and_constraints()
-
 
 def get_real_slims(mkts):
     ds = get_dataservice()
-    effective_slims = [_get_slim_for(ds, x) for x in mkts]
-    res = dict(zip(mkts, effective_slims))
-    return res
+    return {mkt: _get_slim_for(ds, mkt) for mkt in mkts}
 
 
 def get_net_in_posman_all():
