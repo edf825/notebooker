@@ -84,7 +84,7 @@ if symbol_limit:
     all_symbols_ever = all_symbols_ever[:symbol_limit]
 
 # Security Master
-sec_master_api = SecurityMasterAPI.from_cluster(cluster)
+sec_master_api = SecurityMasterAPI.from_mongoose_env(cluster)
 routes = sec_master_api.routes_between_types(base.IdentifierType.AHL_EQUITY_ID, base.IdentifierType(target_identifier))
 
 symbol_intervaltrees = {}
