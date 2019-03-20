@@ -66,7 +66,7 @@ def _monitor_stderr(process, job_id):
     return ''.join(stderr)
 
 
-def run_report(report_name, report_title, mailto, overrides, generate_pdf_output=True):
+def run_report(report_name, report_title, mailto, overrides, generate_pdf_output=True, prepare_only=False):
     # Actually start the job in earnest.
     job_id = str(uuid.uuid4())
     job_start_time = datetime.datetime.now()
@@ -94,7 +94,9 @@ def run_report(report_name, report_title, mailto, overrides, generate_pdf_output
                           '--mongo-host', result_serializer.mongo_host,
                           '--result-collection-name', result_serializer.result_collection_name,
                           '--pdf-output' if generate_pdf_output else '--no-pdf-output',
-                          ], stderr=subprocess.PIPE)
+                          ] +
+                         ['--prepare-notebook-only'] if prepare_only else [],
+                         stderr=subprocess.PIPE)
     stderr_thread = threading.Thread(target=_monitor_stderr, args=(p, job_id, ))
     stderr_thread.daemon = True
     stderr_thread.start()
@@ -118,7 +120,7 @@ def run_checks_http(report_name):
             {'Location': url_for('serve_results_bp.task_status', report_name=report_name, task_id=job_id)})
 
 
-def _rerun_report(task_id):
+def _rerun_report(task_id, prepare_only=False):
     result_serializer = NotebookResultSerializer(mongo_host=os.environ['MONGO_HOST'],
                                                  database_name=os.environ['DATABASE_NAME'],
                                                  result_collection_name=os.environ['RESULT_COLLECTION_NAME'])
@@ -133,6 +135,7 @@ def _rerun_report(task_id):
         result.mailto,
         result.overrides,
         generate_pdf_output=result.generate_pdf_output,
+        prepare_only=prepare_only,
     )
     return new_job_id
 

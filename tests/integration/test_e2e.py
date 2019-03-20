@@ -90,7 +90,8 @@ def test_run_report(bson_library, mongo_host, workspace):
                             report_title,
                             mailto,
                             overrides,
-                            generate_pdf_output=False)
+                            generate_pdf_output=False,
+                            prepare_only=True)
         _check_report_output(job_id, serialiser, overrides=overrides,
                              report_name=report_name, report_title=report_title,
                              mailto=mailto)
@@ -114,12 +115,13 @@ def test_run_report_and_rerun(bson_library, mongo_host, workspace):
                             report_title,
                             mailto,
                             overrides,
-                            generate_pdf_output=False)
+                            generate_pdf_output=False,
+                            prepare_only=True)
         _check_report_output(job_id, serialiser, overrides=overrides,
                              report_name=report_name, report_title=report_title,
                              mailto=mailto, generate_pdf_output=False)
 
-        new_job_id = _rerun_report(job_id)
+        new_job_id = _rerun_report(job_id, prepare_only=True)
         _check_report_output(new_job_id, serialiser, overrides=overrides,
                              report_name=report_name, report_title='Rerun of ' + report_title,
                              mailto=mailto, generate_pdf_output=False)

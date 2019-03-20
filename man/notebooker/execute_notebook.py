@@ -31,6 +31,7 @@ def run_checks(job_id,  # type: str
                overrides,  # type: Dict[Any, Any]
                generate_pdf_output=True,  # type: Optional[bool]
                mailto='',  # type: Optional[str]
+               prepare_only=False,  # type: Optional[bool]
                ):
     # type: (...) -> NotebookResultComplete
 
@@ -48,7 +49,9 @@ def run_checks(job_id,  # type: str
     pm.execute_notebook(ipynb_raw_path,
                         ipynb_executed_path,
                         parameters=overrides,
-                        log_output=True)
+                        log_output=True,
+                        prepare_only=prepare_only,
+                        )
     with open(ipynb_executed_path, 'r') as f:
         raw_executed_ipynb = f.read()
 
@@ -83,6 +86,7 @@ def run_report_worker(job_submit_time,
                       attempts_remaining=2,
                       mailto='',
                       generate_pdf_output=True,
+                      prepare_only=False,
                       ):
     job_id = job_id or str(uuid.uuid4())
     stop_execution = os.getenv('NOTEBOOKER_APP_STOPPING')
@@ -106,6 +110,7 @@ def run_report_worker(job_submit_time,
                             overrides,
                             mailto=mailto,
                             generate_pdf_output=generate_pdf_output,
+                            prepare_only=prepare_only,
                             )
         logger.info('Successfully got result.')
         result_serializer.save_check_result(result)
@@ -139,6 +144,7 @@ def run_report_worker(job_submit_time,
                                      attempts_remaining=attempts_remaining - 1,
                                      mailto=mailto,
                                      generate_pdf_output=generate_pdf_output,
+                                     prepare_only=prepare_only,
                                      )
         else:
             logger.info('Abandoning attempt to run report. It failed too many times.')
@@ -146,18 +152,45 @@ def run_report_worker(job_submit_time,
 
 
 @click.command()
-@click.option('--report-name')
-@click.option('--overrides-as-json', default='{}')
-@click.option('--report-title', default='')
-@click.option('--n-retries', default=3)
-@click.option('--mongo-db-name', default='mongoose_restech')
-@click.option('--mongo-host', default='research')
-@click.option('--result-collection-name', default='NOTEBOOK_OUTPUT')
-@click.option('--job-id', default=str(uuid.uuid4()))
-@click.option('--output-base-dir', default=OUTPUT_BASE_DIR)
-@click.option('--template-base-dir', default=TEMPLATE_BASE_DIR)
-@click.option('--mailto', default='')
-@click.option('--pdf-output/--no-pdf-output', default=True)
+@click.option('--report-name',
+              help='The name of the template to execute, relative to the template directory.')
+@click.option('--overrides-as-json',
+              default='{}',
+              help='The parameters to inject into the notebook template, in JSON format.')
+@click.option('--report-title',
+              default='',
+              help='A custom title for this notebook. The default is the report_name.')
+@click.option('--n-retries',
+              default=3,
+              help='The number of times to retry when executing this notebook.')
+@click.option('--mongo-db-name',
+              default='mongoose_restech',
+              help='The mongo database name to which we will save the notebook result.')
+@click.option('--mongo-host',
+              default='research',
+              help='The Mongoose cluster to which we are saving notebook results.')
+@click.option('--result-collection-name',
+              default='NOTEBOOK_OUTPUT',
+              help='The name of the BSONStore to which we are saving notebook results.')
+@click.option('--job-id',
+              default=str(uuid.uuid4()),
+              help='The unique job ID for this notebook. Can be non-unique, but note that you will overwrite history.')
+@click.option('--output-base-dir',
+              default=OUTPUT_BASE_DIR,
+              help='The base directory to which we will save our notebook output temporarily. Required by Papermill.')
+@click.option('--template-base-dir',
+              default=TEMPLATE_BASE_DIR,
+              help='The base directory to which we will save our notebook templates which have been converted '
+                   'from .py to .ipynb.')
+@click.option('--mailto',
+              default='',
+              help='A comma-separated list of email addresses which will receive results.')
+@click.option('--pdf-output/--no-pdf-output',
+              default=True,
+              help='Whether we generate PDF output or not.')
+@click.option('--prepare-notebook-only',
+              is_flag=True,
+              help='Used for debugging and testing. Whether to actually execute the notebook or just "prepare" it.')
 def main(report_name,
          overrides_as_json,
          report_title,
@@ -170,6 +203,7 @@ def main(report_name,
          template_base_dir,
          mailto,
          pdf_output,
+         prepare_notebook_only,
          ):
     if report_name is None:
         raise ValueError('Error! Please provide a --report-name.')
@@ -193,6 +227,7 @@ def main(report_name,
         attempts_remaining=n_retries-1,
         mailto=mailto,
         generate_pdf_output=pdf_output,
+        prepare_only=prepare_notebook_only,
     )
     if mailto:
         send_result_email(result, mailto)
