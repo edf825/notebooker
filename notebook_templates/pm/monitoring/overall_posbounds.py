@@ -27,6 +27,7 @@ from ahl.db import DOTS_DB
 from ahl.positionmanager.posbounds_calculation_service import _get_slim_for
 from ahl.positionmanager.api import get_dataservice
 
+
 # Load up data
 with pm_cache_enable():
     positions = monitoring.get_all_market_positions()
@@ -131,8 +132,8 @@ formatter = {
 
 #### Most overallocated markets
 
-res.nlargest(10, 'overallocation_with_temp').rename(columns={'net': ''}).style.format(formatter)
+res.nlargest(10, 'overallocation').rename(columns={'net': ''}).style.format(formatter)
 
 #### Most overallocated markets traded in multiple strats
 
-res[res['num_strats_traded_in'] > 1].nlargest(10, 'overallocation_with_temp').rename(columns={'net': ''}).style.format(formatter)
+res[res['num_strats_traded_in'] > 1].nlargest(10, 'overallocation').rename(columns={'net': ''}).style.format(formatter)
