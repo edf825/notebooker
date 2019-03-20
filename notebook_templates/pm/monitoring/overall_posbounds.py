@@ -27,7 +27,6 @@ from ahl.db import DOTS_DB
 from ahl.positionmanager.posbounds_calculation_service import _get_slim_for
 from ahl.positionmanager.api import get_dataservice
 
-
 # Load up data
 with pm_cache_enable():
     positions = monitoring.get_all_market_positions()
