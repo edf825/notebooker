@@ -208,7 +208,7 @@ class NotebookResultSerializer(object):
 
     @mongo_retry
     def get_all_result_keys(self, limit=0, mongo_filter=None):
-        # type: (Optional[int]) -> List[Tuple[str, str]]
+        # type: (Optional[int], Optional[Dict]) -> List[Tuple[str, str]]
         keys = []
         base_filter = {'status': {'$ne': JobStatus.DELETED.value}}
         if mongo_filter:
