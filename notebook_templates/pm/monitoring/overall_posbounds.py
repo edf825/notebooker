@@ -26,6 +26,7 @@ import pandas as pd
 from ahl.db import DOTS_DB
 from ahl.positionmanager.posbounds_calculation_service import _get_slim_for
 from ahl.positionmanager.api import get_dataservice
+from ahl.positionmanager.repositories import StaticDataRepository
 
 # Load up data
 with pm_cache_enable():
@@ -35,7 +36,7 @@ with pm_cache_enable():
 
 
 def get_real_slims(mkts):
-    ds = get_dataservice()
+    ds = get_dataservice(apis=[StaticDataRepository])
     return {mkt: _get_slim_for(ds, mkt) for mkt in mkts}
 
 
