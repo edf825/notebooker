@@ -10,6 +10,7 @@
 
 # + {"tags": ["parameters"]}
 overallocation_buffer = 0.4
+strategy_exclusions = ['CMBS', 'RVMBS', 'UIRS', 'UCBOND', 'FTREND', 'FIVOL', 'UXENER'] 
 # -
 
 # imports
@@ -97,6 +98,12 @@ market_description = positions_functions.get_position_group_label(mkt_desired_po
 sectors = positions_functions.get_position_group_label(mkt_desired_posbound.index, 'sector')
 num_strats_traded_in = positions_functions.get_num_strats_traded_in(positions, multi_contracts)
 
+# exclude any markets that are exclusively traded by our list of strategies to exclude
+# e.g. we exclude PBGA which is only traded by UXENER but we include NGL which is traded by 
+# UXENER, FCOM and others, and we include positions from UXENER in the overallocation calculation
+incl_mkts = list(positions.loc(axis=1)[~positions.columns.get_level_values('strategy').isin(strategy_exclusions)].columns.get_level_values('market').unique())
+incl_mkts = list(set([multi_contracts.get(x, x) for x in incl_mkts]))
+
 # Create result structure
 res = pd.concat([mkt_desired_posbound, mkt_slim, overallocation,
                  market_description, num_strats_traded_in],
@@ -107,6 +114,8 @@ res['link'] = res.index.map(lambda market: '<a href="../market_posbounds/latest?
                                            'target="_blank">market notebook</a>'.format(market))
 primary_cols = ['market_description', 'num_strats_traded_in', 'link']
 res = res.reindex(columns=primary_cols + res.columns.drop(primary_cols).tolist())
+
+res_incl = res.loc[incl_mkts]
 
 #### Overallocated markets per sector
 
@@ -127,8 +136,4 @@ formatter = {
 
 #### Most overallocated markets
 
-res.nlargest(10, 'overallocation').rename(columns={'net': ''}).style.format(formatter)
-
-#### Most overallocated markets traded in multiple strats
-
-res[res['num_strats_traded_in'] > 1].nlargest(10, 'overallocation').rename(columns={'net': ''}).style.format(formatter)
+res_incl[res_incl['overallocation'] > 1 + overallocation_buffer].sort_values('overallocation', ascending=False).rename(columns={'net': ''}).style.format(formatter)
