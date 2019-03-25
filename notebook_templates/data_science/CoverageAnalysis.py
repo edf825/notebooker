@@ -33,8 +33,8 @@ LOGGER = get_logger(__name__)
 
 # + {"tags": ["parameters"]}
 MONGOOSE_DB = 'research'
-LIBRARY_NAME = 'tclements.notebooker'
-DATA_NAME = 'kepler_turnover'
+LIBRARY_NAME = 'kepler.FLOW'
+DATA_NAME = 'KEPLER_TURNOVER'
 DATE_COLUMN = 'DATE'
 REGION = 'PANEURO'
 FFILL = (22, 66, 130)
