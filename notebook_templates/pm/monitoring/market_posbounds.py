@@ -3,9 +3,9 @@
 #   celltoolbar: Tags
 #   jupytext_format_version: '1.2'
 #   kernelspec:
-#     display_name: pm_monitoring
+#     display_name: pm_notebook_kernel
 #     language: python
-#     name: pm_monitoring
+#     name: pm_notebook_kernel
 # ---
 
 # + {"tags": ["parameters"]}
@@ -91,6 +91,7 @@ desired_posbounds = add_multi_contract_market_level(desired_posbounds, multi_con
 scaled_positions = add_multi_contract_market_level(scaled_positions, multi_contracts)
 
 # mkt specific data
+slim_pre_carveout = atd.get_softlimit(mkt)
 slim = _get_slim_for(get_dataservice(apis=[StaticDataRepository]), mkt)
 
 # filter down to market and forward fill for nice plotting
@@ -106,6 +107,11 @@ market_pos_with_temp = posbound_functions.apply_temp_posbounds(market_pos, temp_
 market_pos_with_temp_and_net = apply_net_in_posmans(market_pos_with_temp, net_in_posmans)
 market_desired_posbounds_with_temp = posbound_functions.apply_temp_posbounds(market_desired_posbounds, temp_posbounds).xs('long', level=2, axis=1)
 market_desired_posbounds_with_temp_and_net = apply_net_in_posmans(market_desired_posbounds_with_temp, net_in_posmans)
+
+# info table 
+info = pd.DataFrame(index=[mkt], data=[[slim_pre_carveout - slim, slim]], columns=['vol carveouts', 'slim'])
+info.index.name = 'market'
+info
 
 #### Sum of desired posbounds through time
 
