@@ -3,9 +3,9 @@
 #   celltoolbar: Tags
 #   jupytext_format_version: '1.2'
 #   kernelspec:
-#     display_name: pm_monitoring
+#     display_name: pm_notebook_kernel
 #     language: python
-#     name: pm_monitoring
+#     name: pm_notebook_kernel
 # ---
 
 # + {"tags": ["parameters"]}
