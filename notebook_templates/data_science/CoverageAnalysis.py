@@ -97,7 +97,7 @@ def plot_coverage(df):
 
 # -
 
-coverage_df = point_in_time_coverage_analysis(df=DATA,
+coverage_df = point_in_time_coverage_analysis(df=data,
                                     date_column=DATE_COLUMN,
                                     region=REGION,
                                     ffill=FFILL,
