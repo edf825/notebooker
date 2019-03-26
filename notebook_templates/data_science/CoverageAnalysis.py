@@ -44,7 +44,7 @@ UNIQUE_DATES = True
 
 # +
 library = Mongoose(MONGOOSE_DB).get_library(LIBRARY_NAME)
-data = LIBRARY.read(DATA_NAME).data
+data = library.read(DATA_NAME).data
 
 
 # +
