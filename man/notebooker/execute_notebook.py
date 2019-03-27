@@ -1,5 +1,7 @@
 import datetime
 import json
+import subprocess
+import sys
 import uuid
 
 import click
@@ -10,6 +12,7 @@ from typing import Any, Dict, Optional
 
 from ahl.logging import get_logger
 
+from man.notebooker.utils.caching import get_cache
 from man.notebooker.constants import JobStatus, CANCEL_MESSAGE, OUTPUT_BASE_DIR, TEMPLATE_BASE_DIR, NotebookResultError, \
     NotebookResultComplete
 from man.notebooker.serialization.mongoose import NotebookResultSerializer
@@ -202,37 +205,62 @@ def main(report_name,
          pdf_output,
          prepare_notebook_only,
          ):
+    if report_name is None:
+        raise ValueError('Error! Please provide a --report-name.')
+    report_title = report_title or report_name
+    logger.info('Creating %s', output_base_dir)
+    mkdir_p(output_base_dir)
+    overrides = json.loads(overrides_as_json) if overrides_as_json else {}
+    start_time = datetime.datetime.now()
+    result_serializer = NotebookResultSerializer(database_name=mongo_db_name,
+                                                 mongo_host=mongo_host, 
+                                                 result_collection_name=result_collection_name)
+    result = run_report_worker(
+        start_time,
+        report_name,
+        overrides,
+        result_serializer,
+        report_title=report_title,
+        job_id=job_id,
+        output_base_dir=output_base_dir,
+        template_base_dir=template_base_dir,
+        attempts_remaining=n_retries-1,
+        mailto=mailto,
+        generate_pdf_output=pdf_output,
+        prepare_only=prepare_notebook_only,
+    )
+    if mailto:
+        send_result_email(result, mailto)
+    if isinstance(result, NotebookResultError):
+        logger.warning('Notebook execution failed! Output was:')
+        logger.warning(repr(result))
+        raise Exception(result.error_info)
+    return result
+
+
+def docker_compose_entrypoint():
+    """
+    Sadness. This is required because of https://github.com/jupyter/jupyter_client/issues/154
+    Otherwise we will get "RuntimeError: Kernel died before replying to kernel_info"
+    The suggested fix to use sh -c "command" does not work for our use-case, sadly.
+
+    Examples
+    --------
+    man_execute_notebook --report-name watchdog_checks --mongo-host mktdatad
+Recieved a request to run a report with the following parameters:
+['/users/is/jbannister/pyenvs/notebooker/bin/python', '-m', 'man.notebooker.execute_notebook', '--report-name', 'watchdog_checks', '--mongo-host', 'mktdatad']
+...
+
+    man_execute_notebook
+Recieved a request to run a report with the following parameters:
+['/users/is/jbannister/pyenvs/notebooker/bin/python', '-m', 'man.notebooker.execute_notebook']
+ValueError: Error! Please provide a --report-name.
+    """
+    args_to_execute = [sys.executable, '-m', __name__] + sys.argv[1:]
+    logger.info('Recieved a request to run a report with the following parameters:')
+    logger.info(args_to_execute)
     try:
-        if report_name is None:
-            raise ValueError('Error! Please provide a --report-name.')
-        report_title = report_title or report_name
-        logger.info('Creating %s', output_base_dir)
-        mkdir_p(output_base_dir)
-        overrides = json.loads(overrides_as_json) if overrides_as_json else {}
-        start_time = datetime.datetime.now()
-        result_serializer = NotebookResultSerializer(database_name=mongo_db_name,
-                                                     mongo_host=mongo_host,
-                                                     result_collection_name=result_collection_name)
-        result = run_report_worker(
-            start_time,
-            report_name,
-            overrides,
-            result_serializer,
-            report_title=report_title,
-            job_id=job_id,
-            output_base_dir=output_base_dir,
-            template_base_dir=template_base_dir,
-            attempts_remaining=n_retries-1,
-            mailto=mailto,
-            generate_pdf_output=pdf_output,
-        )
-        if mailto:
-            send_result_email(result, mailto)
-        if isinstance(result, NotebookResultError):
-            logger.warning('Notebook execution failed! Output was:')
-            logger.warning(repr(result))
-            raise Exception(result.error_info)
-        return result
+        subprocess.Popen(args_to_execute).wait()
     finally:
         _cleanup_dirs()
 
