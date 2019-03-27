@@ -100,6 +100,7 @@ market_desired_posbounds = desired_posbounds.xs(mkt, level='multi_contract_marke
 
 # drop strats with no historical positions (why are they here in the first place?)
 market_pos = market_pos.replace(0, np.nan).dropna(how='all', axis=1)
+assert len(market_pos.columns) > 0, 'no strategies with non-zero positions in ' + mkt
 market_desired_posbounds = market_desired_posbounds.reindex(market_pos.columns, axis=1)
 
 # apply temp and net with some hackery to get temp posbounds to apply on positions, and ignore long/short differentiation
