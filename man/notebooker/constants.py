@@ -9,8 +9,8 @@ from typing import AnyStr
 
 SUBMISSION_TIMEOUT = 3
 RUNNING_TIMEOUT = 60
-OUTPUT_BASE_DIR = os.getenv('OUTPUT_DIR', tempfile.mkdtemp(dir=os.path.expanduser('~')))
-TEMPLATE_BASE_DIR = os.getenv('TEMPLATE_DIR', tempfile.mkdtemp(dir=os.path.expanduser('~')))
+OUTPUT_BASE_DIR = os.getenv('OUTPUT_DIR') or tempfile.mkdtemp(dir=os.path.expanduser('~'))
+TEMPLATE_BASE_DIR = os.getenv('TEMPLATE_DIR') or tempfile.mkdtemp(dir=os.path.expanduser('~'))
 CACHE_DIR = tempfile.mkdtemp()
 PYTHON_TEMPLATE_DIR = os.path.join(os.environ['PY_TEMPLATE_DIR'],
                                    os.environ['GIT_REPO_TEMPLATE_DIR']
