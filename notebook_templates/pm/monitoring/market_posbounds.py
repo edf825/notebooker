@@ -118,7 +118,7 @@ info = pd.DataFrame(index=[mkt], data=[[slim_pre_carveout - slim, slim]], column
 info.index.name = 'market'
 info
 
-# ### Sum of desired posbounds through time
+#### Sum of desired posbounds through time
 
 
 def plot_posbound_history(market_positions, market_desired_posbounds, slim, lookback, **plotting_kwargs):
@@ -153,7 +153,7 @@ def plot_posbound_history(market_positions, market_desired_posbounds, slim, look
 
 plot_posbound_history(market_pos_with_temp_and_net, market_desired_posbounds_with_temp_and_net, slim, lookback=TIMESERIES_CHART_LOOKBACK, figsize=(10, 8))
 
-# ### Distribution of positions over posbound window
+#### Distribution of positions over posbound window
 
 
 def plot_position_distribution(market_positions, slim, lookback, **plotting_kwargs):
@@ -172,7 +172,7 @@ def plot_position_distribution(market_positions, slim, lookback, **plotting_kwar
 
 plot_position_distribution(market_pos_with_temp_and_net, slim, lookback=POS_DIST_CHART_LOOKBACK, figsize=(10, 6))
 
-# ### Desired posbounds per strategy
+#### Desired posbounds per strategy
 
 
 def plot_posbounds_current(market_positions_with_temp, market_desired_posbounds_with_temp_and_net, market_desired_posbounds, **plotting_kwargs):
@@ -200,7 +200,7 @@ def plot_posbounds_current(market_positions_with_temp, market_desired_posbounds_
 
 plot_posbounds_current(market_pos_with_temp, market_desired_posbounds_with_temp_and_net, market_desired_posbounds, figsize=(10, 6))
 
-# ### Current state of things according to posman
+#### Current state of things according to posman
 # Note the desired posbounds shown here are slightly different from those above - they are based off the weekly max signal calc and combined with a buffer.
 
 from ahl.positionmanager import posbounds_calculation_service as pcs
