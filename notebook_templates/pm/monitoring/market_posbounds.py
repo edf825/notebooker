@@ -13,7 +13,7 @@
 # ---
 
 # + {"tags": ["parameters"]}
-mkt = 'FTL'
+mkt = 'NIS'
 # -
 
 # imports
@@ -172,7 +172,7 @@ def plot_position_distribution(market_positions, slim, lookback, **plotting_kwar
 
 plot_position_distribution(market_pos_with_temp_and_net, slim, lookback=POS_DIST_CHART_LOOKBACK, figsize=(10, 6))
 
-# ### Posbounds per strategy
+# ### Desired posbounds per strategy
 
 
 def plot_posbounds_current(market_positions_with_temp, market_desired_posbounds_with_temp_and_net, market_desired_posbounds, **plotting_kwargs):
@@ -201,6 +201,7 @@ def plot_posbounds_current(market_positions_with_temp, market_desired_posbounds_
 plot_posbounds_current(market_pos_with_temp, market_desired_posbounds_with_temp_and_net, market_desired_posbounds, figsize=(10, 6))
 
 # ### Current state of things according to posman
+# Note the desired posbounds shown here are slightly different from those above - they are based off the weekly max signal calc and combined with a buffer.
 
 from ahl.positionmanager import posbounds_calculation_service as pcs
 from ahl.positionmanager.posbounds_calculation_service import PosboundCalculator, create_strategy_data, _get_manual_posbounds_for, _get_slim_for
