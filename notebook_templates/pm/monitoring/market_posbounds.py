@@ -1,7 +1,11 @@
 # ---
 # jupyter:
-#   celltoolbar: Tags
-#   jupytext_format_version: '1.2'
+#   jupytext:
+#     text_representation:
+#       extension: .py
+#       format_name: light
+#       format_version: '1.3'
+#       jupytext_version: 1.0.5
 #   kernelspec:
 #     display_name: pm_notebook_kernel
 #     language: python
@@ -9,7 +13,7 @@
 # ---
 
 # + {"tags": ["parameters"]}
-mkt = 'SGN'
+mkt = 'FTL'
 # -
 
 # imports
@@ -114,7 +118,7 @@ info = pd.DataFrame(index=[mkt], data=[[slim_pre_carveout - slim, slim]], column
 info.index.name = 'market'
 info
 
-#### Sum of desired posbounds through time
+# ### Sum of desired posbounds through time
 
 
 def plot_posbound_history(market_positions, market_desired_posbounds, slim, lookback, **plotting_kwargs):
@@ -147,9 +151,9 @@ def plot_posbound_history(market_positions, market_desired_posbounds, slim, look
     plt.tight_layout()
 
 
-plot_posbound_history(market_pos_with_temp_and_net, market_desired_posbounds_with_temp_and_net, slim, lookback=TIMESERIES_CHART_LOOKBACK, figsize=(10, 6))
+plot_posbound_history(market_pos_with_temp_and_net, market_desired_posbounds_with_temp_and_net, slim, lookback=TIMESERIES_CHART_LOOKBACK, figsize=(10, 8))
 
-#### Distribution of positions over posbound window
+# ### Distribution of positions over posbound window
 
 
 def plot_position_distribution(market_positions, slim, lookback, **plotting_kwargs):
@@ -168,7 +172,7 @@ def plot_position_distribution(market_positions, slim, lookback, **plotting_kwar
 
 plot_position_distribution(market_pos_with_temp_and_net, slim, lookback=POS_DIST_CHART_LOOKBACK, figsize=(10, 6))
 
-#### Posbounds per strategy
+# ### Posbounds per strategy
 
 
 def plot_posbounds_current(market_positions_with_temp, market_desired_posbounds_with_temp_and_net, market_desired_posbounds, **plotting_kwargs):
@@ -193,5 +197,81 @@ def plot_posbounds_current(market_positions_with_temp, market_desired_posbounds_
     ax.set_xticklabels(ax.get_xticklabels(), rotation=40, ha="right")
     plt.tight_layout()
 
-  
+
 plot_posbounds_current(market_pos_with_temp, market_desired_posbounds_with_temp_and_net, market_desired_posbounds, figsize=(10, 6))
+
+# ### Current state of things according to posman
+
+from ahl.positionmanager import posbounds_calculation_service as pcs
+from ahl.positionmanager.posbounds_calculation_service import PosboundCalculator, create_strategy_data, _get_manual_posbounds_for, _get_slim_for
+from ahl.positionmanager.api import get_dataservice
+import ahl.logging as logging
+from collections import OrderedDict
+
+
+# +
+def get_posbound_table(mkt, ds=get_dataservice()):
+
+    with logging.log_utils.set_logging_level(logging.logging.WARN):
+        market_family = ds.get_market_family(mkt)
+        slim = pcs._get_slim_for(ds, mkt)
+        max_signal_data = ds.get_strategy_data_related_to(market_family=market_family)
+        strategy_data = create_strategy_data(dataservice=ds, max_signal_data=max_signal_data)
+        temp_posbounds = _get_manual_posbounds_for(dataservice=ds, market_family=market_family)
+    
+        calcs = PosboundCalculator(slim, strategy_data, temp_posbounds)
+        final_posbounds = calcs.calculate_strategy_posbounds()
+    
+        # get everything into dict format with keys as (strat,mkt) pairs
+        max_signals = {x:float(y.max_signal) for x, y in strategy_data.iteritems()}
+        buffer_ratios = {x:float(y.buffer_ratio) for x, y in strategy_data.iteritems()}
+        fms = {x:float(y.fm) for x, y in strategy_data.iteritems()}
+        net_in_posmans = {x:y.net_in_posman for x, y in strategy_data.iteritems()}
+        current_positions = {x:float(y.current_position) for x, y in strategy_data.iteritems()}
+        desired_posbounds = {x:y.calculate_desired_posbound() for x, y in calcs.strategies.iteritems()}
+        temp_long_posbounds = {x:y.long_value for x, y in temp_posbounds.iteritems()} if len(temp_posbounds) > 0 else {}
+        temp_short_posbounds = {x:y.short_value for x, y in temp_posbounds.iteritems()} if len(temp_posbounds) > 0 else {}
+        final_long_posbounds = {x:y[0] for x, y in final_posbounds.iteritems()} 
+        final_short_posbounds = {x:y[1] for x, y in final_posbounds.iteritems()}
+        
+    # combine to results
+    res_df = pd.DataFrame(OrderedDict([
+        ('current_pos', current_positions),
+        ('max_signal', max_signals),
+        ('buffer_ratio', buffer_ratios),
+        ('fm', fms),
+        ('desired_posbound', desired_posbounds),
+        ('net_in_posman', net_in_posmans),
+        ('temp_long_posbound', temp_long_posbounds),
+        ('temp_short_posbound', temp_short_posbounds),
+        ('final_long_posbound', final_long_posbounds),
+        ('final_short_posbound', final_short_posbounds),
+        ]))
+    
+    # add in slim
+    res_df['slim'] = slim
+    strat_order = res_df.groupby(res_df.index.get_level_values(0))['desired_posbound'].max().sort_values(ascending=False).index.tolist()
+    return res_df[res_df['max_signal'] <> 0].T[strat_order].T
+
+
+def plot_posbound_table(posbound_table, **plotting_kwargs):
+    res = posbound_table.reset_index()
+    res.index = res['level_0'] + '_' + res['level_1']
+    fig, ax = plt.subplots(**plotting_kwargs)
+    res[['desired_posbound']].plot(ax=ax, kind='bar', alpha=0.3)
+    (-res[['desired_posbound']]).plot(ax=ax, kind='bar', alpha=0.3)
+    res[['final_long_posbound']].plot(ax=ax, kind='bar')
+    (-res[['final_short_posbound']]).plot(ax=ax, kind='bar')
+    res['current_pos'].plot(kind='line', marker='s', linestyle='None', markerfacecolor='black', markeredgecolor='black', ax=ax, label='current_pos')
+    ax.legend(['current', '_', 'desired posbound with buffer', '_', 'final posbound', '_'])
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=40, ha="right")
+    fig.tight_layout()
+    fig.show()
+
+# -
+
+
+res = get_posbound_table(mkt)
+res
+
+plot_posbound_table(res, figsize=(10, 6))
