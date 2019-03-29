@@ -273,13 +273,14 @@ def plot_posbound_table(posbound_table, **plotting_kwargs):
 
 res = get_posbound_table(mkt, ds)
 # formatting so table fits in frame
-res = res.rename(columns={'temp_long_posbound':'temp_long',
+res = get_posbound_table(mkt)
+res_formatted = res.rename(columns={'temp_long_posbound':'temp_long',
                             'temp_short_posbound':'temp_short',
                             'final_long_posbound':'final_long',
                             'final_short_posbound':'final_short'})
-res = res.fillna('-')
-res.style.format({'max_signal':'{:.1f}',
-                  'fm':'{:.2f}',
-                  'net_in_posman':'{:,.0f}'})
+res_formatted = res_formatted.fillna('-')
+res_formatted.style.format({'max_signal':'{:.1f}',
+                            'fm':'{:.2f}',
+                            'net_in_posman':'{:,.0f}'})
 
 plot_posbound_table(res, figsize=(10, 6))
