@@ -273,7 +273,6 @@ def plot_posbound_table(posbound_table, **plotting_kwargs):
 
 res = get_posbound_table(mkt, ds)
 # formatting so table fits in frame
-res = get_posbound_table(mkt)
 res_formatted = res.rename(columns={'temp_long_posbound':'temp_long',
                             'temp_short_posbound':'temp_short',
                             'final_long_posbound':'final_long',
