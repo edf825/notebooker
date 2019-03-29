@@ -27,13 +27,18 @@ import numpy as np
 from ahl.logging import logger
 from ahl.positionmanager.posbounds_calculation_service import _get_slim_for
 from ahl.positionmanager.api import get_dataservice
-from ahl.positionmanager.repositories import StaticDataRepository
+from ahl.positionmanager.repositories import StaticDataRepository, ReadOnlyPositionRepository
+from ahl.positionmanager.posbounds_calculation_service import PosboundCalculator, create_strategy_data, _get_manual_posbounds_for, _get_slim_for
+import ahl.logging as logging
+from collections import OrderedDict
 import pm.monitoring.posbound as posbound_functions
 import ahl.pandas as apd
 from ahl.db import DOTS_DB
 
 TIMESERIES_CHART_LOOKBACK = 5 * 260
 POS_DIST_CHART_LOOKBACK = 3 * 260
+
+ds = get_dataservice(apis=[StaticDataRepository, ReadOnlyPositionRepository])
 
 # Load up initial data
 with pm_cache_enable():
@@ -96,7 +101,7 @@ scaled_positions = add_multi_contract_market_level(scaled_positions, multi_contr
 
 # mkt specific data
 slim_pre_carveout = atd.get_softlimit(mkt)
-slim = _get_slim_for(get_dataservice(apis=[StaticDataRepository]), mkt)
+slim = _get_slim_for(ds, mkt)
 
 # filter down to market and forward fill for nice plotting
 market_pos = scaled_positions.xs(mkt, level='multi_contract_market', axis=1).ffill(limit=5)
@@ -203,15 +208,9 @@ plot_posbounds_current(market_pos_with_temp, market_desired_posbounds_with_temp_
 #### Current state of things according to posman
 # Note the desired posbounds shown here are slightly different from those above - they are based off the weekly max signal calc and combined with a buffer.
 
-from ahl.positionmanager import posbounds_calculation_service as pcs
-from ahl.positionmanager.posbounds_calculation_service import PosboundCalculator, create_strategy_data, _get_manual_posbounds_for, _get_slim_for
-from ahl.positionmanager.api import get_dataservice
-import ahl.logging as logging
-from collections import OrderedDict
-
 
 # +
-def get_posbound_table(mkt, ds=get_dataservice()):
+def get_posbound_table(mkt, dataservice):
 
     with logging.log_utils.set_logging_level(logging.logging.WARN):
         market_family = ds.get_market_family(mkt)
@@ -272,7 +271,7 @@ def plot_posbound_table(posbound_table, **plotting_kwargs):
 # -
 
 
-res = get_posbound_table(mkt)
+res = get_posbound_table(mkt, ds)
 res
 
 plot_posbound_table(res, figsize=(10, 6))
