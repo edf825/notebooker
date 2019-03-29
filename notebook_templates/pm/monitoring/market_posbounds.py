@@ -214,7 +214,7 @@ def get_posbound_table(mkt, dataservice):
 
     with logging.log_utils.set_logging_level(logging.logging.WARN):
         market_family = ds.get_market_family(mkt)
-        slim = pcs._get_slim_for(ds, mkt)
+        slim = _get_slim_for(ds, mkt)
         max_signal_data = ds.get_strategy_data_related_to(market_family=market_family)
         strategy_data = create_strategy_data(dataservice=ds, max_signal_data=max_signal_data)
         temp_posbounds = _get_manual_posbounds_for(dataservice=ds, market_family=market_family)
