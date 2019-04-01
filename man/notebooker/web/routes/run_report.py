@@ -95,7 +95,7 @@ def run_report(report_name, report_title, mailto, overrides, generate_pdf_output
                           '--result-collection-name', result_serializer.result_collection_name,
                           '--pdf-output' if generate_pdf_output else '--no-pdf-output',
                           ] +
-                         ['--prepare-notebook-only'] if prepare_only else [],
+                         (['--prepare-notebook-only'] if prepare_only else []),
                          stderr=subprocess.PIPE)
     stderr_thread = threading.Thread(target=_monitor_stderr, args=(p, job_id, ))
     stderr_thread.daemon = True
