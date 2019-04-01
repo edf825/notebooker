@@ -49,7 +49,7 @@ def get_daily_trades_per_strat_per_contract(mkt, *args, **kwargs):
 
 def get_bloomberg_volumes(contract_tickers):
     volumes = BDH(contract_tickers, 'VOLUME')
-    volumes = pd.concat([volumes[x]['VOLUME'] for x in bbg_tickers], axis=1, keys=bbg_tickers)
+    volumes = pd.concat([volumes[x]['VOLUME'] for x in contract_tickers], axis=1, keys=contract_tickers)
     volumes = volumes.resample('B').last().fillna(0)
     volumes.columns = contract_tickers
     return volumes
