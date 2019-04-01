@@ -21,13 +21,10 @@ from pm.monitoring.caching import pm_cache_enable
 import pm.monitoring.positions as positions_functions
 import pm.monitoring.plotting as plotting_functions
 import pm.monitoring.posbound as posbound_functions
+import pm.monitoring.slim as slim_functions
 import ahl.tradingdata as atd
 import numpy as np
 import pandas as pd
-from ahl.db import DOTS_DB
-from ahl.positionmanager.posbounds_calculation_service import _get_slim_for
-from ahl.positionmanager.api import get_dataservice
-from ahl.positionmanager.repositories import StaticDataRepository
 
 # Load up data
 with pm_cache_enable():
@@ -36,49 +33,19 @@ with pm_cache_enable():
     fund_mults_and_constraints = monitoring.get_fund_mults_and_constraints()
 
 
-def get_real_slims(mkts):
-    ds = get_dataservice(apis=[StaticDataRepository])
-    return {mkt: _get_slim_for(ds, mkt) for mkt in mkts}
-
-
-def get_net_in_posman_all():
-    ''' FIXME: I am ignoring the system level because I haven't built my position dataframes around systems
-    Theoretically if we had the same market in multiple systems in one strat, and one was net_in_posman'd
-    but the other wasn't, we would have an issue. As it is it's probs fine.
-    '''
-    d = DOTS_DB.db_query('select * from dots.system where net_in_posman=1', name='pd')
-    res = list(d['system_id'].items())
-    sys_map = atd.get_system_instrument_map()
-    res1 = []
-    for x in res:
-        mkts = sys_map[x[0]][x[1]]
-        for m in mkts:
-            res1.append((x[0], m))
-    return res1
-
-
-def apply_net_in_posmans(desired_posbounds, net_in_posmans):
-    res = desired_posbounds
-    for col in res.columns:
-        strat = col[0]
-        mkt = col[1]
-        if (strat, mkt) in net_in_posmans:
-            res[col] = desired_posbounds[col].clip(upper=0, lower=0)
-    return res
-
-
 temp_posbounds = atd.get_posbounds_all()
 multi_contracts = atd.get_multi_contracts()
 mkts = positions.columns.get_level_values('market').unique().tolist()
-softlimits = get_real_slims(mkts)  # atd.get_softlimits_all()
-net_in_posmans = get_net_in_posman_all()
+softlimits = slim_functions.get_market_softlimits(mkts)  # atd.get_softlimits_all()
+nettable_strategy_markets = posbound_functions.get_nettable_strategy_markets()
 
 # Compute market-level posbounds
 desired_posbounds = max_sim_signal * fund_mults_and_constraints
 strat_mkt_positions = positions.sum(level=['strategy', 'market'], axis=1, min_count=1)
 scaled_positions = strat_mkt_positions * fund_mults_and_constraints
 desired_posbounds_with_temp = posbound_functions.apply_temp_posbounds(desired_posbounds, temp_posbounds)
-desired_posbounds_with_temp_and_net = apply_net_in_posmans(desired_posbounds_with_temp, net_in_posmans)
+desired_posbounds_with_temp_and_net = posbound_functions.remove_nettable_strategy_market_posbounds(desired_posbounds_with_temp,
+                                                                                                   nettable_strategy_markets)
 
 # only care about with temp and net now
 mkt_desired_posbound_long = posbound_functions.get_market_posbounds(
@@ -88,7 +55,7 @@ mkt_desired_posbound_short = posbound_functions.get_market_posbounds(
     desired_posbounds_with_temp_and_net.xs('short', level=2, axis=1), multi_contracts)
 
 mkt_desired_posbound = pd.concat([mkt_desired_posbound_long,
-                                            -1.0 * mkt_desired_posbound_short], axis=1).max(axis=1)
+                                  -1.0 * mkt_desired_posbound_short], axis=1).max(axis=1)
 
 mkt_slim = pd.Series(softlimits).reindex_like(mkt_desired_posbound)
 
