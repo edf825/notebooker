@@ -13,7 +13,7 @@
 # ---
 
 # + {"tags": ["parameters"]}
-mkt = 'NIS'
+mkt = 'WHC'
 # -
 
 # imports
@@ -24,15 +24,14 @@ from pm.monitoring.caching import pm_cache_enable
 import ahl.tradingdata as atd
 import pandas as pd
 import numpy as np
-from ahl.logging import logger
-from ahl.positionmanager.posbounds_calculation_service import _get_slim_for
 from ahl.positionmanager.api import get_dataservice
 from ahl.positionmanager.repositories import StaticDataRepository, ReadOnlyPositionRepository
 from ahl.positionmanager.posbounds_calculation_service import PosboundCalculator, create_strategy_data, _get_manual_posbounds_for, _get_slim_for
 import ahl.logging as logging
 from collections import OrderedDict
 import pm.monitoring.posbound as posbound_functions
-import ahl.pandas as apd
+import pm.monitoring.multicontracts as multicontract_functions
+import pm.monitoring.slim as slim_functions
 from ahl.db import DOTS_DB
 
 TIMESERIES_CHART_LOOKBACK = 5 * 260
@@ -51,57 +50,15 @@ desired_posbounds = max_sim_signal * fund_mults_and_constraints
 strat_mkt_positions = positions.sum(level=['strategy', 'market'], axis=1, min_count=1)
 scaled_positions = strat_mkt_positions * fund_mults_and_constraints
 
-
-# this is also used in the overall posbound notebook - should pull it out to pm.monitoring functions 
-def get_net_in_posman_all():
-    ''' FIXME: I am ignoring the system level because I haven't built my position dataframes around systems
-    Theoretically if we had the same market in multiple systems in one strat, and one was net_in_posman'd
-    but the other wasn't, we would have an issue. As it is it's probs fine.
-    '''
-    d = DOTS_DB.db_query('select * from dots.system where net_in_posman=1', name='pd')
-    res = list(d['system_id'].items())
-    sys_map = atd.get_system_instrument_map()
-    res1 = []
-    for x in res:
-        mkts = sys_map[x[0]][x[1]]
-        for m in mkts:
-            res1.append((x[0], m))
-    return res1
-
-
-# this is also used in the overall posbound notebook - should pull it out to pm.monitoring functions 
-def apply_net_in_posmans(desired_posbounds, net_in_posmans):
-    res = desired_posbounds.copy()
-    for col in res.columns:
-        strat = col[0]
-        mkt = col[1]
-        if (strat, mkt) in net_in_posmans:
-            res[col] = desired_posbounds[col].clip(upper=0, lower=0)
-    return res
-
-
-# add multi contract levels 
-def add_multi_contract_market_level(pos_df, multi_contract_mapping):
-    mkt_level = pos_df.columns.get_level_values('market')
-    contract_mapping = atd.get_multi_contracts()
-    comb_mkt_level = [multi_contract_mapping.get(x, x) for x in mkt_level]
-    res = apd.add_level_to_index(pos_df, 'multi_contract_market', comb_mkt_level, axis=1)
-    # reorder levels, generalised to allow for any number of levels above market
-    new_level_order = [x for x in pos_df.columns.names if x <> 'market'] + ['multi_contract_market', 'market']
-    res.columns = res.columns.reorder_levels(new_level_order)
-    res = res.sort_index(axis=1)
-    return res
-
-
 temp_posbounds = atd.get_posbounds_all()
-net_in_posmans = get_net_in_posman_all()
+nettable_strategy_markets = posbound_functions.get_nettable_strategy_markets()
 multi_contracts = atd.get_multi_contracts()
-desired_posbounds = add_multi_contract_market_level(desired_posbounds, multi_contracts)
-scaled_positions = add_multi_contract_market_level(scaled_positions, multi_contracts)
+desired_posbounds = multicontract_functions.add_multi_contract_market_level(desired_posbounds, multi_contracts)
+scaled_positions = multicontract_functions.add_multi_contract_market_level(scaled_positions, multi_contracts)
 
 # mkt specific data
 slim_pre_carveout = atd.get_softlimit(mkt)
-slim = _get_slim_for(ds, mkt)
+slim = slim_functions.get_market_softlimits([mkt])[mkt]
 
 # filter down to market and forward fill for nice plotting
 market_pos = scaled_positions.xs(mkt, level='multi_contract_market', axis=1).ffill(limit=5)
@@ -114,16 +71,38 @@ market_desired_posbounds = market_desired_posbounds.reindex(market_pos.columns, 
 
 # apply temp and net with some hackery to get temp posbounds to apply on positions, and ignore long/short differentiation
 market_pos_with_temp = posbound_functions.apply_temp_posbounds(market_pos, temp_posbounds).xs('long', level=-1, axis=1).abs() * market_pos.applymap(np.sign)
-market_pos_with_temp_and_net = apply_net_in_posmans(market_pos_with_temp, net_in_posmans)
+market_pos_with_temp_and_net = posbound_functions.remove_nettable_strategy_market_posbounds(market_pos_with_temp, nettable_strategy_markets)
 market_desired_posbounds_with_temp = posbound_functions.apply_temp_posbounds(market_desired_posbounds, temp_posbounds).xs('long', level=2, axis=1)
-market_desired_posbounds_with_temp_and_net = apply_net_in_posmans(market_desired_posbounds_with_temp, net_in_posmans)
+market_desired_posbounds_with_temp_and_net = posbound_functions.remove_nettable_strategy_market_posbounds(market_desired_posbounds_with_temp, nettable_strategy_markets)
+
+# ##### AHL market info
 
 # info table 
-info = pd.DataFrame(index=[mkt], data=[[slim_pre_carveout - slim, slim]], columns=['vol carveouts', 'slim'])
-info.index.name = 'market'
-info
+info = pd.Series([mkt, slim_pre_carveout, slim_pre_carveout - slim, slim], ['market', 'slim pre carveouts', 'vol carveouts', 'actual slim'])
+info.name = ''
+print info.to_frame()
 
-#### Sum of desired posbounds through time
+constraints = DOTS_DB.db_query("SELECT constraint_name, constraint_direction, strategy_id, constraint_value FROM dots.posman_constraint WHERE constraint_name in ('NET_DELTA_POSITION_CAP','NET_DELTA_POSITION_BUFFER') AND INSTRUMENT_ID='{}'".format(mkt), name='pd')
+# constraints['strategy_id'] = constraints['strategy_id'].fillna('non specific')
+# constraints = constraints.set_index(['strategy_id','constraint_direction'])
+if len(constraints) > 0:
+    print 'vol carveouts:\n'
+    print constraints
+
+other_carveouts = DOTS_DB.db_query("select * from DOTS.EXT_LIMIT_RES where instrument_id='{}'".format(mkt), name='pd')
+other_carveouts.index.name = None 
+other_carveouts = other_carveouts[['position_limit']]
+if len(other_carveouts) > 0:
+    print 'other carveouts:\n'
+    print other_carveouts
+
+# ##### Exchange info
+
+mkt_metadata = DOTS_DB.db_query("select * from DOTS.future where instrument_id='{}'".format(mkt), name='pd').squeeze()
+mkt_metadata.name = ''
+print mkt_metadata.loc[['instrument_type', 'exchange_id', 'spot_limit', 'contract_limit', 'total_limit']].to_frame()
+
+# ### Sum of desired posbounds through time
 
 
 def plot_posbound_history(market_positions, market_desired_posbounds, slim, lookback, **plotting_kwargs):
@@ -158,7 +137,7 @@ def plot_posbound_history(market_positions, market_desired_posbounds, slim, look
 
 plot_posbound_history(market_pos_with_temp_and_net, market_desired_posbounds_with_temp_and_net, slim, lookback=TIMESERIES_CHART_LOOKBACK, figsize=(10, 8))
 
-#### Distribution of positions over posbound window
+# ### Distribution of positions over posbound window
 
 
 def plot_position_distribution(market_positions, slim, lookback, **plotting_kwargs):
@@ -177,7 +156,7 @@ def plot_position_distribution(market_positions, slim, lookback, **plotting_kwar
 
 plot_position_distribution(market_pos_with_temp_and_net, slim, lookback=POS_DIST_CHART_LOOKBACK, figsize=(10, 6))
 
-#### Desired posbounds per strategy
+# ### Desired posbounds per strategy
 
 
 def plot_posbounds_current(market_positions_with_temp, market_desired_posbounds_with_temp_and_net, market_desired_posbounds, **plotting_kwargs):
@@ -205,7 +184,7 @@ def plot_posbounds_current(market_positions_with_temp, market_desired_posbounds_
 
 plot_posbounds_current(market_pos_with_temp, market_desired_posbounds_with_temp_and_net, market_desired_posbounds, figsize=(10, 6))
 
-#### Current state of things according to posman
+# ### Current state of things according to posman
 # Note the desired posbounds shown here are slightly different from those above - they are based off the weekly max signal calc and combined with a buffer.
 
 
