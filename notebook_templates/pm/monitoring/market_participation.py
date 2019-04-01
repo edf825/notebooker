@@ -99,6 +99,7 @@ trade_weighted_participation = trade_weighted_participation.sum()
 # #### Participation stats
 
 pd.Series(OrderedDict([
+    ('market', mkt),
     ('median daily trade', median_trade),
     ('median market volume', median_volume),
     ('trade weighted participation', trade_weighted_participation),
