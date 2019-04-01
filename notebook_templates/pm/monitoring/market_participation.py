@@ -114,8 +114,8 @@ pd.Series(OrderedDict([
 fig1, ax1 = plt.subplots(1, 2, figsize=(10, 6), sharey=True, gridspec_kw={'width_ratios':[2, 1]})
 participation.fillna(0).tail(lookback).plot(ax=ax1[0])
 daily_trade_weighted_participation.plot(ax=ax1[0], label='daily trade weighted', color='black', alpha=.2, linewidth=0, kind='area')
-daily_trade_weighted_participation.hist(ax=ax1[1], bins=10, orientation='horizontal')
-plt.legend()
+daily_trade_weighted_participation.hist(ax=ax1[1], bins=10, orientation='horizontal', density=True)
+ax1[0].legend()
 plt.tight_layout()
 
 # #### Daily participation, rolling 20 day mean
@@ -123,8 +123,9 @@ plt.tight_layout()
 fig2, ax2 = plt.subplots(1, 2, figsize=(10, 6), sharey=True, gridspec_kw={'width_ratios':[2, 1]})
 participation.fillna(0).rolling(20).mean().tail(lookback).plot(ax=ax2[0])
 daily_trade_weighted_participation.rolling(20).mean().plot(ax=ax2[0], label='daily trade weighted', color='black', alpha=.2, linewidth=0, kind='area')
-daily_trade_weighted_participation.rolling(20).mean().hist(ax=ax2[1], bins=10, orientation='horizontal')
+daily_trade_weighted_participation.rolling(20).mean().hist(ax=ax2[1], bins=10, orientation='horizontal', density=True)
 ax2[0].set_ylim(*ax1[0].get_ylim())
+ax2[0].legend()
 plt.legend()
 plt.tight_layout()
 
