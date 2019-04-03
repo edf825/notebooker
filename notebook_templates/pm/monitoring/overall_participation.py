@@ -1,17 +1,3 @@
-# ---
-# jupyter:
-#   jupytext:
-#     text_representation:
-#       extension: .py
-#       format_name: light
-#       format_version: '1.3'
-#       jupytext_version: 1.0.5
-#   kernelspec:
-#     display_name: pm_notebook_kernel
-#     language: python
-#     name: pm_notebook_kernel
-# ---
-
 # + {"tags": ["parameters"]}
 EXCL_STRATS = ['CMBS', 'RVMBS', 'UIRS', 'UCBOND', 'FTREND', 'FIVOL', 'UXENER', 'FSETT']  # alt markets strategies - but we probably DO want FTREND futures markets
 INCL_INSIGHT_STRATS = False
@@ -124,7 +110,7 @@ def get_participation_values(mkt, lookback=BDAYS_LOOKBACK):
 
 
 # -
-pool = hpc_pool('SPARK',max_workers=60,mem_per_cpu='1g')
+pool = hpc_pool('PROCESS') #hpc_pool('SPARK',max_workers=60,mem_per_cpu='1g')
 test = map(lambda x: pool.submit(get_participation_values, x), mkts)
 error_value = {x:np.nan for x in get_participation_values('FTL').keys()}
 res = [x.result() if x.exception() is None else error_value for x in test]
