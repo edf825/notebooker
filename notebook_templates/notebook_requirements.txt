@@ -1,4 +1,5 @@
 ahl.marketdata
+ahl.returnbreakdown
 ahl.signals
 equities.core
 equities.centaur
