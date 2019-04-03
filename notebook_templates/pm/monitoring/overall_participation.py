@@ -1,7 +1,11 @@
 # ---
 # jupyter:
-#   celltoolbar: Tags
-#   jupytext_format_version: '1.2'
+#   jupytext:
+#     text_representation:
+#       extension: .py
+#       format_name: light
+#       format_version: '1.3'
+#       jupytext_version: 1.0.5
 #   kernelspec:
 #     display_name: pm_notebook_kernel
 #     language: python
@@ -11,8 +15,10 @@
 # + {"tags": ["parameters"]}
 EXCL_STRATS = ['CMBS', 'RVMBS', 'UIRS', 'UCBOND', 'FTREND', 'FIVOL', 'UXENER', 'FSETT']  # alt markets strategies - but we probably DO want FTREND futures markets
 INCL_INSIGHT_STRATS = False
+BDAYS_LOOKBACK = 60
 # -
 
+# %matplotlib inline
 # imports
 import matplotlib.pyplot as plt
 import ahl.tradingdata as atd
@@ -28,6 +34,7 @@ from collections import OrderedDict
 from pm.monitoring.caching import pm_cache_enable
 import pm.monitoring.positions as positions_functions
 import pm.data.strategies as pds
+from ahl.concurrent.futures import hpc_pool
 
 with pm_cache_enable():
     positions = positions_functions.get_all_market_positions()
@@ -45,7 +52,7 @@ mkts = [str(x) for x in mkts if amd.describe(x)['assetClass'] == 'ASSET_FUTURE']
 mkts.sort()
 
 
-# +
+# helper functions
 def get_trades_all_contracts(mkt, include_strats=None, multi_contracts=atd.get_multi_contracts(), start_date=dt.now() - datetime.timedelta(days=30), end_date=dt.now()):
     contracts = [mkt] + [x for x in multi_contracts.keys() if multi_contracts[x] == mkt and x <> mkt]
     strats = atd.get_traded_instruments_by_strategy(include_mkts=contracts, include_strats=include_strats).keys()
@@ -72,8 +79,8 @@ def get_bloomberg_ticker(ahl_code):
     des = amd.describe(ahl_code)
     return des.get('bbgTicker', des.get('bloomberg', {}).get('original_symbol', np.nan))
 
-
-def get_participation_values(mkt, lookback=90):
+# main function
+def get_participation_values(mkt, lookback=BDAYS_LOOKBACK):
 
     # get all trades per straetgy per contract for a given market
     trades = get_daily_trades_per_strat_per_contract(mkt, start_date=dt.now() - BDay(lookback + 20))  # additional 20 days for rolling average
@@ -116,28 +123,44 @@ def get_participation_values(mkt, lookback=90):
             'trade_weighted_participation':trade_weighted_participation}
 
 
-# +
-from ahl.concurrent.futures import hpc_pool
-pool = hpc_pool('SPARK', max_workers=32, mem_per_cpu='1g')
+# -
+pool = hpc_pool('SPARK',max_workers=60,mem_per_cpu='1g')
 test = map(lambda x: pool.submit(get_participation_values, x), mkts)
 error_value = {x:np.nan for x in get_participation_values('FTL').keys()}
 res = [x.result() if x.exception() is None else error_value for x in test]
-
-# res = list(pool.map(try_get_participation_values, mkts))
 resd = dict(zip(mkts, res))
 resdf = pd.DataFrame(resd).T
-resdf.nlargest(20, 'trade_weighted_participation')
 
+# +
 # metadata
 market_names = {x:amd.describe(x)['longName'] for x in mkts}
 strat_mkt_map = positions.columns.droplevel(2).tolist()
 strats_per_mkt = {m:list(set([str(a) for a, b in strat_mkt_map if b in [m] + [x for x, y in multi_contracts.items() if y == m]])) for m in mkts}
 num_strats_per_mkt = {m:len(s) for m, s in strats_per_mkt.items()}
-res_with_metadata = pd.concat([pd.Series(market_names, name='market_name'),
-                               pd.Series(num_strats_per_mkt , name='num_strats'),
-                               resdf[['median_trade', 'median_volume', 'max_participation', 'trade_weighted_participation']]], axis=1).reindex(resdf.index)
+link = {m:'<a href="../market_participation/latest?mkt={}" '
+                                           'target="_blank">market notebook</a>'.format(m) for m in mkts}
 
+# attach metadata
+res_with_metadata = pd.concat([resdf[['median_trade', 'median_volume', 'max_participation', 'trade_weighted_participation']],
+                               pd.Series(market_names, name='market_name'),
+                               pd.Series(num_strats_per_mkt , name='num_strats'),
+                               pd.Series(link,name='link')
+                               ], axis=1).reindex(resdf.index)
+# -
+
+# #### Participation across all markets
 
 res_with_metadata[['trade_weighted_participation']].hist()
 
-res_with_metadata[['market_name', 'num_strats', 'median_trade', 'median_volume', 'max_participation', 'trade_weighted_participation']]
+formatter = {'median_trade':'{:,.0f}',
+              'median_volume':'{:,.0f}',
+              'trade_weighted_participation':'{:,.2%}',
+              'max_participation':'{:,.2%}'}
+
+res_with_metadata[['market_name',
+                   'num_strats',
+                   'median_trade',
+                   'median_volume',
+                   'max_participation',\
+                   'trade_weighted_participation',
+                   'link']].nlargest(20,'trade_weighted_participation').style.format(formatter)
