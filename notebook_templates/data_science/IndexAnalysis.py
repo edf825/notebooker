@@ -54,7 +54,9 @@ def agg_by_period(data, period, scale_method):
                                freq='1D')
     agg = pd.DataFrame(data.index.value_counts())\
                 .resample(period).sum()\
-                .pipe(lambda df_: df_.assign(scale = scale_methods[scale_method]([df_[data.index.name]])[0]))\
+                .pipe(lambda df_:
+                      df_.assign(scale = scale_methods[scale_method]([df_[data.index.name]],
+                                                                     norm='l1')[0]))\
                 .rename(columns={'scale': period})\
                 .drop(data.index.name, axis=1)\
                 .pipe(lambda df_:
