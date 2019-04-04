@@ -47,29 +47,32 @@ def agg_by_period(data, period, scale_method):
     scale_methods = {'normalised': preprocessing.MinMaxScaler().fit_transform,
                     'totals': lambda x: x}
     # resample to chosen period and scale
-    # resample to 1D and backfill so can merge with 1D resampled data
+    # resample to 1D and reindex to start of data and backfill
+    # reindex to end of data
+    t_index = pd.DatetimeIndex(start=data.index.min().date(),
+                               end=data.index.max().date(),
+                               freq='1D')
     agg = pd.DataFrame(data.index.value_counts())\
-                    .resample(period).sum()\
-                    .pipe(lambda df_: df_.assign(scale = scale_methods[scale_method](df_.values)))\
-                    .rename(columns={'scale': period})\
-                    .drop(data.index.name, axis=1)\
-                    .resample('1D').mean()\
-                    .bfill()
+                .resample(period).sum()\
+                .pipe(lambda df_: df_.assign(scale = scale_methods[scale_method](df_.values)))\
+                .rename(columns={'scale': period})\
+                .drop(data.index.name, axis=1)\
+                .pipe(lambda df_:
+                          df_.reindex(pd.DatetimeIndex(start=data.index.min().date(),
+                                                       end=df_.index.max().date(),
+                                                       freq='1D')))\
+                .bfill()\
+                .reindex(t_index)
     return agg
 
 def resample_index(data, scale_method, resample_periods):
     df_periods = {period: agg_by_period(data, period, scale_method) for period in resample_periods}
-    agg = pd.merge(df_periods['1D'], df_periods['1W'], how='left', left_index=True, right_index=True)
-    agg = pd.merge(agg, df_periods['1M'], how='left', left_index=True, right_index=True)
-    # backfill, eg year resample puts data at end of year, so need to backfill to when data starts
-    agg = pd.merge(agg, df_periods['1Y'], how='left', left_index=True, right_index=True).bfill()
+    agg = df_periods[resample_periods[0]]
     fig, axes = plt.subplots(nrows=4, ncols=1, sharex=True)
     pylab.rcParams['figure.figsize'] = (15.0, 20.0)
-    agg['1D'].plot(kind='area', alpha=0.5, stacked=False, linewidth=0, ax=axes[0])
-    agg['1W'].plot(kind='area', alpha=0.5, stacked=False, linewidth=0, ax=axes[1])
-    agg['1M'].plot(kind='area', alpha=0.5, stacked=False, linewidth=0, ax=axes[2])
-    agg['1Y'].plot(kind='area', alpha=0.5, stacked=False, linewidth=0, ax=axes[3])
+    for i, rp in enumerate(resample_periods):
+        # backfill, eg year resample puts data at end of year, so need to backfill to when data starts
+        df_periods[rp].plot(kind='area', alpha=0.5, stacked=False, linewidth=0, ax=axes[i])
     plt.show()
 
 resample_index(data, SCALE_METHOD, RESAMPLE_PERIODS)
-# -
