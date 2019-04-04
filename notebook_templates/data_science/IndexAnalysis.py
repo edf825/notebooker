@@ -71,7 +71,6 @@ def resample_index(data, scale_method, resample_periods):
     fig, axes = plt.subplots(nrows=4, ncols=1, sharex=True)
     pylab.rcParams['figure.figsize'] = (15.0, 20.0)
     for i, rp in enumerate(resample_periods):
-        # backfill, eg year resample puts data at end of year, so need to backfill to when data starts
         df_periods[rp].plot(kind='area', alpha=0.5, stacked=False, linewidth=0, ax=axes[i])
     plt.show()
 
