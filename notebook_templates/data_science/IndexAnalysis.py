@@ -72,6 +72,7 @@ def resample_index(data, scale_method, resample_periods):
     pylab.rcParams['figure.figsize'] = (15.0, 20.0)
     for i, rp in enumerate(resample_periods):
         df_periods[rp].plot(kind='area', alpha=0.5, stacked=False, linewidth=0, ax=axes[i])
+        axes[i].set_title("Aggregated {} count of data resample to {}".format(scale_method, rp))
     plt.show()
 
 resample_index(data, SCALE_METHOD, RESAMPLE_PERIODS)
