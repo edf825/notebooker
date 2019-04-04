@@ -59,10 +59,9 @@ def get_bloomberg_volumes(contract_tickers):
     volumes.columns = contract_tickers
     return volumes
 
-
 def get_bloomberg_ticker(ahl_code):
-    amd.enable_trading_mode(False)
-    des = amd.describe(ahl_code)
+    with amd.features.set_trading_mode(False):
+        des = amd.describe(ahl_code)
     return des.get('bbgTicker', des.get('bloomberg', {}).get('original_symbol', np.nan))
 
 # main function

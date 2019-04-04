@@ -42,7 +42,8 @@ def get_bloomberg_volumes(contract_tickers):
 
 
 def get_bloomberg_ticker(ahl_code):
-    des = amd.describe(ahl_code)
+    with amd.features.set_trading_mode(False):
+        des = amd.describe(ahl_code)
     return des.get('bbgTicker', des.get('bloomberg', {}).get('original_symbol', np.nan))
 
 # -
@@ -57,7 +58,10 @@ gross_trades = gross_trades.tail(lookback)
 
 # need to map contracts to bloomberg codes so we can get volumes - see contract_ticker_check to see that this mapping seems to be vaguely sensible
 contracts = gross_trades.columns.tolist()
-ahl_codes = ['_'.join(['FUT', mkt, str(x)[:6]]) for x in contracts]
+contracts_condensed = [x[:-2] if x[-2:]=='00' else x for x in contracts]
+
+ahl_symbol = amd.describe(mkt)['symbol']
+ahl_codes = ['_'.join([ahl_symbol,x]) for x in contracts_condensed]
 bbg_tickers = [get_bloomberg_ticker(x) for x in ahl_codes]
 na_tickers = [x for x, y in zip(ahl_codes, bbg_tickers) if y is np.nan]
 assert len(na_tickers) == 0, 'bloomberg ticker(s) not available for ' + ', '.join(na_tickers)
