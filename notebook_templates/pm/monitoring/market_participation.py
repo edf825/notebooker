@@ -1,17 +1,3 @@
-# ---
-# jupyter:
-#   jupytext:
-#     text_representation:
-#       extension: .py
-#       format_name: light
-#       format_version: '1.3'
-#       jupytext_version: 1.0.5
-#   kernelspec:
-#     display_name: pm_notebook_kernel
-#     language: python
-#     name: pm_notebook_kernel
-# ---
-
 # + {"tags": ["parameters"]}
 mkt = 'OBXO'
 lookback = 60
@@ -56,43 +42,48 @@ def get_bloomberg_volumes(contract_tickers):
 
 
 def get_bloomberg_ticker(ahl_code):
-    des = amd.describe(ahl_code)
+    with amd.features.set_trading_mode(False):
+        des = amd.describe(ahl_code)
     return des.get('bbgTicker', des.get('bloomberg', {}).get('original_symbol', np.nan))
 
 # -
 
-
-# get all trades per straetgy per contract for a given market
-trds = get_daily_trades_per_strat_per_contract(mkt, start_date=dt.now() - BDay(lookback + 20))  # additional 20 days for rolling average
+# get all trades per strategy per contract for a given market
+trades = get_daily_trades_per_strat_per_contract(mkt, start_date=dt.now() - BDay(lookback + 20))  # additional 20 days for rolling average
 
 # calculate daily gross trades going through each contract
-gross_trades_per_contract = trds.abs().sum(axis=1).groupby(level=[0, 2]).sum().unstack().fillna(0).resample('B').sum()
-gross_trades_per_contract = gross_trades_per_contract.loc(axis=1)[gross_trades_per_contract.tail(lookback).sum() > 0]
-gross_trades_per_contract_rolling_mean = gross_trades_per_contract.rolling(20).mean()
-gross_trades_per_contract = gross_trades_per_contract.tail(lookback)
+gross_trades = trades.abs().sum(axis=1).groupby(level=[0, 2]).sum().unstack().fillna(0).resample('B').sum()
+gross_trades = gross_trades.loc(axis=1)[gross_trades.tail(lookback).sum() > 0]
+gross_trades = gross_trades.tail(lookback)
 
 # need to map contracts to bloomberg codes so we can get volumes - see contract_ticker_check to see that this mapping seems to be vaguely sensible
-contracts = gross_trades_per_contract.columns.tolist()
-ahl_codes = ['_'.join(['FUT', mkt, str(x)[:6]]) for x in contracts]
+contracts = gross_trades.columns.tolist()
+contracts_condensed = [x[:-2] if x[-2:]=='00' else x for x in contracts]
+
+ahl_symbol = amd.describe(mkt)['symbol']
+ahl_codes = ['_'.join([ahl_symbol,x]) for x in contracts_condensed]
 bbg_tickers = [get_bloomberg_ticker(x) for x in ahl_codes]
+na_tickers = [x for x, y in zip(ahl_codes, bbg_tickers) if y is np.nan]
+assert len(na_tickers) == 0, 'bloomberg ticker(s) not available for ' + ', '.join(na_tickers)
 
 # now get volumes
 volumes = get_bloomberg_volumes(bbg_tickers)
 volumes.columns = contracts
-volumes = volumes.reindex_like(gross_trades_per_contract).fillna(0)
+volumes = volumes.reindex_like(gross_trades)
+volumes = volumes.replace(0, np.nan)  # where we have no volume it's probably bloomberg data error, so we ignore
 
 # participation calcs
-participation = gross_trades_per_contract.div(volumes, axis=1)
-participation = participation.replace(0, np.nan)  # we only care about participation on days when we actually trade 
-trade_weighting = gross_trades_per_contract.div(gross_trades_per_contract.sum().sum()) 
-trade_weighted_participation = (participation * trade_weighting).sum(axis=1)
-daily_trade_weighted_participation = participation.multiply(gross_trades_per_contract.div(gross_trades_per_contract.sum(axis=1), axis=0), axis=0).sum(axis=1)
+gross_trades_where_volume = gross_trades[volumes > 0].replace(0, np.nan)
+participation = gross_trades_where_volume.div(volumes, axis=1)
 
-participation_20d = gross_trades_per_contract.rolling(20).sum() / volumes.rolling(20).sum()
+trade_weighting = gross_trades_where_volume.div(gross_trades_where_volume.sum().sum())
+trade_weighted_participation = (participation * trade_weighting).sum(axis=1)
+daily_trade_weighted_participation = participation.multiply(
+    gross_trades_where_volume.div(gross_trades_where_volume.sum(axis=1), axis=0), axis=0).sum(axis=1)
 
 # max and median calcs
-median_trade = gross_trades_per_contract.sum(axis=1).replace(0, np.nan).median()
-median_volume = volumes[gross_trades_per_contract > 0].sum(axis=1).median()
+median_trade = gross_trades.sum(axis=1).replace(0, np.nan).median()
+median_volume = volumes[gross_trades > 0].sum(axis=1).replace(0, np.nan).median()
 max_participation = daily_trade_weighted_participation.max()
 trade_weighted_participation = trade_weighted_participation.sum()
 
@@ -134,7 +125,7 @@ plt.tight_layout()
 
 # per contract plots
 for contract in contracts:
-    gross_trades_per_strategy = trds.xs(contract, level='delivery').abs().sum(axis=1).unstack().reindex(volumes.index)
+    gross_trades_per_strategy = trades.xs(contract, level='delivery').abs().sum(axis=1).unstack().reindex(volumes.index)
     contract_volumes = volumes[contract]
     participation_per_strategy = gross_trades_per_strategy.div(contract_volumes, axis=0)
     fig, ax = plt.subplots(figsize=(10, 6))
