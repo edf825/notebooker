@@ -47,6 +47,20 @@ def test_generate_ipynb_from_py():
             'test_report.ipynb'
         )
         assert os.path.exists(expected_ipynb_path), '.ipynb was not generated as expected!'
+
+        with mock.patch('man.notebooker.utils.conversion.uuid.uuid4') as uuid4:
+            with mock.patch('man.notebooker.utils.conversion.pkg_resources.resource_filename') as resource_filename:
+                conversion.PYTHON_TEMPLATE_DIR = None
+                uuid4.return_value = 'uuid'
+                resource_filename.return_value = python_dir + '/extra_path/test_report.py'
+                conversion.generate_ipynb_from_py(TEMPLATE_BASE_DIR, 'extra_path/test_report')
+
+        expected_ipynb_path = os.path.join(
+            TEMPLATE_BASE_DIR,
+            'uuid',
+            'extra_path',
+            'test_report.ipynb')
+        assert os.path.exists(expected_ipynb_path), '.ipynb was not generated as expected!'
     finally:
         _cleanup_dirs()
         shutil.rmtree(python_dir)
