@@ -1,17 +1,3 @@
-# ---
-# jupyter:
-#   jupytext:
-#     text_representation:
-#       extension: .py
-#       format_name: light
-#       format_version: '1.3'
-#       jupytext_version: 1.0.5
-#   kernelspec:
-#     display_name: pm_notebook_kernel
-#     language: python
-#     name: pm_notebook_kernel
-# ---
-
 # + {"tags": ["parameters"]}
 mkt = 'NIS'
 # -
@@ -120,7 +106,7 @@ plot_posbound_history(market_pos_with_temp_and_net, market_desired_posbounds_wit
 
 def plot_position_distribution(market_positions, slim, lookback, **plotting_kwargs):
     fig, ax = plt.subplots(**plotting_kwargs)
-    market_positions.sum(axis=1).tail(260 * 3).hist(bins=40)
+    market_positions.sum(axis=1).tail(lookback).hist(bins=40)
     vlim = ax.get_ylim()
     ax.vlines(slim, *vlim, linestyle='--')
     ax.vlines(-slim, *vlim, linestyle='--')

@@ -1,7 +1,7 @@
 # + {"tags": ["parameters"]}
-EXCL_STRATS = ['CMBS', 'RVMBS', 'UIRS', 'UCBOND', 'FTREND', 'FIVOL', 'UXENER', 'FSETT']  # alt markets strategies - but we probably DO want FTREND futures markets
-INCL_INSIGHT_STRATS = False
-BDAYS_LOOKBACK = 60
+strategy_exclusions = ['CMBS', 'RVMBS', 'UIRS', 'UCBOND', 'FTREND', 'FIVOL', 'UXENER', 'FSETT']  # alt markets strategies - but we probably DO want FTREND futures markets
+include_insight_strats = False
+lookback = 60
 # -
 
 # %matplotlib inline
@@ -27,8 +27,8 @@ with pm_cache_enable():
 
 # get positions and exclude manually excluded and insight only strats
 positions = positions.loc(axis=1)[positions.abs().sum() > 0]
-positions = positions.loc(axis=1)[~positions.columns.get_level_values(0).isin(EXCL_STRATS)]
-positions = positions.loc(axis=1)[positions.columns.get_level_values(0).isin(pds.get_strategies(include_insight_only=INCL_INSIGHT_STRATS))]
+positions = positions.loc(axis=1)[~positions.columns.get_level_values(0).isin(strategy_exclusions)]
+positions = positions.loc(axis=1)[positions.columns.get_level_values(0).isin(pds.get_strategies(include_insight_only=include_insight_strats))]
 
 # work out markets we care about
 multi_contracts = atd.get_multi_contracts()
@@ -65,7 +65,7 @@ def get_bloomberg_ticker(ahl_code):
     return des.get('bbgTicker', des.get('bloomberg', {}).get('original_symbol', np.nan))
 
 # main function
-def get_participation_values(mkt, lookback=BDAYS_LOOKBACK):
+def get_participation_values(mkt, lookback=lookback):
 
     # get all trades per straetgy per contract for a given market
     trades = get_daily_trades_per_strat_per_contract(mkt, start_date=dt.now() - BDay(lookback + 20))  # additional 20 days for rolling average
