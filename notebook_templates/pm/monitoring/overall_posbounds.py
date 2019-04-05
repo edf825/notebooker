@@ -1,13 +1,3 @@
-# ---
-# jupyter:
-#   celltoolbar: Tags
-#   jupytext_format_version: '1.2'
-#   kernelspec:
-#     display_name: pm_notebook_kernel
-#     language: python
-#     name: pm_notebook_kernel
-# ---
-
 # + {"tags": ["parameters"]}
 overallocation_buffer = 0.4
 strategy_exclusions = ['CMBS', 'RVMBS', 'UIRS', 'UCBOND', 'FTREND', 'FIVOL', 'UXENER'] 
