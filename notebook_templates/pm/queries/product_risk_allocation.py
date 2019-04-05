@@ -48,7 +48,7 @@ returns = arb.vol_normalised_overlapping_returns(product=product, style=arb.Styl
 
 grouped = m.sector(returns)
 grouped = p.add_level_groupings(grouped)
-grouped = b.add_derived_level(grouped, 'sector', ['strategy', 'sector'], new_sector)
+grouped = b.add_derived_level(grouped, 'grouped_sector', ['strategy', 'sector'], new_sector)
 norm = lambda x: arb.normalise_allocations(x).round(2).to_frame('Alloc')
 
 # ## Three Level Allocations
@@ -59,9 +59,17 @@ norm(arb.allocations_at_level(grouped, 'three_level_grouping'))
 
 norm(arb.allocations_at_level(grouped, 'eight_level_grouping'))
 
+# ## Grouped Sector Allocations
+
+norm(arb.allocations_at_level(grouped, 'grouped_sector'))
+
 # ## Sector Allocations
 
 norm(arb.allocations_at_level(grouped, 'sector'))
+
+# ## Grouped Sector/Three Level Cross-Allocations
+
+(arb.allocations_at_level(grouped, ['grouped_sector', 'three_level_grouping']).groupby(level='grouped_sector', axis=0).apply(lambda s: s / s.sum()) * 100).to_frame('Alloc').round(2).unstack().fillna('-')
 
 # ## Sector/Three Level Cross-Allocations
 
