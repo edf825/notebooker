@@ -1,7 +1,9 @@
+import os
+import uuid
+
 import git
 import jupytext
 import nbformat
-import os
 import pkg_resources
 from nbconvert import HTMLExporter, PDFExporter
 from nbconvert.exporters.exporter import ResourcesDict
@@ -92,7 +94,7 @@ def generate_ipynb_from_py(template_base_dir, report_name, warn_on_local=True):
             logger.warning('Loading from local location. This is only expected if you are running locally.')
         python_template_path = pkg_resources.resource_filename(__name__,
                                                                '../../../notebook_templates/{}.py'.format(report_path))
-        output_template_path = _ipynb_output_path(template_base_dir, report_path, '')
+        output_template_path = _ipynb_output_path(template_base_dir, report_path, str(uuid.uuid4()))
 
     try:
         with open(output_template_path, 'r') as f:
