@@ -7,10 +7,7 @@ include_insight_strats = False
 # %matplotlib inline
 import matplotlib.pyplot as plt
 import ahl.tradingdata as atd
-import datetime
 from datetime import datetime as dt
-from ahl.qds import BDH
-import matplotlib.dates as mdates
 import pandas as pd
 import numpy as np
 import ahl.marketdata as amd
@@ -18,47 +15,20 @@ from pandas.tseries.offsets import BDay
 from collections import OrderedDict
 import pm.data.strategies as pds
 
+import pm.monitoring.multicontracts as pmmc
+import pm.monitoring.trades as pmt
+import pm.monitoring.volume as pmv
+
 amd.enable_trading_mode(False)
-
-
-# +
-def get_trades_all_contracts(mkt, include_strats=None, multi_contracts=atd.get_multi_contracts(), start_date=dt.now() - datetime.timedelta(days=30), end_date=dt.now()):
-    contracts = [mkt] + [x for x in multi_contracts.keys() if multi_contracts[x] == mkt and x <> mkt]
-    strats = atd.get_traded_instruments_by_strategy(include_mkts=contracts, include_strats=include_strats).keys()
-    trds = [atd.get_tickets(x, y, start_date=start_date, end_date=end_date).pd for x in strats for y in contracts]
-    trds_df = pd.concat(trds, axis=0, keys=[(x, y) for x in strats for y in contracts]).reset_index().rename(columns={'level_0':'strategy', 'level_1':'market', 'level_2':'dt'})
-    return trds_df.set_index('dt').sort_index()
-
-
-def get_daily_trades_per_strat_per_contract(mkt, *args, **kwargs):
-    trds = get_trades_all_contracts(mkt, *args, **kwargs).reset_index()
-    return trds.groupby([pd.to_datetime(trds['dt'].dt.date), 'strategy', 'instrument','delivery'])[['buys', 'sells']].sum()
-
-def get_bloomberg_volumes(contract_tickers):
-    volumes = BDH(contract_tickers, 'VOLUME')
-    volumes = pd.concat([volumes[x]['VOLUME'] for x in contract_tickers], axis=1, keys=contract_tickers)
-    volumes = volumes.resample('B').last().fillna(0)
-    volumes.columns = contract_tickers
-    return volumes
-
-def get_bloomberg_ticker(ahl_code):
-    with amd.features.set_trading_mode(False):
-        des = amd.describe(ahl_code)
-    return des.get('bbgTicker', des.get('bloomberg', {}).get('original_symbol', np.nan))
-
-def df_from_dict(dict_of_dicts):
-    return pd.concat({
-        k: df_from_dict(v) if all(isinstance(c, dict) for c in v.values()) else pd.Series(v)
-        for k, v in dict_of_dicts.viewitems()
-    })
-
-# -
 
 # list of strats we care about
 strats = pds.get_strategies(include_insight_only=include_insight_strats)
 
 # get all trades per strategy per contract for a given market
-trades = get_daily_trades_per_strat_per_contract(mkt, include_strats=strats, start_date=dt.now() - BDay(lookback + 20))  # additional 20 days for rolling average
+multi_contracts = atd.get_multi_contracts()
+contracts_for_market = pmmc.get_markets_in_family(mkt, multi_contracts)
+mkt_trades = pmt.get_market_trades(contracts_for_market, start_date=dt.now() - BDay(lookback + 20)).reset_index()  # additional 20 days for rolling average
+trades = mkt_trades.groupby([pd.to_datetime(mkt_trades['dt'].dt.date), 'strategy', 'delivery'])[['buys', 'sells']].sum()
 
 # calculate daily gross trades going through each contract
 gross_trades = trades.abs().sum(axis=1).groupby(level=['dt', 'delivery']).sum().unstack().fillna(0).resample('B').sum()
@@ -72,12 +42,12 @@ contracts_condensed = map(condense_contract_code,contracts)
 
 ahl_symbol = amd.describe(mkt)['symbol']
 ahl_codes = ['_'.join([ahl_symbol,x]) for x in contracts_condensed]
-bbg_tickers = [get_bloomberg_ticker(x) for x in ahl_codes]
-na_tickers = [x for x, y in zip(ahl_codes, bbg_tickers) if y is np.nan]
+bbg_tickers = [pmv.get_bloomberg_ticker(x) for x in ahl_codes]
+na_tickers = [x for x, y in zip(ahl_codes, bbg_tickers) if y is None]
 assert len(na_tickers) == 0, 'bloomberg ticker(s) not available for ' + ', '.join(na_tickers)
 
 # now get volumes
-volumes = get_bloomberg_volumes(bbg_tickers)
+volumes = pmv.get_bloomberg_volumes(bbg_tickers)
 volumes.columns = contracts
 volumes = volumes.reindex_like(gross_trades)
 volumes = volumes.replace(0, np.nan)  # where we have no volume it's probably bloomberg data error, so we ignore
@@ -114,6 +84,11 @@ pd.Series(OrderedDict([
 # #### Trading info
 
 # some general info
+def df_from_dict(dict_of_dicts):
+    return pd.concat({
+        k: df_from_dict(v) if all(isinstance(c, dict) for c in v.values()) else pd.Series(v)
+        for k, v in dict_of_dicts.viewitems()
+    })
 def get_sample_times_df(mkt, include_strats=None, multi_contracts=atd.get_multi_contracts()):
     contracts = [mkt] + [x for x in multi_contracts.keys() if multi_contracts[x] == mkt and x <> mkt]
     sample_times = df_from_dict(atd.get_sample_times(include_mkts=contracts,include_strats=include_strats)).unstack()
