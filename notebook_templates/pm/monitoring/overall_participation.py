@@ -1,7 +1,9 @@
 # + {"tags": ["parameters"]}
-strategy_exclusions = ['CMBS', 'RVMBS', 'UIRS', 'UCBOND', 'FTREND', 'FIVOL', 'UXENER', 'FSETT']  # alt markets strategies - but we probably DO want FTREND futures markets
+strategy_exclusions = ['BOX10','CETF','CIRATE','CMBS','CSWARM','DCREDIT','FETF','FIVOL','FSETT','FTREND','RVMBS','SWX10','UCBOND','UCREDIT','UIRS','UXCURR','UXENER']
+strategy_inclusions = None # overrides exclusions
 include_insight_strats = False
 lookback = 60
+num_results = 20
 # -
 
 # %matplotlib inline
@@ -26,9 +28,13 @@ with pm_cache_enable():
     positions = pmp.get_all_market_positions()
 
 # get positions and exclude manually excluded and insight only strats
+# this is only to establish what markets we look at
 positions = positions.loc(axis=1)[positions.abs().sum() > 0]
-positions = positions.loc(axis=1)[~positions.columns.get_level_values(0).isin(strategy_exclusions)]
-positions = positions.loc(axis=1)[positions.columns.get_level_values(0).isin(pds.get_strategies(include_insight_only=include_insight_strats))]
+if strategy_inclusions is None:
+    positions = positions.loc(axis=1)[~positions.columns.get_level_values(0).isin(strategy_exclusions)]
+    positions = positions.loc(axis=1)[positions.columns.get_level_values(0).isin(pds.get_strategies(include_insight_only=include_insight_strats))]
+else:
+    positions = positions.loc(axis=1)[strategy_inclusions]
 
 # work out markets we care about
 multi_contracts = atd.get_multi_contracts()
@@ -124,4 +130,4 @@ res_with_metadata[['market_name',
                    'median_volume',
                    'max_participation',\
                    'trade_weighted_participation',
-                   'link']].nlargest(20,'trade_weighted_participation').style.format(formatter)
+                   'link']].nlargest(num_results,'trade_weighted_participation').style.format(formatter)
