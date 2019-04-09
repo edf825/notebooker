@@ -1,5 +1,5 @@
 # + {"tags": ["parameters"]}
-mkt = 'WHC'
+mkt = 'FTL'
 lookback = 60
 include_insight_strats = False
 # -
@@ -28,7 +28,7 @@ strats = pds.get_strategies(include_insight_only=include_insight_strats)
 multi_contracts = atd.get_multi_contracts()
 contracts_for_market = pmmc.get_markets_in_family(mkt, multi_contracts)
 mkt_trades = pmt.get_market_trades(contracts_for_market, start_date=dt.now() - BDay(lookback + 20)).reset_index()  # additional 20 days for rolling average
-trades = mkt_trades.groupby([pd.to_datetime(mkt_trades['dt'].dt.date), 'strategy', 'delivery'])[['buys', 'sells']].sum()
+trades = mkt_trades.groupby([pd.to_datetime(mkt_trades['dt'].dt.date), 'strategy', 'instrument', 'delivery'])[['buys', 'sells']].sum()
 
 # calculate daily gross trades going through each contract
 gross_trades = trades.abs().sum(axis=1).groupby(level=['dt', 'delivery']).sum().unstack().fillna(0).resample('B').sum()
