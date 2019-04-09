@@ -215,6 +215,7 @@ def plot_posbound_table(posbound_table, **plotting_kwargs):
 
 
 res = get_posbound_table(mkt, ds)
+res = res[res['fm']>0] # only strats with actual allocation
 # formatting so table fits in frame
 res_formatted = res.rename(columns={'temp_long_posbound':'temp_long',
                             'temp_short_posbound':'temp_short',
