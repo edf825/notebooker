@@ -1,7 +1,9 @@
+kernelname = 'man_notebooker_regression_' + env.BRANCH_NAME + '_' + env.BUILD_ID
+
 def installKernel = { medusaVersion ->
   def venvDir = getVenvDir(medusaVersion)
   pyInstall('ipykernel', venvDir)
-  withActivate("python -m ipykernel install --name=man_notebooker_kernel --user",
+  withActivate("python -m ipykernel install --name=${kernelname} --user",
                venvDir)
 }
 
@@ -11,7 +13,7 @@ def regression = {
 }
 
 
-withEnv(['REGRESSION_TESTING="true"']) {
+withEnv(['REGRESSION_TESTING="true"',"NOTEBOOK_KERNEL_NAME=${kernelname}"]) {
     ahlPython {
         acquireDotsDb(){
             buildLabel='ts2-el7'
