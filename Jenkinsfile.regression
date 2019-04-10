@@ -1,4 +1,4 @@
-kernelname = 'man_notebooker_regression_' + env.BRANCH_NAME + '_' + env.BUILD_ID
+kernelname = 'man_notebooker_regression_' + currentBuild.id
 
 def installKernel = { medusaVersion ->
   def venvDir = getVenvDir(medusaVersion)
