@@ -11,7 +11,7 @@ To run your own version of the webapp:
 
 1. Create a BSONStore called NOTEBOOK_OUTPUT in your mongoose_<username> database. e.g.:
   
-  * Go to http://ci.res.ahl/cron/job/DATA/job/data-create-mongoose-library/build?delay=0sec
+  * Go to http://ci.res.ahl/cron/job/one-click-scheduling%20%28Research%29/job/data/job/ondemand/job/mongoose_init_library/
   * Parameters are:
     * MONGOOSE_DB = research
     * LIBRARY = jbannister.NOTEBOOK_OUTPUT
