@@ -2,7 +2,7 @@
 strategy_exclusions = ['BOX10','CETF','CIRATE','CMBS','CSWARM','DCREDIT','FETF','FIVOL','FSETT','FTREND','RVMBS','SWX10','UCBOND','UCREDIT','UIRS','UXCURR','UXENER']
 strategy_inclusions = None # overrides exclusions
 include_insight_strats = False
-num_results = 20
+num_results = 50
 # -
 
 # %matplotlib inline
@@ -32,7 +32,6 @@ else:
 
 strat_mkts = positions_incl.head().columns.droplevel(2).tolist()
 
-
 all_sample_times = atd.get_sample_times()
 sample_times = [all_sample_times[s][m] for s,m in strat_mkts]
 
@@ -59,5 +58,4 @@ res = pd.DataFrame(index=strat_mkts,data=OrderedDict([('sum_max_orders',sum_max_
 res.index = pd.MultiIndex.from_tuples(res.index).reorder_levels([1,0])
 
 # ### Largest ratios of max orders to market volume
-
-res.nlargest(num_results,'max_order_as_pct_of_volume')
+res.nlargest(num_results,'max_order_as_pct_of_volume').reset_index()

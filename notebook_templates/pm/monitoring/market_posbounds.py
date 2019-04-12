@@ -1,5 +1,6 @@
 # + {"tags": ["parameters"]}
 mkt = 'NIS'
+lookback = 3 * 260
 # -
 
 # imports
@@ -18,10 +19,7 @@ from collections import OrderedDict
 import pm.monitoring.posbound as posbound_functions
 import pm.monitoring.multicontracts as multicontract_functions
 import pm.monitoring.slim as slim_functions
-
-
-TIMESERIES_CHART_LOOKBACK = 5 * 260
-POS_DIST_CHART_LOOKBACK = 3 * 260
+from collections import OrderedDict
 
 ds = get_dataservice(apis=[StaticDataRepository, ReadOnlyPositionRepository])
 
@@ -61,13 +59,29 @@ market_pos_with_temp_and_net = posbound_functions.remove_nettable_strategy_marke
 market_desired_posbounds_with_temp = posbound_functions.apply_temp_posbounds(market_desired_posbounds, temp_posbounds).xs('long', level=2, axis=1)
 market_desired_posbounds_with_temp_and_net = posbound_functions.remove_nettable_strategy_market_posbounds(market_desired_posbounds_with_temp, nettable_strategy_markets)
 
-# info table 
-info = pd.DataFrame(index=[mkt], data=[[slim_pre_carveout - slim, slim]], columns=['vol carveouts', 'slim'])
-info.index.name = 'market'
-info
+sum_desired_posbounds_current = market_desired_posbounds_with_temp_and_net.sum(axis=1).ffill().iloc[-1]
 
-#### Sum of desired posbounds through time
+gross_longs_over_slim = (market_pos.resample('B').ffill().clip(lower=0).sum(axis=1) - slim).clip(lower=0)
+gross_shorts_over_slim = (market_pos.resample('B').ffill().clip(upper=0).sum(axis=1).abs() - slim).clip(lower=0)
+sum_gross_backups = gross_longs_over_slim + gross_shorts_over_slim
+num_backups = (sum_gross_backups>0).tail(lookback).sum()
+pct_of_time_spent_backed_up = 1. * num_backups / lookback
 
+avg_backup = sum_gross_backups.tail(lookback).replace(0,np.nan).dropna().mean()
+avg_backup_pct = avg_backup / (slim + avg_backup)
+
+pd.DataFrame(index=[mkt],
+             data=OrderedDict([
+                    ('slim pre carveouts','{:,.0f}'.format(slim_pre_carveout)),
+                    ('vol carveouts','{:,.0f}'.format(slim_pre_carveout-slim)),
+                    ('slim','{:,.0f}'.format(slim_pre_carveout)),
+                    ('sum posbounds','{:,.0f}'.format(sum_desired_posbounds_current)),
+                    ('sum posbounds / slim','{:,.0%}'.format(sum_desired_posbounds_current / slim)),
+                    ('backup frequency','{:,.0%}'.format(pct_of_time_spent_backed_up)),
+                    ('average backup pct','{:,.0%}'.format(avg_backup_pct))
+             ])).T
+
+#### Sim uncapped positions and desired posbounds
 
 def plot_posbound_history(market_positions, market_desired_posbounds, slim, lookback, **plotting_kwargs):
         
@@ -78,11 +92,13 @@ def plot_posbound_history(market_positions, market_desired_posbounds, slim, look
 
     fig, ax = plt.subplots(**plotting_kwargs)
 
-    sum_posbounds.plot(ax=ax, color='darkblue', label='desired posbounds')
+    sum_posbounds.plot(ax=ax, color='darkblue', label='sum posbounds')
     sum_posbounds.multiply(-1).plot(ax=ax, color='darkblue', label='_')
-    long_pos.plot(ax=ax, kind='area', color='lightblue', label='desired l/s positions')
-    short_pos.plot(ax=ax, kind='area', color='lightblue', label='_')
-    net_pos.plot(ax=ax, color='black', linewidth=0.5, label='desired net position')
+    long_pos.plot(ax=ax, kind='area', color='orangered', linewidth=0, label='backups') # over slim section
+    short_pos.plot(ax=ax, kind='area', color='orangered', linewidth=0,  label='_') # over slim section
+    long_pos.clip(upper=slim).plot(ax=ax, kind='area', linewidth=0, color='lightblue', label='gross l/s positions')
+    short_pos.clip(lower=-slim).plot(ax=ax, kind='area', linewidth=0, color='lightblue', label='_')
+    net_pos.plot(ax=ax, color='black', linewidth=0.5, label='net position')
 
     # add slim lines
     xlims = ax.get_xlim()
@@ -95,33 +111,45 @@ def plot_posbound_history(market_positions, market_desired_posbounds, slim, look
     ylim = max(sum_posbounds.max(), net_pos.max(), slim)
     ax.set_ylim(-ylim * 1.2, ylim * 1.2)
 
-    ax.legend(bbox_to_anchor=(1, 0.5), loc='center left')
+    ax.legend()
     plt.tight_layout()
 
 
-plot_posbound_history(market_pos_with_temp_and_net, market_desired_posbounds_with_temp_and_net, slim, lookback=TIMESERIES_CHART_LOOKBACK, figsize=(10, 8))
+plot_posbound_history(market_pos_with_temp_and_net, market_desired_posbounds_with_temp_and_net, slim, lookback=lookback, figsize=(10, 6))
 
-#### Distribution of positions over posbound window
+#### Distribution of gross long/short positioning
 
+def plot_position_distribution(market_positions,slim,lookback,**plotting_kwargs):
 
-def plot_position_distribution(market_positions, slim, lookback, **plotting_kwargs):
+    long_pos = market_positions[market_positions > 0].sum(axis=1).tail(lookback)
+    short_pos = market_positions[market_positions < 0].sum(axis=1).tail(lookback)
+    all_pos = pd.Series(long_pos.values.tolist() + short_pos.values.tolist())
+
+    # work out some nice bins for plotting
+    max_bin = (max(abs(all_pos)) * 1.1)
+    step = slim / 20
+    max_bin = max_bin - (max_bin % step) + step
+    bins = np.arange(-max_bin, max_bin, step)
+
     fig, ax = plt.subplots(**plotting_kwargs)
-    market_positions.sum(axis=1).tail(lookback).hist(bins=40)
+    all_pos.hist(bins=bins,ax=ax,color='lightblue')
+    all_pos[all_pos.abs()>slim].hist(bins=bins,ax=ax,color='orangered')
     vlim = ax.get_ylim()
     ax.vlines(slim, *vlim, linestyle='--')
     ax.vlines(-slim, *vlim, linestyle='--')
     ax.axvline(0, color='black')
-    # ax.vlines(current_pos,*vlim,linewidth=3,color='darkred')
     ax.set_ylim(*vlim)
-    ax.legend(['_', '+- slim', '_', 'current pos', 'dist of net positions'])
+    ax.legend(['_', '+- slim', '_', 'gross l/s positions', 'backups'])
     ax.grid(False)
-    plt.title('distribution of net positions')
 
+plot_position_distribution(market_pos_with_temp_and_net, slim, lookback=lookback, figsize=(10, 6))
 
-plot_position_distribution(market_pos_with_temp_and_net, slim, lookback=POS_DIST_CHART_LOOKBACK, figsize=(10, 6))
+#### Desired positions per strategy
 
-#### Desired posbounds per strategy
+fig,ax = plt.subplots(figsize=(10,6))
+market_pos_with_temp_and_net.tail(lookback).plot(ax=ax)
 
+#### Current desired posbounds per strategy
 
 def plot_posbounds_current(market_positions_with_temp, market_desired_posbounds_with_temp_and_net, market_desired_posbounds, **plotting_kwargs):
 
@@ -225,5 +253,6 @@ res_formatted = res_formatted.fillna('-')
 res_formatted.style.format({'max_signal':'{:.1f}',
                             'fm':'{:.2f}',
                             'net_in_posman':'{:,.0f}'})
+
 
 plot_posbound_table(res, figsize=(10, 6))
