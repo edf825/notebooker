@@ -1,6 +1,9 @@
 # + {"tags": ["parameters"]}
-overallocation_buffer = 0.4
-strategy_exclusions = ['CMBS', 'RVMBS', 'UIRS', 'UCBOND', 'FTREND', 'FIVOL', 'UXENER'] 
+strategy_exclusions = ['BOX10','CETF','CIRATE','CMBS','CSWARM','DCREDIT','FETF','FIVOL','FSETT','FTREND','RVMBS','SWX10','UCBOND','UCREDIT','UIRS','UXCURR','UXENER']
+strategy_inclusions = []
+include_insight_strats = False
+lookback = 3*260
+cutoff = 0.
 # -
 
 # imports
@@ -15,6 +18,8 @@ import pm.monitoring.slim as slim_functions
 import ahl.tradingdata as atd
 import numpy as np
 import pandas as pd
+from collections import OrderedDict
+import pm.data.strategies as pds
 
 # Load up data
 with pm_cache_enable():
@@ -22,21 +27,36 @@ with pm_cache_enable():
     max_sim_signal = monitoring.get_max_signal_sim()
     fund_mults_and_constraints = monitoring.get_fund_mults_and_constraints()
 
-
 temp_posbounds = atd.get_posbounds_all()
 multi_contracts = atd.get_multi_contracts()
-mkts = positions.columns.get_level_values('market').unique().tolist()
-softlimits = slim_functions.get_market_softlimits(mkts)  # atd.get_softlimits_all()
 nettable_strategy_markets = posbound_functions.get_nettable_strategy_markets()
+
+# establish our list of markets and then filter to that
+def get_list_mkts_from_positions(positions,excl_strats=[],incl_strats=[],include_insight=False):
+    strat_mkts = positions.groupby(level=['strategy','market'],axis=1).sum().abs().sum().replace(0,np.nan).dropna().index.tolist()
+    if incl_strats == []:
+        if excl_strats is not []:
+            incl_strats = set(pds.get_strategies(include_insight_only=include_insight)) - set(excl_strats)
+        else:
+            incl_strats = list(set([m for (s,m) in strat_mkts]))
+    return sorted(list(set([m for (s, m) in strat_mkts if s in incl_strats])))
+
+mkts = get_list_mkts_from_positions(positions,excl_strats=strategy_exclusions,incl_strats=strategy_inclusions,include_insight=include_insight_strats)
+mkt_families = sorted(list(set(multi_contracts.get(x,x) for x in mkts)))
+
+softlimits = slim_functions.get_market_softlimits(mkt_families)
+
+# sort out our data - note here we are only excluding markets exclusively traded by excluded strategies
+strat_mkt_positions = positions.groupby(level=['strategy','market'],axis=1).sum().loc(axis=1)[:,mkts]
+max_sim_signal = max_sim_signal.reindex_like(strat_mkt_positions)
+fund_mults_and_constraints = fund_mults_and_constraints.reindex(strat_mkt_positions.columns)
 
 # Compute market-level posbounds
 desired_posbounds = max_sim_signal * fund_mults_and_constraints
-strat_mkt_positions = positions.sum(level=['strategy', 'market'], axis=1, min_count=1)
 scaled_positions = strat_mkt_positions * fund_mults_and_constraints
 desired_posbounds_with_temp = posbound_functions.apply_temp_posbounds(desired_posbounds, temp_posbounds)
 desired_posbounds_with_temp_and_net = posbound_functions.remove_nettable_strategy_market_posbounds(desired_posbounds_with_temp,
                                                                                                    nettable_strategy_markets)
-
 # only care about with temp and net now
 mkt_desired_posbound_long = posbound_functions.get_market_posbounds(
     desired_posbounds_with_temp_and_net.xs('long', level=2, axis=1), multi_contracts)
@@ -49,48 +69,62 @@ mkt_desired_posbound = pd.concat([mkt_desired_posbound_long,
 
 mkt_slim = pd.Series(softlimits).reindex_like(mkt_desired_posbound)
 
+# position stuff
+def apply_temp_posbounds_to_positions(scaled_positions,temp_posbounds):
+    # scaled positions columns must be strategy, market
+    res = scaled_positions.copy()
+    for (s,m) in res.columns:
+        temp_all = temp_posbounds.get(s,{}).get(m,{})
+        temp_long = temp_all.get('temp_long',None)
+        temp_short = temp_all.get('temp_short',None)
+        res.loc(axis=1)[(s,m)] = res.loc(axis=1)[(s,m)].clip(upper=temp_long,lower=temp_short)
+    return res
+
+scaled_positions_with_temp = apply_temp_posbounds_to_positions(scaled_positions,temp_posbounds)
+scaled_positions_with_temp_and_net = posbound_functions.remove_nettable_strategy_market_posbounds(scaled_positions_with_temp,nettable_strategy_markets)
+
+mkt_desired_position_long = scaled_positions_with_temp_and_net.clip(lower=0).groupby(level='market',axis=1).sum().groupby(lambda x: multi_contracts.get(x,x),axis=1).sum()
+mkt_desired_position_short = scaled_positions_with_temp_and_net.clip(upper=0).groupby(level='market',axis=1).sum().groupby(lambda x: multi_contracts.get(x,x),axis=1).sum()
+
+gross_longs_over_slim = mkt_desired_position_long.subtract(mkt_slim,axis=1).clip(lower=0)
+gross_shorts_over_slim = mkt_desired_position_short.abs().subtract(mkt_slim,axis=1).clip(lower=0)
+sum_gross_backups = gross_longs_over_slim + gross_shorts_over_slim
+
+num_backups = (sum_gross_backups>0).tail(lookback).sum()
+pct_of_time_spent_backed_up = 1. * num_backups / lookback
+
+avg_backup = sum_gross_backups.tail(lookback).replace(0,np.nan).mean().fillna(0)
+avg_backup_pct = avg_backup / (mkt_slim + avg_backup)
+
 # Compute some derived fields
-overallocation = mkt_desired_posbound / mkt_slim.replace(0, np.nan)
+sum_posbounds_over_slim = mkt_desired_posbound / mkt_slim.replace(0, np.nan)
 market_description = positions_functions.get_position_group_label(mkt_desired_posbound.index, 'client_reporting_label')
 sectors = positions_functions.get_position_group_label(mkt_desired_posbound.index, 'sector')
 num_strats_traded_in = positions_functions.get_num_strats_traded_in(positions, multi_contracts)
+links = {m:'<a href="../market_posbounds/latest?mkt={}" '
+                    'target="_blank">market notebook</a>'.format(m) for m in mkt_families}
 
-# exclude any markets that are exclusively traded by our list of strategies to exclude
-# e.g. we exclude PBGA which is only traded by UXENER but we include NGL which is traded by 
-# UXENER, FCOM and others, and we include positions from UXENER in the overallocation calculation
-incl_mkts = list(positions.loc(axis=1)[~positions.columns.get_level_values('strategy').isin(strategy_exclusions)].columns.get_level_values('market').unique())
-incl_mkts = list(set([multi_contracts.get(x, x) for x in incl_mkts]))
-
-# Create result structure
-res = pd.concat([mkt_desired_posbound, mkt_slim, overallocation,
-                 market_description, num_strats_traded_in],
-                axis=1,
-                keys=['desired_posbound', 'slim', 'overallocation',
-                      'market_description', 'num_strats_traded_in'])
-res['link'] = res.index.map(lambda market: '<a href="../market_posbounds/latest?mkt={}" '
-                                           'target="_blank">market notebook</a>'.format(market))
-primary_cols = ['market_description', 'num_strats_traded_in', 'link']
-res = res.reindex(columns=primary_cols + res.columns.drop(primary_cols).tolist())
-
-res_incl = res.loc[incl_mkts]
 
 #### Overallocated markets per sector
 
+overallocated = pct_of_time_spent_backed_up > cutoff
 fig, ax = plt.subplots()
-plotting_functions.plot_sector_overallocation(res['overallocation'], overallocation_buffer,
-                                              sectors, ax, '% overallocated mkts')
-plt.show()
-
-formatter = {
-    'desired_posbound': '{:,.0f}',
-    'desired_posbound_with_temp': '{:,.0f}',
-    'sum_atd_posbounds': '{:,.0f}',
-    'slim': '{:,.0f}',
-    'overallocation': '{:,.1f}x',
-    'overallocation_with_temp': '{:,.1f}x',
-    'num_strats_traded_in': '{:,.0f}'
-}
+overallocated.groupby(sectors).apply(lambda x:1.*x.sum() / len(x)).to_frame().plot(kind='bar',ax=ax)
+plt.legend(['% overallocated markets'])
 
 #### Most overallocated markets
 
-res_incl[res_incl['overallocation'] > 1 + overallocation_buffer].sort_values('overallocation', ascending=False).rename(columns={'net': ''}).style.format(formatter)
+res = pd.DataFrame(index=mkt_families,data=OrderedDict([
+    ('market_description',market_description),
+    ('num_strats',num_strats_traded_in),
+    ('link',links),
+    ('backup_frequency',pct_of_time_spent_backed_up),
+    ('average_backup',avg_backup_pct),
+    ('sum_posbounds_over_slim', sum_posbounds_over_slim)
+]))
+formatter = {
+    'sum_posbounds_over_slim': '{:,.0%}',
+    'backup_frequency': '{:,.0%}',
+    'average_backup': '{:,.0%}'
+}
+res[res['backup_frequency'] > cutoff].sort_values('backup_frequency', ascending=False).style.format(formatter)

@@ -1,6 +1,6 @@
 # + {"tags": ["parameters"]}
 strategy_exclusions = ['BOX10','CETF','CIRATE','CMBS','CSWARM','DCREDIT','FETF','FIVOL','FSETT','FTREND','RVMBS','SWX10','UCBOND','UCREDIT','UIRS','UXCURR','UXENER']
-strategy_inclusions = None # overrides exclusions
+strategy_inclusions = [] # overrides exclusions
 include_insight_strats = False
 lookback = 60
 num_results = 20
@@ -16,38 +16,34 @@ import ahl.marketdata as amd
 from pandas.tseries.offsets import BDay
 import pm.data.strategies as pds
 from ahl.concurrent.futures import hpc_pool
-
 from pm.monitoring.caching import pm_cache_enable
 import pm.monitoring.multicontracts as pmmc
 import pm.monitoring.positions as pmp
 import pm.monitoring.trades as pmt
 import pm.monitoring.volume as pmv
 
+def get_list_mkts_from_positions(positions,excl_strats=[],incl_strats=[],include_insight=False):
+    strat_mkts = positions.groupby(level=['strategy','market'],axis=1).sum().abs().sum().replace(0,np.nan).dropna().index.tolist()
+    if incl_strats == []:
+        if excl_strats is not []:
+            incl_strats = set(pds.get_strategies(include_insight_only=include_insight)) - set(excl_strats)
+        else:
+            incl_strats = {m for (s,m) in strat_mkts}
+    return sorted(set([m for (s, m) in strat_mkts if s in incl_strats]))
 
+# load positions just to get a sensible list of markets
 with pm_cache_enable():
     positions = pmp.get_all_market_positions()
-
-# get positions and exclude manually excluded and insight only strats
-# this is only to establish what markets we look at
-positions = positions.loc(axis=1)[positions.abs().sum() > 0]
-if strategy_inclusions is None:
-    positions = positions.loc(axis=1)[~positions.columns.get_level_values(0).isin(strategy_exclusions)]
-    positions = positions.loc(axis=1)[positions.columns.get_level_values(0).isin(pds.get_strategies(include_insight_only=include_insight_strats))]
-else:
-    positions = positions.loc(axis=1)[strategy_inclusions]
-
-# work out markets we care about
 multi_contracts = atd.get_multi_contracts()
-mkts = positions.columns.get_level_values(1).unique().tolist()
-mkts = list(set([multi_contracts.get(x, x) for x in mkts]))
-mkts = [str(x) for x in mkts if amd.describe(x)['assetClass'] == 'ASSET_FUTURE']
-mkts.sort()
 
+mkts = get_list_mkts_from_positions(positions,excl_strats=strategy_exclusions,incl_strats=strategy_inclusions,include_insight=include_insight_strats)
+mkt_families = sorted(set(multi_contracts.get(x,x) for x in mkts))
+fut_mkt_families = [x for x in mkt_families if amd.describe(x)['assetClass']=='ASSET_FUTURE']
 
 # main function
 def get_participation_values(mkt, lookback=lookback):
 
-    # get all trades per straetgy per contract for a given market
+    # get all trades per strategy per contract for a given market
     contracts_for_market = pmmc.get_markets_in_family(mkt, multi_contracts)
     mkt_trades = pmt.get_market_trades(contracts_for_market, start_date=dt.now() - BDay(lookback + 20)).reset_index()  # additional 20 days for rolling average
     trades = mkt_trades.groupby([pd.to_datetime(mkt_trades['dt'].dt.date), 'strategy', 'delivery'])[['buys', 'sells']].sum()
@@ -92,20 +88,20 @@ def get_participation_values(mkt, lookback=lookback):
 
 # -
 pool = hpc_pool('PROCESS') #hpc_pool('SPARK',max_workers=60,mem_per_cpu='1g')
-test = map(lambda x: pool.submit(get_participation_values, x), mkts)
+test = map(lambda x: pool.submit(get_participation_values, x), fut_mkt_families)
 error_value = {x:np.nan for x in get_participation_values('FTL').keys()}
 res = [x.result() if x.exception() is None else error_value for x in test]
-resd = dict(zip(mkts, res))
+resd = dict(zip(fut_mkt_families, res))
 resdf = pd.DataFrame(resd).T
 
 # +
 # metadata
-market_names = {x:amd.describe(x)['longName'] for x in mkts}
+market_names = {x:amd.describe(x)['longName'] for x in fut_mkt_families}
 strat_mkt_map = positions.columns.droplevel(2).tolist()
-strats_per_mkt = {m:list(set([str(a) for a, b in strat_mkt_map if b in [m] + [x for x, y in multi_contracts.items() if y == m]])) for m in mkts}
-num_strats_per_mkt = {m:len(s) for m, s in strats_per_mkt.items()}
+num_strats_per_mkt = {x: len([s for (s,m) in strat_mkt_map if multi_contracts.get(m,m)==x]) for x in fut_mkt_families}
 link = {m:'<a href="../market_participation/latest?mkt={}" '
-                                           'target="_blank">market notebook</a>'.format(m) for m in mkts}
+                                           'target="_blank">market notebook</a>'.format(m) for m in fut_mkt_families}
+
 
 # attach metadata
 res_with_metadata = pd.concat([resdf[['median_trade', 'median_volume', 'max_participation', 'trade_weighted_participation']],
@@ -121,13 +117,13 @@ res_with_metadata[['trade_weighted_participation']].hist()
 
 formatter = {'median_trade':'{:,.0f}',
               'median_volume':'{:,.0f}',
-              'trade_weighted_participation':'{:,.2%}',
-              'max_participation':'{:,.2%}'}
+              'trade_weighted_participation':'{:,.1%}',
+              'max_participation':'{:,.1%}'}
 
 res_with_metadata[['market_name',
                    'num_strats',
                    'median_trade',
                    'median_volume',
-                   'max_participation',\
+                   'max_participation',
                    'trade_weighted_participation',
                    'link']].nlargest(num_results,'trade_weighted_participation').style.format(formatter)
