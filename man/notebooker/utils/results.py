@@ -2,7 +2,7 @@ import datetime
 
 from ahl.logging import get_logger
 from flask import url_for
-from typing import Optional, Dict, Union, List, Tuple
+from typing import Optional, Dict, List, Tuple, Callable, Generator
 
 from man.notebooker.serialization.mongoose import NotebookResultSerializer
 from man.notebooker.utils.caching import get_cache, get_report_cache, set_cache, set_report_cache
@@ -41,14 +41,15 @@ def _get_job_results(job_id,              # type: str
     return notebook_result
 
 
-def get_latest_job_results(report_name,         # type: str
-                           params,              # type: Optional[Dict]
-                           serializer,          # type: NotebookResultSerializer
-                           retrying=False,      # type: Optional[bool]
-                           ignore_cache=False,  # type: Optional[bool]
-                           ):
+def _get_results_from_name_and_params(job_id_func,   # type: Callable[[str, Optional[Dict]], str]
+                                      report_name,   # type: str
+                                      params,        # type: Optional[Dict]
+                                      serializer,    # type: NotebookResultSerializer
+                                      retrying,      # type: bool
+                                      ignore_cache,  # type: bool
+                                      ):
     # type: (...) -> constants.NotebookResultBase
-    latest_job_id = serializer.get_latest_job_id_for_name_and_params(report_name, params)
+    latest_job_id = job_id_func(report_name, params)
     if not latest_job_id:
         err_info = 'No job results found for report name={} with params={}'.format(report_name, params)
         return constants.NotebookResultError(latest_job_id,
@@ -57,6 +58,28 @@ def get_latest_job_results(report_name,         # type: str
                                              overrides=params,
                                              job_start_time=datetime.datetime.now())
     return _get_job_results(latest_job_id, report_name, serializer, retrying, ignore_cache)
+
+
+def get_latest_job_results(report_name,         # type: str
+                           params,              # type: Optional[Dict]
+                           serializer,          # type: NotebookResultSerializer
+                           retrying=False,      # type: Optional[bool]
+                           ignore_cache=False,  # type: Optional[bool]
+                           ):
+    # type: (...) -> constants.NotebookResultBase
+    return _get_results_from_name_and_params(serializer.get_latest_job_id_for_name_and_params, report_name, params,
+                                             serializer, retrying, ignore_cache)
+
+
+def get_latest_successful_job_results(report_name,         # type: str
+                                      params,              # type: Optional[Dict]
+                                      serializer,          # type: NotebookResultSerializer
+                                      retrying=False,      # type: Optional[bool]
+                                      ignore_cache=False,  # type: Optional[bool]
+                                      ):
+    # type: (...) -> constants.NotebookResultBase
+    return _get_results_from_name_and_params(serializer.get_latest_successful_job_id_for_name_and_params,
+                                             report_name, params, serializer, retrying, ignore_cache)
 
 
 def get_all_result_keys(serializer, limit=0, force_reload=False):
@@ -83,3 +106,13 @@ def all_available_results(serializer,  # type: NotebookResultSerializer
         result.rerun_url = url_for('run_report_bp.rerun_report', task_id=job_id, report_name=report_name)
         complete_jobs[(report_name, job_id)] = result
     return complete_jobs
+
+
+def get_latest_successful_job_results_all_params(report_name,         # type: str
+                                                 serializer,          # type: NotebookResultSerializer
+                                                 retrying=False,      # type: Optional[bool]
+                                                 ignore_cache=False,  # type: Optional[bool]
+                                                 ):
+    # type: (...) -> Generator[constants.NotebookResultBase]
+    for job_id in serializer.get_latest_successful_job_ids_for_name_all_params(report_name):
+        yield _get_job_results(job_id, report_name, serializer, retrying, ignore_cache)

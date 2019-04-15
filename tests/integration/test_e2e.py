@@ -97,6 +97,8 @@ def test_run_report(bson_library, mongo_host, workspace):
                              mailto=mailto)
         assert job_id == serialiser.get_latest_job_id_for_name_and_params(report_name, overrides)
         assert job_id == serialiser.get_latest_job_id_for_name_and_params(report_name, None)
+        assert job_id == serialiser.get_latest_successful_job_id_for_name_and_params(report_name, overrides)
+        assert job_id == serialiser.get_latest_successful_job_id_for_name_and_params(report_name, None)
 
 
 @cache_blaster
@@ -127,3 +129,5 @@ def test_run_report_and_rerun(bson_library, mongo_host, workspace):
                              mailto=mailto, generate_pdf_output=False)
         assert new_job_id == serialiser.get_latest_job_id_for_name_and_params(report_name, overrides)
         assert not {job_id, new_job_id} - set(serialiser.get_all_job_ids_for_name_and_params(report_name, overrides))
+        assert new_job_id == serialiser.get_latest_successful_job_id_for_name_and_params(report_name, overrides)
+        assert job_id != serialiser.get_latest_successful_job_id_for_name_and_params(report_name, overrides)

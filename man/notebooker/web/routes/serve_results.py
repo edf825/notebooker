@@ -6,7 +6,9 @@ from typing import Union, Any
 from man.notebooker.utils.caching import get_cache
 from man.notebooker.constants import JobStatus, NotebookResultError, NotebookResultPending, NotebookResultComplete, NotebookResultBase
 from man.notebooker.serialization.mongoose import NotebookResultSerializer, _pdf_filename
-from man.notebooker.utils.results import _get_job_results, get_all_result_keys, get_latest_job_results
+from man.notebooker.utils.results import (_get_job_results, get_all_result_keys, get_latest_job_results,
+                                          get_latest_successful_job_results,
+                                          )
 from man.notebooker.utils.templates import get_all_possible_templates
 
 serve_results_bp = Blueprint('serve_results_bp', __name__)
@@ -19,6 +21,10 @@ def _result_serializer():
     return NotebookResultSerializer(mongo_host=os.environ['MONGO_HOST'],
                                     database_name=os.environ['DATABASE_NAME'],
                                     result_collection_name=os.environ['RESULT_COLLECTION_NAME'])
+
+
+def _params_from_request_args(request_args):
+    return {k: (v[0] if len(v) == 1 else v) for k, v in request_args.iterlists()}
 
 
 @serve_results_bp.route('/results/<path:report_name>/<task_id>')
@@ -60,7 +66,7 @@ def latest_parameterised_task_results_html(report_name):
     # - present the HTML results, if the job has finished
     # - present the error, if the job has failed
     # - present the user with some info detailing the progress of the job, if it is still running.
-    params = {k: (v[0] if len(v) == 1 else v) for k, v in request.args.iterlists()}
+    params = _params_from_request_args(request.args)
     result = get_latest_job_results(report_name, params, _result_serializer())
     return _process_result_or_abort(result)
 
@@ -73,6 +79,13 @@ def latest_task_results_html(report_name):
     # - present the user with some info detailing the progress of the job, if it is still running.
     # Will ignore all paramterisation of the report and get the latest of any run for a given report name
     return _process_result_or_abort(get_latest_job_results(report_name, None, _result_serializer()))
+
+
+@serve_results_bp.route('/result_html_render/<path:report_name>/latest-successful')
+def latest_successful_task_results_html(report_name):
+    params = _params_from_request_args(request.args)
+    result = get_latest_successful_job_results(report_name, params, _result_serializer())
+    return _process_result_or_abort(result)
 
 
 @serve_results_bp.route('/result_html_render/<path:report_name>/<task_id>/resources/<path:resource>')

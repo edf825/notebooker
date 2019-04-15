@@ -218,21 +218,51 @@ class NotebookResultSerializer(object):
             keys.append((result['report_name'], result['job_id']))
         return keys
 
+    @staticmethod
+    def _mongo_filter(report_name, overrides=None, status=None):
+        # type: (str, Optional[Dict], Optional[JobStatus]) -> Dict[str, Any]
+        mongo_filter = {'report_name': report_name}
+        if overrides is not None:
+            mongo_filter['overrides'] = overrides
+        if status is not None:
+            mongo_filter['status'] = status.value
+        return mongo_filter
+
     @mongo_retry
+    def _get_all_job_ids(self, report_name, overrides, status=None):
+        # type: (str, Optional[Dict], Optional[JobStatus]) -> List[str]
+        mongo_filter = self._mongo_filter(report_name, overrides, status)
+        return [x[1] for x in self.get_all_result_keys(mongo_filter=mongo_filter)]
+
     def get_all_job_ids_for_name_and_params(self, report_name, params):
         # type: (str, Optional[Dict]) -> List[str]
         """ Get all the result ids for a given name and parameters, newest first """
-        mongo_filter = {'report_name': report_name}
-        if params is not None:
-            mongo_filter['overrides'] = params
-        return [x[1] for x in self.get_all_result_keys(mongo_filter=mongo_filter)]
+        return self._get_all_job_ids(report_name, params)
 
-    @mongo_retry
     def get_latest_job_id_for_name_and_params(self, report_name, params):
         # type: (str, Optional[Dict]) -> Optional[str]
         """ Get the latest result id for a given name and parameters """
-        all_job_ids = self.get_all_job_ids_for_name_and_params(report_name, params)
+        all_job_ids = self._get_all_job_ids(report_name, params)
         return all_job_ids[0] if all_job_ids else None
+
+    def get_latest_successful_job_id_for_name_and_params(self, report_name, params):
+        # type: (str, Optional[Dict]) -> Optional[str]
+        """ Get the latest successful job id for a given name and parameters """
+        all_job_ids = self._get_all_job_ids(report_name, params, JobStatus.DONE)
+        return all_job_ids[0] if all_job_ids else None
+
+    @mongo_retry
+    def get_latest_successful_job_ids_for_name_all_params(self, report_name):
+        # type: (str) -> List[str]
+        """ Get the latest successful job ids for all parameter variants of a given name"""
+        mongo_filter = self._mongo_filter(report_name, status=JobStatus.DONE)
+        results = self.library.aggregate([
+            {'$match': mongo_filter},
+            {'$sort': {'update_time': -1}},
+            {'$group': {'_id': '$overrides', 'job_id': {'$first': '$job_id'}}}
+        ])
+
+        return [result['job_id'] for result in results]
 
     @mongo_retry
     def n_all_results(self):
