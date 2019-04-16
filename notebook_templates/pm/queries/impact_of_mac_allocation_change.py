@@ -19,25 +19,31 @@ new_allocs = {
     'BOX10': 0.21
 }
 returns_since = str(pd.datetime.now().year - 4)
-
+returns_until = str(pd.datetime.now())
 # -
 
-current_sim_rets = arb.vol_normalised_overlapping_returns(mac=mac)
+current_sim_rets = arb.vol_normalised_overlapping_returns(
+    mac=mac,
+    window=(returns_since, returns_until),
+).loc[returns_since:returns_until]
 
 new_sim_rets = arb.get_mac_returns_new_allocations(mac, new_allocs, 'sim')
-normalised_new_sim_rets = arb.normalise_using_strategy_sim_vol(arb.overlapping_returns(new_sim_rets, 5))
+normalised_new_sim_rets = arb.normalise_using_strategy_sim_vol(
+    arb.overlapping_returns(new_sim_rets, 5),
+    window=(returns_since, returns_until),
+).loc[returns_since:returns_until]
 
 current_sim_strategy_rets = current_sim_rets.groupby(level='strategy', axis=1).sum()
 new_sim_strategy_rets = normalised_new_sim_rets.groupby(level='strategy', axis=1).sum()
 
 # #### Current calculated CPM
 
-current_cpm = current_sim_strategy_rets.loc[returns_since:].std().sum() / current_sim_strategy_rets.loc[returns_since:].sum(axis=1).std()
+current_cpm = current_sim_strategy_rets.std().sum() / current_sim_strategy_rets.sum(axis=1).std()
 current_cpm
 
 # #### New calculated CPM
 
-new_cpm = new_sim_strategy_rets.loc[returns_since:].std().sum() / new_sim_strategy_rets.loc[returns_since:].sum(axis=1).std()
+new_cpm = new_sim_strategy_rets.std().sum() / new_sim_strategy_rets.sum(axis=1).std()
 new_cpm
 
 # #### CPM Percentage Change
