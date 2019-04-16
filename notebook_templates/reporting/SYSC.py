@@ -24,11 +24,18 @@ import requests
 import json
 import urllib
 from requests.auth import HTTPBasicAuth
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
+from IPython.display import Markdown as md
 
 
 # + {"tags": ["parameters"]}
-month = "2019-03-01"
+month = "last"
+
+# +
+if month == "last":
+    month = (date.today().replace(day=1) - timedelta(days=1)).replace(day=1).strftime("%Y-%m-%d")
+    
+md("# Sysc KRI Report for " + month)
 
 # +
 start = datetime.strptime(month, "%Y-%m-%d").date()
@@ -138,9 +145,13 @@ for query in query_by_day:
         json_data = json.loads(cr_response.text)
         month_data.extend(json_data)
         
-incidents = pd.DataFrame.from_records(month_data, columns=['number', 'short_description', 'u_environment', 'opened_at', 'close_code', 'close_notes'])
-incidents['opened_at'] = pd.to_datetime(incidents['opened_at'])
-incidents        
+incidents = pd.DataFrame.from_records(month_data, columns=['number', 'opened_at', 'priority', 'impact', 'urgency', 'short_description', 'u_environment', 'close_code', 'close_notes'])
+incidents['opened_at'] = pd.to_datetime(incidents['opened_at']).dt.date
+# incidents['opened_at'] = incidents['opened_at'].dt.date
+incidents['priority'] = incidents['priority'].map({3: 'P2', 4: 'P1'})
+incidents['impact'] = incidents['impact'].map({1: 'Single User', 2: 'Multi Users'})    
+incidents['urgency'] = incidents['urgency'].map({3: 'Urgent', 4: 'Critical'})
+incidents
 # -
 
 
