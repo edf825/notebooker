@@ -147,7 +147,6 @@ for query in query_by_day:
         
 incidents = pd.DataFrame.from_records(month_data, columns=['number', 'opened_at', 'priority', 'impact', 'urgency', 'short_description', 'u_environment', 'close_code', 'close_notes'])
 incidents['opened_at'] = pd.to_datetime(incidents['opened_at']).dt.date
-# incidents['opened_at'] = incidents['opened_at'].dt.date
 incidents['priority'] = incidents['priority'].map({3: 'P2', 4: 'P1'})
 incidents['impact'] = incidents['impact'].map({1: 'Single User', 2: 'Multi Users'})    
 incidents['urgency'] = incidents['urgency'].map({3: 'Urgent', 4: 'Critical'})
