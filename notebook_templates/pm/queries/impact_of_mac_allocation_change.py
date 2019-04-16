@@ -18,7 +18,7 @@ new_allocs = {
     'XCOMSPD': 0.14,
     'BOX10': 0.21
 }
-returns_since = pd.datetime.now().year - 4
+returns_since = str(pd.datetime.now().year - 4)
 
 # -
 
@@ -32,12 +32,12 @@ new_sim_strategy_rets = normalised_new_sim_rets.groupby(level='strategy', axis=1
 
 # #### Current calculated CPM
 
-current_cpm = current_sim_strategy_rets[returns_since:].std().sum() / current_sim_strategy_rets[returns_since:].sum(axis=1).std()
+current_cpm = current_sim_strategy_rets.loc[returns_since:].std().sum() / current_sim_strategy_rets.loc[returns_since:].sum(axis=1).std()
 current_cpm
 
 # #### New calculated CPM
 
-new_cpm = new_sim_strategy_rets[returns_since:].std().sum() / new_sim_strategy_rets[returns_since:].sum(axis=1).std()
+new_cpm = new_sim_strategy_rets.loc[returns_since:].std().sum() / new_sim_strategy_rets.loc[returns_since:].sum(axis=1).std()
 new_cpm
 
 # #### CPM Percentage Change
