@@ -50,8 +50,11 @@ def format_risk_allocations(raw_alloc):
 
 last_year = pd.datetime.now().year - 1
 start_year = last_year - allocation_lookback_years
+start_year = str(start_year)
+last_year = str(last_year)
 
-returns = arb.vol_normalised_overlapping_returns(product=product, style=arb.Styles.Sim, window=(str(start_year), str(last_year)))
+returns = arb.vol_normalised_overlapping_returns(product=product, style=arb.Styles.Sim, window=(start_year, last_year))
+returns = returns.loc[start_year: last_year]
 
 grouped = m.sector(returns)
 grouped = p.add_level_groupings(grouped)
