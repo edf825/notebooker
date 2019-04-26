@@ -61,7 +61,7 @@ def lookup_secmaster_for_ast(sec_master_api, routes, ast):
     to_return = []
     for route in routes[:1]:
         digraph = sec_master_api.query(
-            starting_identifier=ast,
+            starting_identifiers=[ast],
             starting_identifier_type=base.IdentifierType.AHL_EQUITY_ID,
             route=route
         )
