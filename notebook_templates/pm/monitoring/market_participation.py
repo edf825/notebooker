@@ -14,12 +14,11 @@ import ahl.marketdata as amd
 from pandas.tseries.offsets import BDay
 from collections import OrderedDict
 import pm.data.strategies as pds
-
 import pm.monitoring.multicontracts as pmmc
 import pm.monitoring.trades as pmt
 import pm.monitoring.volume as pmv
+from ahl.db import DOTS_DB
 
-amd.enable_trading_mode(False)
 
 # list of strats we care about
 strats = pds.get_strategies(include_insight_only=include_insight_strats)
@@ -42,7 +41,8 @@ contracts_condensed = map(condense_contract_code,contracts)
 
 ahl_symbol = amd.describe(mkt)['symbol']
 ahl_codes = ['_'.join([ahl_symbol,x]) for x in contracts_condensed]
-bbg_tickers = [pmv.get_bloomberg_ticker(x) for x in ahl_codes]
+with amd.features.set_trading_mode(False):
+    bbg_tickers = [pmv.get_bloomberg_ticker(x) for x in ahl_codes]
 na_tickers = [x for x, y in zip(ahl_codes, bbg_tickers) if y is None]
 assert len(na_tickers) == 0, 'bloomberg ticker(s) not available for ' + ', '.join(na_tickers)
 
@@ -139,6 +139,24 @@ for contract in contracts:
     ax.set_xticklabels(contract_volumes.index.astype(str).values)
     plt.tight_layout()
 
+
+##### Sample times / max orders, exlcuding standalone strats
+
+# +
+def df_from_dict(dict_of_dicts):
+    return pd.concat({
+        k: df_from_dict(v) if all(isinstance(c, dict) for c in v.values()) else pd.Series(v)
+        for k, v in dict_of_dicts.viewitems()
+    })
+
+def get_sample_time_table(mkt,include_standalone_strats=False):
+    standalone_strats = [x for (x,) in DOTS_DB.db_query('select strategy_id from dots.standalone_strategy')] if not include_standalone_strats else []
+    live_strats = [x for x,y in atd.get_strategies().items() if y.client==True]
+    df = df_from_dict(atd.get_sample_times(include_mkts=mkt,include_strats=set(live_strats) - set(standalone_strats))).loc[:,mkt,:,'max_order'].unstack(level=0).sort_index()
+    return df.fillna('-')
+
+get_sample_time_table(mkt,include_standalone_strats=False)
+# -
 
 # #### General market info
 

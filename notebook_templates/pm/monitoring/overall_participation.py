@@ -21,7 +21,10 @@ import pm.monitoring.multicontracts as pmmc
 import pm.monitoring.positions as pmp
 import pm.monitoring.trades as pmt
 import pm.monitoring.volume as pmv
+from IPython.display import HTML
 
+# +
+# load positions just to get a sensible list of markets
 def get_list_mkts_from_positions(positions,excl_strats=[],incl_strats=[],include_insight=False):
     strat_mkts = positions.groupby(level=['strategy','market'],axis=1).sum().abs().sum().replace(0,np.nan).dropna().index.tolist()
     if incl_strats == []:
@@ -29,9 +32,8 @@ def get_list_mkts_from_positions(positions,excl_strats=[],incl_strats=[],include
             incl_strats = set(pds.get_strategies(include_insight_only=include_insight)) - set(excl_strats)
         else:
             incl_strats = {m for (s,m) in strat_mkts}
-    return sorted(set([m for (s, m) in strat_mkts if s in incl_strats]))
+    return sorted(set([str(m) for (s, m) in strat_mkts if s in incl_strats]))
 
-# load positions just to get a sensible list of markets
 with pm_cache_enable():
     positions = pmp.get_all_market_positions()
 multi_contracts = atd.get_multi_contracts()
@@ -39,6 +41,7 @@ multi_contracts = atd.get_multi_contracts()
 mkts = get_list_mkts_from_positions(positions,excl_strats=strategy_exclusions,incl_strats=strategy_inclusions,include_insight=include_insight_strats)
 mkt_families = sorted(set(multi_contracts.get(x,x) for x in mkts))
 fut_mkt_families = [x for x in mkt_families if amd.describe(x)['assetClass']=='ASSET_FUTURE']
+# -
 
 # main function
 def get_participation_values(mkt, lookback=lookback):
@@ -56,7 +59,8 @@ def get_participation_values(mkt, lookback=lookback):
     # need to map contracts to bloomberg codes so we can get volumes - see contract_ticker_check to see that this mapping seems to be vaguely sensible
     contracts = gross_trades.columns.tolist()
     ahl_codes = ['_'.join(['FUT', mkt, str(x)[:6]]) for x in contracts]
-    bbg_tickers = [pmv.get_bloomberg_ticker(x) for x in ahl_codes]
+    with amd.features.set_trading_mode(False):
+        bbg_tickers = [pmv.get_bloomberg_ticker(x) for x in ahl_codes]
     na_tickers = [x for x, y in zip(ahl_codes, bbg_tickers) if y is None]
     assert len(na_tickers) == 0, 'bloomberg ticker(s) not available for ' + ', '.join(na_tickers)
 
@@ -85,14 +89,16 @@ def get_participation_values(mkt, lookback=lookback):
             'max_participation':max_participation,
             'trade_weighted_participation':trade_weighted_participation}
 
-
-# -
+# +
+# get results
 pool = hpc_pool('PROCESS') #hpc_pool('SPARK',max_workers=60,mem_per_cpu='1g')
-test = map(lambda x: pool.submit(get_participation_values, x), fut_mkt_families)
+pool_submit = map(lambda x: pool.submit(get_participation_values, x), fut_mkt_families)
 error_value = {x:np.nan for x in get_participation_values('FTL').keys()}
-res = [x.result() if x.exception() is None else error_value for x in test]
+res = [x.result() if x.exception() is None else error_value for x in pool_submit]
+errors = [(m,x.exception()) for m,x in zip(fut_mkt_families, pool_submit) if x.exception() is not None]
 resd = dict(zip(fut_mkt_families, res))
 resdf = pd.DataFrame(resd).T
+# -
 
 # +
 # metadata
@@ -102,8 +108,6 @@ num_strats_per_mkt = {x: len([s for (s,m) in strat_mkt_map if multi_contracts.ge
 link = {m:'<a href="../market_participation/latest?mkt={}" '
                                            'target="_blank">market notebook</a>'.format(m) for m in fut_mkt_families}
 
-
-# attach metadata
 res_with_metadata = pd.concat([resdf[['median_trade', 'median_volume', 'max_participation', 'trade_weighted_participation']],
                                pd.Series(market_names, name='market_name'),
                                pd.Series(num_strats_per_mkt , name='num_strats'),
@@ -111,10 +115,11 @@ res_with_metadata = pd.concat([resdf[['median_trade', 'median_volume', 'max_part
                                ], axis=1).reindex(resdf.index)
 # -
 
-# #### Participation across all markets
+##### Participation across all markets
 
 res_with_metadata[['trade_weighted_participation']].hist()
 
+# +
 formatter = {'median_trade':'{:,.0f}',
               'median_volume':'{:,.0f}',
               'trade_weighted_participation':'{:,.1%}',
@@ -127,3 +132,8 @@ res_with_metadata[['market_name',
                    'max_participation',
                    'trade_weighted_participation',
                    'link']].nlargest(num_results,'trade_weighted_participation').style.format(formatter)
+# -
+
+HTML('<i>Toggle code to see {} markets with errors</i>'.format(len(errors)))
+
+print('\n'.join([' - '.join([m,str(type(x)),x.message]) for m,x in errors]))
