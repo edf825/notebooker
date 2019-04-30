@@ -1,15 +1,20 @@
 # ---
 # jupyter:
-#   jupytext:
-#     text_representation:
-#       extension: .py
-#       format_name: light
-#       format_version: '1.3'
-#       jupytext_version: 1.0.5
+#   jupytext_format_version: '1.2'
 #   kernelspec:
 #     display_name: riskdev
 #     language: python
 #     name: riskdev
+#   language_info:
+#     codemirror_mode:
+#       name: ipython
+#       version: 2
+#     file_extension: .py
+#     mimetype: text/x-python
+#     name: python
+#     nbconvert_exporter: python
+#     pygments_lexer: ipython2
+#     version: 2.7.13
 # ---
 
 # +
@@ -61,7 +66,8 @@ mkts.loc['IEF5EU', :] = ['CREDIT:INDEX:ITRAXX:ITRAXXEUROPE', 'ITRAXX.EUROPE.SNR.
 mkts.loc['IX5EU', :] = ['CREDIT:INDEX:ITRAXX:ITRAXXEUROPE', 'ITRAXX.EUROPE.XOVER.', 'ITRAXX EUROPE CROSSOVER', 'ITXEX']
 mkts.loc['I5US', :] = ['CREDIT:INDEX:CDX:CDXIG', 'CDX.NA.IG.', 'CDX.NA.IG', 'CDXIG']
 mkts.loc['IEM5US', :] = ['CREDIT:INDEX:CDX:CDXEMERGINGMARKETS', 'CDX.EM.', 'CDX.EM.', 'CXPEM']
-mkts.loc['I5YUS', :] = ['CREDIT:INDEX:ITRAXX:ITRAXXJAPAN', 'ITRAXX.JAPAN.', 'ITRAXX JAPAN', 'ITXAJ']
+mkts.loc['I5JP', :] = ['CREDIT:INDEX:ITRAXX:ITRAXXJAPAN', 'ITRAXX.JAPAN.', 'ITRAXX JAPAN', 'ITXAJ']
+mkts.loc['IY5US', :] = ['CREDIT:INDEX:CDX:CDXHY', 'CDX.NA.HY.', 'CDX.NA.HY', 'CXPHY']
 
 
 # Create mapping from underlying_asset (bbg_ticker) to ticker_stem for dtcc data (bbg data)
@@ -69,7 +75,6 @@ dtcc_ticker_map = mkts.loc[:, ['ticker_stem', 'ul_asset_contains']].set_index('u
 dtcc_ticker_map['Other'] = ''
 bbg_ticker_map = mkts.loc[:, ['ticker_stem', 'bbg_ticker_contains']].set_index('bbg_ticker_contains').squeeze()
 bbg_ticker_map['Other'] = ''
-
 
 def create_dtcc_ticker(underlying_asset):
     
@@ -79,7 +84,6 @@ def create_dtcc_ticker(underlying_asset):
     
     return ticker
 
-
 def create_bbg_ticker(bbg_ticker):
     
     ticker = bbg_ticker_map.get(next((x for x in bbg_ticker_map.index.values if x.lower() in bbg_ticker.lower()), 'Other'))
@@ -88,14 +92,12 @@ def create_bbg_ticker(bbg_ticker):
         
     return ticker
 
-
 def list_taxonomies(library='jmao.SDR', asset_class='CREDITS', contains=''):
     file = m.get_library(library)
     data = file.find({'ASSET_CLASS': 'CREDITS'})
     df = pd.DataFrame(d for d in data)
     
     return [x for x in df.TAXONOMY.unique() if contains in x]
-
 
 def get_ticker_stems(library='jmao.SDR'):
     file = m.get_library(library)
@@ -105,7 +107,6 @@ def get_ticker_stems(library='jmao.SDR'):
     df.loc[:,'ticker_stem'] = df.ticker.apply(lambda x: ".".join(x.split('.')[:-1]))
     return df.ticker_stem.unique()
     
-
 
 def tidy_up_processed_sdr_data(data, bbg_data, taxonomy, ticker_stem=None, from_date=None, to_date=None):
     
@@ -239,7 +240,6 @@ def adv(df, rolling_window=20, maturity=5.0):
     rolling_median = grouped_df.unstack(1).fillna(method='ffill', limit=5).rolling(rolling_window).median().loc[:, maturity].to_frame() / 1e6
     return rolling_median
 
-
 def avg_price(df, rolling_window=20, maturity=5.0):
     grouped_df = df.copy()
     grouped_df.EXECUTION_TIMESTAMP = grouped_df.EXECUTION_TIMESTAMP.dt.date
@@ -254,7 +254,6 @@ def avg_price(df, rolling_window=20, maturity=5.0):
     
     return grouped_df.groupby('EXECUTION_TIMESTAMP')['ntl_weighted_price'].sum()
     
-
 
 # +
 def summary_stats(df, stem, start_date=None, end_date=None, otr_filter=False):
@@ -350,7 +349,10 @@ def summary_stats_trends(df, otr_filter=False):
     return stats
 
 # + {"tags": ["parameters"]}
-start_date = dt(2019,1,1)
+start_date_yyyy_mm_dd = '2019-01-01'
+# -
+
+start_date = dt.strptime(start_date_yyyy_mm_dd, '%Y-%m-%d')
 
 # +
 for x in mkts.values:
@@ -361,7 +363,4 @@ for x in mkts.values:
     fig2, ax2 = plt.subplots(figsize=(20,10))
     avg_price(res).plot(title=x[1]+'-NOTIONAL WEIGHTED AVG PRICE', ax=ax2)
     
-
-# -
-
 
