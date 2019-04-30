@@ -1,6 +1,6 @@
 # Man Notebooker
 
-## [Try it out here](http://1.restech.res.ahl:11828)
+## [Try it out here](http://notebooker.ing.k8s.dev.m/)
 
 This is a tool which allows you to run parametrised notebooks either via
 a webapp, or a CLI. To add your own notebook template, see the
