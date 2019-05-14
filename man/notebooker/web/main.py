@@ -10,10 +10,10 @@ from ahl.logging import get_logger
 from flask import Flask, render_template, request, g
 from gevent.pywsgi import WSGIServer
 
+from man.notebooker.serialization.serialization import get_serializer
 from man.notebooker.utils.caching import get_cache, set_cache
 from man.notebooker.constants import OUTPUT_BASE_DIR, \
     TEMPLATE_BASE_DIR, JobStatus, CANCEL_MESSAGE
-from man.notebooker.serialization.mongoose import NotebookResultSerializer
 from man.notebooker.utils.results import all_available_results
 from man.notebooker.utils.notebook_execution import mkdir_p, _cleanup_dirs
 from man.notebooker.utils.templates import get_all_possible_templates
@@ -31,16 +31,6 @@ flask_app.register_blueprint(run_report_bp)
 flask_app.register_blueprint(serve_results_bp)
 
 
-def _result_serializer():
-    """Opens a new database connection if there is none yet for the
-    current application context.
-    """
-    if not hasattr(g, 'result_serializer'):
-        g.result_serializer = NotebookResultSerializer(
-            mongo_host=os.environ['MONGO_HOST'],
-            database_name=os.environ['DATABASE_NAME'],
-            result_collection_name=os.environ['RESULT_COLLECTION_NAME'])
-    return g.result_serializer
 
 # ----------------- Main page -------------------- #
 
@@ -53,9 +43,9 @@ def index():
         return cached
     with flask_app.app_context():
         result =  render_template('index.html',
-                                  all_jobs=all_available_results(_result_serializer(), limit),
+                                  all_jobs=all_available_results(get_serializer(), limit),
                                   all_reports=get_all_possible_templates(),
-                                  n_results_available=_result_serializer().n_all_results(),
+                                  n_results_available=get_serializer().n_all_results(),
                                   donevalue=JobStatus.DONE,  # needed so we can check if a result is available
                                   )
         set_cache('index_limit_{}'.format(limit), result, timeout=10)
@@ -66,10 +56,10 @@ def index():
 
 def _cancel_all_jobs():
     with flask_app.app_context():
-        all_pending = _result_serializer().get_all_results(
+        all_pending = get_serializer().get_all_results(
             mongo_filter={'status': {'$in': [JobStatus.SUBMITTED.value,JobStatus.PENDING.value]}})
         for result in all_pending:
-            _result_serializer().update_check_status(result.job_id, JobStatus.CANCELLED, error_info=CANCEL_MESSAGE)
+            get_serializer().update_check_status(result.job_id, JobStatus.CANCELLED, error_info=CANCEL_MESSAGE)
 
 
 @atexit.register

@@ -3,9 +3,10 @@ import traceback
 from ahl.logging import get_logger
 from flask import render_template, jsonify, url_for, Blueprint, Response, abort, request
 from typing import Union, Any
-from man.notebooker.utils.caching import get_cache
+
+from man.notebooker.serialization.serialization import get_serializer
 from man.notebooker.constants import JobStatus, NotebookResultError, NotebookResultPending, NotebookResultComplete, NotebookResultBase
-from man.notebooker.serialization.mongoose import NotebookResultSerializer, _pdf_filename
+from man.notebooker.serialization.mongoose import _pdf_filename
 from man.notebooker.utils.results import (_get_job_results, get_all_result_keys, get_latest_job_results,
                                           get_latest_successful_job_results,
                                           )
@@ -17,19 +18,13 @@ logger = get_logger(__name__)
 
 # ------------------- Serving results -------------------- #
 
-def _result_serializer():
-    return NotebookResultSerializer(mongo_host=os.environ['MONGO_HOST'],
-                                    database_name=os.environ['DATABASE_NAME'],
-                                    result_collection_name=os.environ['RESULT_COLLECTION_NAME'])
-
-
 def _params_from_request_args(request_args):
     return {k: (v[0] if len(v) == 1 else v) for k, v in request_args.iterlists()}
 
 
 @serve_results_bp.route('/results/<path:report_name>/<task_id>')
 def task_results(task_id, report_name):
-    result = _get_job_results(task_id, report_name, _result_serializer(), ignore_cache=True)
+    result = _get_job_results(task_id, report_name, get_serializer(), ignore_cache=True)
     return render_template('results.html',
                            task_id=task_id,
                            report_name=report_name,
@@ -57,7 +52,7 @@ def task_results_html(task_id, report_name):
     # - present the HTML results, if the job has finished
     # - present the error, if the job has failed
     # - present the user with some info detailing the progress of the job, if it is still running.
-    return _process_result_or_abort(_get_job_results(task_id, report_name, _result_serializer()))
+    return _process_result_or_abort(_get_job_results(task_id, report_name, get_serializer()))
 
 
 @serve_results_bp.route('/result_html_render/<path:report_name>/latest')
@@ -67,7 +62,7 @@ def latest_parameterised_task_results_html(report_name):
     # - present the error, if the job has failed
     # - present the user with some info detailing the progress of the job, if it is still running.
     params = _params_from_request_args(request.args)
-    result = get_latest_job_results(report_name, params, _result_serializer())
+    result = get_latest_job_results(report_name, params, get_serializer())
     return _process_result_or_abort(result)
 
 
@@ -78,19 +73,19 @@ def latest_task_results_html(report_name):
     # - present the error, if the job has failed
     # - present the user with some info detailing the progress of the job, if it is still running.
     # Will ignore all paramterisation of the report and get the latest of any run for a given report name
-    return _process_result_or_abort(get_latest_job_results(report_name, None, _result_serializer()))
+    return _process_result_or_abort(get_latest_job_results(report_name, None, get_serializer()))
 
 
 @serve_results_bp.route('/result_html_render/<path:report_name>/latest-successful')
 def latest_successful_task_results_html(report_name):
     params = _params_from_request_args(request.args)
-    result = get_latest_successful_job_results(report_name, params, _result_serializer())
+    result = get_latest_successful_job_results(report_name, params, get_serializer())
     return _process_result_or_abort(result)
 
 
 @serve_results_bp.route('/result_html_render/<path:report_name>/<task_id>/resources/<path:resource>')
 def task_result_resources_html(task_id, resource, report_name):
-    result = _get_job_results(task_id, report_name, _result_serializer())
+    result = _get_job_results(task_id, report_name, get_serializer())
     if isinstance(result, NotebookResultComplete):
         html_resources = result.raw_html_resources
         resource_path = os.path.join(task_id, 'resources', resource)
@@ -101,7 +96,7 @@ def task_result_resources_html(task_id, resource, report_name):
 
 @serve_results_bp.route('/result_download_ipynb/<path:report_name>/<task_id>')
 def download_ipynb_result(task_id, report_name):
-    result = _get_job_results(task_id, report_name, _result_serializer())
+    result = _get_job_results(task_id, report_name, get_serializer())
     if isinstance(result, NotebookResultComplete):
         return Response(result.raw_ipynb_json,
                         mimetype="application/vnd.jupyter",
@@ -112,7 +107,7 @@ def download_ipynb_result(task_id, report_name):
 
 @serve_results_bp.route('/result_download_pdf/<path:report_name>/<task_id>')
 def download_pdf_result(task_id, report_name):
-    result = _get_job_results(task_id, report_name, _result_serializer())
+    result = _get_job_results(task_id, report_name, get_serializer())
     if isinstance(result, NotebookResultComplete):
         return Response(result.pdf,
                         mimetype="application/pdf",
@@ -134,14 +129,13 @@ def task_loading(report_name, task_id):
 
 def _get_job_status(job_id, report_name):
     # Continuously polled for updates by the user client, until the notebook has completed execution (or errored).
-    job_result = _get_job_results(job_id, report_name, _result_serializer(), ignore_cache=True)
+    job_result = _get_job_results(job_id, report_name, get_serializer(), ignore_cache=True)
     if job_result is None:
         return {'status': 'Job not found. Did you use an old job ID?'}
     if job_result.status in (JobStatus.DONE, JobStatus.ERROR, JobStatus.TIMEOUT, JobStatus.CANCELLED):
         response = {'status': job_result.status.value,
                     'results_url': url_for('serve_results_bp.task_results', report_name=report_name, task_id=job_id)}
     else:
-        logger.info('Stdout is: {}'.format(job_result.stdout))
         response = {'status': job_result.status.value, 'run_output': '\n'.join(job_result.stdout)}
     return response
 
@@ -154,8 +148,8 @@ def task_status(report_name, task_id):
 @serve_results_bp.route('/delete_report/<job_id>', methods=['POST'])
 def delete_report(job_id):
     try:
-        _result_serializer().delete_result(job_id)
-        get_all_result_keys(_result_serializer(), limit=50, force_reload=True)
+        get_serializer().delete_result(job_id)
+        get_all_result_keys(get_serializer(), limit=50, force_reload=True)
         result = {'status': 'ok'}
     except:
         error_info = traceback.format_exc()
