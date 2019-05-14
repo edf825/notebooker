@@ -135,15 +135,14 @@ def task_loading(report_name, task_id):
 def _get_job_status(job_id, report_name):
     # Continuously polled for updates by the user client, until the notebook has completed execution (or errored).
     job_result = _get_job_results(job_id, report_name, _result_serializer(), ignore_cache=True)
-    key = u'run_output_{}'.format(job_id)
-    output = get_cache(key) or ''
     if job_result is None:
         return {'status': 'Job not found. Did you use an old job ID?'}
     if job_result.status in (JobStatus.DONE, JobStatus.ERROR, JobStatus.TIMEOUT, JobStatus.CANCELLED):
         response = {'status': job_result.status.value,
                     'results_url': url_for('serve_results_bp.task_results', report_name=report_name, task_id=job_id)}
     else:
-        response = {'status': job_result.status.value, 'run_output': output}
+        logger.info('Stdout is: {}'.format(job_result.stdout))
+        response = {'status': job_result.status.value, 'run_output': '\n'.join(job_result.stdout)}
     return response
 
 

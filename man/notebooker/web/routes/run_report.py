@@ -12,7 +12,6 @@ from ahl.logging import get_logger
 from flask import render_template, request, jsonify, url_for, Blueprint, abort
 
 from man.notebooker import execute_notebook
-from man.notebooker.utils.caching import get_cache, set_cache
 from man.notebooker.constants import TEMPLATE_BASE_DIR, JobStatus, OUTPUT_BASE_DIR
 from man.notebooker.web.handle_overrides import handle_overrides
 from man.notebooker.serialization.mongoose import NotebookResultSerializer
@@ -54,13 +53,14 @@ def run_report_http(report_name):
 
 def _monitor_stderr(process, job_id):
     stderr = []
+    result_serializer = NotebookResultSerializer(mongo_host=os.environ['MONGO_HOST'],
+                                                 database_name=os.environ['DATABASE_NAME'],
+                                                 result_collection_name=os.environ['RESULT_COLLECTION_NAME'])
     while True:
         line = process.stderr.readline().decode('utf-8')
         stderr.append(line)
         logger.info(line)  # So that we have it in the log, not just in memory.
-        key = 'run_output_{}'.format(job_id)
-        all_output = ''.join(stderr)
-        set_cache(key, all_output)
+        result_serializer.update_stdout(job_id, new_lines=[line])
         if line == '' and process.poll() is not None:
             break
     return ''.join(stderr)

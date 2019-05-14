@@ -65,7 +65,7 @@ def _check_report_output(job_id, serialiser, **kwargs):
         if result.status not in (JobStatus.PENDING, JobStatus.SUBMITTED):
             break
     assert result.status == JobStatus.DONE, result.error_info
-    assert get_cache('run_output_{}'.format(job_id)) is not None
+    assert result.stdout != ''
     assert result.raw_html
     assert result.raw_ipynb_json
     assert result.pdf == ''

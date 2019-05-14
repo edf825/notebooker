@@ -63,6 +63,7 @@ class NotebookResultBase(object):
     overrides = attr.ib(default=attr.Factory(dict))
     mailto = attr.ib(default='')
     generate_pdf_output = attr.ib(default=True)
+    stdout = attr.ib(default=attr.Factory(list))
 
     def saveable_output(self):
         out = attr.asdict(self)
@@ -110,6 +111,7 @@ class NotebookResultComplete(NotebookResultBase):
     overrides = attr.ib(default=attr.Factory(dict))
     mailto = attr.ib(default='')
     generate_pdf_output = attr.ib(default=True)
+    stdout = attr.ib(default=attr.Factory(list))
 
     def html_resources(self):
         # We have to save the raw images using Mongo GridFS - figure out where they will go here
