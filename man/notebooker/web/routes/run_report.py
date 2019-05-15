@@ -53,7 +53,7 @@ def run_report_http(report_name):
 
 def _monitor_stderr(process, job_id):
     stderr = []
-    # Because it is not thread safe to use the other context's mongo connections
+    # Unsure whether flask app contexts are thread-safe; just reinitialise the serializer here.
     result_serializer = get_fresh_serializer()
     while True:
         line = process.stderr.readline().decode('utf-8')
