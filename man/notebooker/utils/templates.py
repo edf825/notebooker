@@ -95,3 +95,17 @@ def _get_preview(template_name, warn_on_local=True):
         html, _ = exporter.from_notebook_node(nb) if nb['cells'] else ('', '')
     set_cache(('preview', template_name), html, timeout=30)
     return html
+
+
+def _gen_all_templates(template_dict):
+    for template_name, children in template_dict.items():
+        if children:
+            for x in _gen_all_templates(children):  # Replace with "yield from" when we have py3
+                yield x
+        else:
+            yield template_name
+
+
+def _all_templates():
+    templates = list(_gen_all_templates(get_all_possible_templates(warn_on_local=False)))
+    return templates

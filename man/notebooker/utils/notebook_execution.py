@@ -72,4 +72,5 @@ def mkdir_p(path):
 def _cleanup_dirs():
     for d in (OUTPUT_BASE_DIR, TEMPLATE_BASE_DIR, CACHE_DIR):
         if os.path.exists(d):
+            logger.info('Cleaning up %s', d)
             shutil.rmtree(d)
