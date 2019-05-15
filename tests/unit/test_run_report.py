@@ -1,29 +1,31 @@
-# -*- coding: utf-8 -*-
-from __future__ import unicode_literals
+import mock
 import subprocess
 import sys
 
-from man.notebooker.utils import caching
 from man.notebooker.web.routes.run_report import _monitor_stderr
-from ..utils import cache_blaster
 
 
-@cache_blaster
 def test_monitor_stderr():
-    dummy_process = """
-from __future__ import print_function, unicode_literals
+    dummy_process = u"""
 import time, sys
-print('This is going to stdout', file=sys.stdout)
-print('This is going to stderr', file=sys.stderr)
+sys.stdout.write(u'This is going to stdout\\n')
+sys.stderr.write(u'This is going to stderr\\n')
 time.sleep(1)
-print('This is going to stdout a bit later', file=sys.stdout)
-print('This is going to stderr a bit later', file=sys.stderr)
+sys.stdout.write(u'This is going to stdout a bit later\\n')
+sys.stderr.write(u'This is going to stderr a bit later\\n')
 """
-    expected_output = """This is going to stderr
+    expected_output = u"""This is going to stderr
 This is going to stderr a bit later
 """
-    p = subprocess.Popen([sys.executable, '-c', dummy_process], stderr=subprocess.PIPE)
+    p = subprocess.Popen([sys.executable, u'-c', dummy_process], stderr=subprocess.PIPE)
 
-    stderr_output = _monitor_stderr(p, 'abc123')
+    with mock.patch(u'man.notebooker.web.routes.run_report.get_fresh_serializer') as serializer:
+        stderr_output = _monitor_stderr(p, u'abc123')
     assert stderr_output == expected_output
-    assert caching.get_cache('run_output_abc123') == expected_output
+
+    serializer().update_stdout.assert_has_calls(
+        [
+            mock.call(u'abc123', new_lines=[u'This is going to stderr\n']),
+            mock.call(u'abc123', new_lines=[u'This is going to stderr a bit later\n'])
+        ]
+    )

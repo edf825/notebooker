@@ -51,6 +51,13 @@ class NotebookResultSerializer(object):
         out_data = notebook_result.saveable_output()
         self._save_raw_to_db(out_data)
 
+    def update_stdout(self, job_id, new_lines):
+        result = self.library.find_one_and_update(
+            {'job_id': job_id},
+            {'$push': {'stdout': {'$each': new_lines}}}
+        )
+        return result
+
     @mongo_retry
     def update_check_status(self, job_id, status, **extra):
         # type: (str, JobStatus, **Any) -> None
@@ -154,6 +161,7 @@ class NotebookResultSerializer(object):
                 generate_pdf_output=result.get('generate_pdf_output', True),
                 report_title=result.get('report_title', result['report_name']),
                 mailto=result.get('mailto', ''),
+                stdout=result.get('stdout', []),
             )
         elif cls == NotebookResultPending:
             notebook_result = NotebookResultPending(
@@ -166,6 +174,7 @@ class NotebookResultSerializer(object):
                 generate_pdf_output=result.get('generate_pdf_output', True),
                 report_title=result.get('report_title', result['report_name']),
                 mailto=result.get('mailto', ''),
+                stdout=result.get('stdout', []),
             )
 
         elif cls == NotebookResultError:
@@ -180,6 +189,7 @@ class NotebookResultSerializer(object):
                 generate_pdf_output=result.get('generate_pdf_output', True),
                 report_title=result.get('report_title', result['report_name']),
                 mailto=result.get('mailto', ''),
+                stdout=result.get('stdout', []),
             )
         else:
             raise ValueError('Could not deserialise {} into result object.'.format(result))

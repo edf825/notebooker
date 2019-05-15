@@ -12,10 +12,9 @@ from ahl.logging import get_logger
 from flask import render_template, request, jsonify, url_for, Blueprint, abort
 
 from man.notebooker import execute_notebook
-from man.notebooker.utils.caching import get_cache, set_cache
 from man.notebooker.constants import TEMPLATE_BASE_DIR, JobStatus, OUTPUT_BASE_DIR
+from man.notebooker.serialization.serialization import get_serializer, get_fresh_serializer
 from man.notebooker.web.handle_overrides import handle_overrides
-from man.notebooker.serialization.mongoose import NotebookResultSerializer
 from man.notebooker.utils.conversion import generate_ipynb_from_py
 from man.notebooker.utils.templates import _get_preview, _get_metadata_cell_idx, get_all_possible_templates
 from man.notebooker.utils.web import validate_title, validate_mailto
@@ -54,15 +53,15 @@ def run_report_http(report_name):
 
 def _monitor_stderr(process, job_id):
     stderr = []
+    # Unsure whether flask app contexts are thread-safe; just reinitialise the serializer here.
+    result_serializer = get_fresh_serializer()
     while True:
         line = process.stderr.readline().decode('utf-8')
-        stderr.append(line)
-        logger.info(line)  # So that we have it in the log, not just in memory.
-        key = 'run_output_{}'.format(job_id)
-        all_output = ''.join(stderr)
-        set_cache(key, all_output)
         if line == '' and process.poll() is not None:
             break
+        stderr.append(line)
+        logger.info(line)  # So that we have it in the log, not just in memory.
+        result_serializer.update_stdout(job_id, new_lines=[line])
     return ''.join(stderr)
 
 
@@ -70,9 +69,7 @@ def run_report(report_name, report_title, mailto, overrides, generate_pdf_output
     # Actually start the job in earnest.
     job_id = str(uuid.uuid4())
     job_start_time = datetime.datetime.now()
-    result_serializer = NotebookResultSerializer(mongo_host=os.environ['MONGO_HOST'],
-                                                 database_name=os.environ['DATABASE_NAME'],
-                                                 result_collection_name=os.environ['RESULT_COLLECTION_NAME'])
+    result_serializer = get_serializer()
     result_serializer.save_check_stub(job_id, report_name,
                                       report_title=report_title,
                                       job_start_time=job_start_time,
@@ -121,10 +118,7 @@ def run_checks_http(report_name):
 
 
 def _rerun_report(task_id, prepare_only=False):
-    result_serializer = NotebookResultSerializer(mongo_host=os.environ['MONGO_HOST'],
-                                                 database_name=os.environ['DATABASE_NAME'],
-                                                 result_collection_name=os.environ['RESULT_COLLECTION_NAME'])
-    result = result_serializer.get_check_result(task_id)
+    result = get_serializer().get_check_result(task_id)
     if not result:
         abort(404)
     prefix = 'Rerun of '

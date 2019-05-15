@@ -10,7 +10,8 @@ sudo yum install -y texlive-xetex \
                texlive-xetex-def \
                texlive-adjustbox \
                texlive-upquote \
-               texlive-ulem
+               texlive-ulem \
+               pandoc
 python setup.py develop
 pyinstall $(cat ./notebook_templates/notebook_requirements.txt)
 python -m ipykernel install --user --name=man_notebooker_kernel

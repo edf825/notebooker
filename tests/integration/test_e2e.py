@@ -6,9 +6,11 @@ import git
 import freezegun
 import mock
 
+from man.notebooker.serialization.serialization import get_serializer
+from man.notebooker.web.main import flask_app
+
 from man.notebooker.constants import JobStatus
 from man.notebooker.serialization.mongoose import NotebookResultSerializer
-from man.notebooker.utils.caching import get_cache
 from man.notebooker.web.routes.run_report import run_report, _rerun_report
 from ..utils import cache_blaster
 from .conftest import TEST_DB_NAME, TEST_LIB
@@ -65,7 +67,7 @@ def _check_report_output(job_id, serialiser, **kwargs):
         if result.status not in (JobStatus.PENDING, JobStatus.SUBMITTED):
             break
     assert result.status == JobStatus.DONE, result.error_info
-    assert get_cache('run_output_{}'.format(job_id)) is not None
+    assert result.stdout != ''
     assert result.raw_html
     assert result.raw_ipynb_json
     assert result.pdf == ''
@@ -78,56 +80,54 @@ def _check_report_output(job_id, serialiser, **kwargs):
 @freezegun.freeze_time(datetime.datetime(2018, 1, 12))
 def test_run_report(bson_library, mongo_host, workspace):
     _setup_workspace(workspace)
-    with mock.patch.dict('os.environ', _environ(mongo_host, workspace)):
-        serialiser = NotebookResultSerializer(mongo_host=os.environ['MONGO_HOST'],
-                                              database_name=os.environ['DATABASE_NAME'],
-                                              result_collection_name=os.environ['RESULT_COLLECTION_NAME'])
-        overrides = {'n_points': 5}
-        report_name = 'fake/report'
-        report_title = 'my report title'
-        mailto = 'jon@fakeemail.com'
-        job_id = run_report(report_name,
-                            report_title,
-                            mailto,
-                            overrides,
-                            generate_pdf_output=False,
-                            prepare_only=True)
-        _check_report_output(job_id, serialiser, overrides=overrides,
-                             report_name=report_name, report_title=report_title,
-                             mailto=mailto)
-        assert job_id == serialiser.get_latest_job_id_for_name_and_params(report_name, overrides)
-        assert job_id == serialiser.get_latest_job_id_for_name_and_params(report_name, None)
-        assert job_id == serialiser.get_latest_successful_job_id_for_name_and_params(report_name, overrides)
-        assert job_id == serialiser.get_latest_successful_job_id_for_name_and_params(report_name, None)
+    with flask_app.app_context() as c:
+        with mock.patch.dict('os.environ', _environ(mongo_host, workspace)):
+            serialiser = get_serializer()
+            overrides = {'n_points': 5}
+            report_name = 'fake/report'
+            report_title = 'my report title'
+            mailto = 'jon@fakeemail.com'
+            job_id = run_report(report_name,
+                                report_title,
+                                mailto,
+                                overrides,
+                                generate_pdf_output=False,
+                                prepare_only=True)
+            _check_report_output(job_id, serialiser, overrides=overrides,
+                                 report_name=report_name, report_title=report_title,
+                                 mailto=mailto)
+            assert job_id == serialiser.get_latest_job_id_for_name_and_params(report_name, overrides)
+            assert job_id == serialiser.get_latest_job_id_for_name_and_params(report_name, None)
+            assert job_id == serialiser.get_latest_successful_job_id_for_name_and_params(report_name, overrides)
+            assert job_id == serialiser.get_latest_successful_job_id_for_name_and_params(report_name, None)
 
 
 @cache_blaster
 @freezegun.freeze_time(datetime.datetime(2018, 1, 12))
 def test_run_report_and_rerun(bson_library, mongo_host, workspace):
     _setup_workspace(workspace)
-    with mock.patch.dict('os.environ', _environ(mongo_host, workspace)):
-        serialiser = NotebookResultSerializer(mongo_host=os.environ['MONGO_HOST'],
-                                              database_name=os.environ['DATABASE_NAME'],
-                                              result_collection_name=os.environ['RESULT_COLLECTION_NAME'])
-        overrides = {'n_points': 5}
-        report_name = 'fake/report'
-        report_title = 'my report title'
-        mailto = 'jon@fakeemail.com'
-        job_id = run_report(report_name,
-                            report_title,
-                            mailto,
-                            overrides,
-                            generate_pdf_output=False,
-                            prepare_only=True)
-        _check_report_output(job_id, serialiser, overrides=overrides,
-                             report_name=report_name, report_title=report_title,
-                             mailto=mailto, generate_pdf_output=False)
+    with flask_app.app_context() as c:
+        with mock.patch.dict('os.environ', _environ(mongo_host, workspace)):
+            serialiser = get_serializer()
+            overrides = {'n_points': 5}
+            report_name = 'fake/report'
+            report_title = 'my report title'
+            mailto = 'jon@fakeemail.com'
+            job_id = run_report(report_name,
+                                report_title,
+                                mailto,
+                                overrides,
+                                generate_pdf_output=False,
+                                prepare_only=True)
+            _check_report_output(job_id, serialiser, overrides=overrides,
+                                 report_name=report_name, report_title=report_title,
+                                 mailto=mailto, generate_pdf_output=False)
 
-        new_job_id = _rerun_report(job_id, prepare_only=True)
-        _check_report_output(new_job_id, serialiser, overrides=overrides,
-                             report_name=report_name, report_title='Rerun of ' + report_title,
-                             mailto=mailto, generate_pdf_output=False)
-        assert new_job_id == serialiser.get_latest_job_id_for_name_and_params(report_name, overrides)
-        assert not {job_id, new_job_id} - set(serialiser.get_all_job_ids_for_name_and_params(report_name, overrides))
-        assert new_job_id == serialiser.get_latest_successful_job_id_for_name_and_params(report_name, overrides)
-        assert job_id != serialiser.get_latest_successful_job_id_for_name_and_params(report_name, overrides)
+            new_job_id = _rerun_report(job_id, prepare_only=True)
+            _check_report_output(new_job_id, serialiser, overrides=overrides,
+                                 report_name=report_name, report_title='Rerun of ' + report_title,
+                                 mailto=mailto, generate_pdf_output=False)
+            assert new_job_id == serialiser.get_latest_job_id_for_name_and_params(report_name, overrides)
+            assert not {job_id, new_job_id} - set(serialiser.get_all_job_ids_for_name_and_params(report_name, overrides))
+            assert new_job_id == serialiser.get_latest_successful_job_id_for_name_and_params(report_name, overrides)
+            assert job_id != serialiser.get_latest_successful_job_id_for_name_and_params(report_name, overrides)
