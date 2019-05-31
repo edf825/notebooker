@@ -5,6 +5,7 @@ equities.core
 equities.centaur
 man.datascience
 intervaltree
+mkd.core
 man.secmaster
 matplotlib
 pytz
