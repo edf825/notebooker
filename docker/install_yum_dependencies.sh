@@ -10,4 +10,6 @@ yum -y install texlive-xetex \
                texlive-adjustbox \
                texlive-upquote \
                texlive-ulem \
+               pandoc \
+               git \
            && yum clean all && rm -rf /var/cache/yum
