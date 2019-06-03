@@ -32,6 +32,7 @@ symbol_limit = 25  # Limit the number of symbols we are converting to save time.
 # %matplotlib inline
 from collections import defaultdict
 
+import arrow
 import matplotlib.pyplot as plt
 import pandas as pd
 import pytz
@@ -101,7 +102,7 @@ for i, (day, row) in enumerate(trading_filter.iterrows()):
     all_asts = list(row.loc[row == 1].index)
     if date_start and day < date_start:
         continue
-    day_utc = pytz.utc.localize(day)
+    day_utc = arrow.get(pytz.utc.localize(day))
     for ast in all_asts:
         intervaltree = symbol_intervaltrees.get(ast)
         n_total_equities[day] += 1
