@@ -90,7 +90,7 @@ def df_from_dict(dict_of_dicts):
         for k, v in dict_of_dicts.viewitems()
     })
 def get_sample_times_df(mkt, include_strats=None, multi_contracts=atd.get_multi_contracts()):
-    contracts = [mkt] + [x for x in multi_contracts.keys() if multi_contracts[x] == mkt and x <> mkt]
+    contracts = [mkt] + [x for x in multi_contracts.keys() if multi_contracts[x] == mkt and x != mkt]
     sample_times = df_from_dict(atd.get_sample_times(include_mkts=contracts,include_strats=include_strats)).unstack()
     sample_times.index.names = ['strategy','instrument','sample_time']
     return sample_times

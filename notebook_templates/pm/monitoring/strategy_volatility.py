@@ -23,7 +23,7 @@ strat_ret_df = strat_ret_df.resample('B').sum().replace(0,np.nan)
 
 def remove_data_preceding_consecutive_nans(df,num_nans):
     consecutive_nan_screen = df.isnull().rolling(num_nans).sum().ge(num_nans).replace(False,np.nan).bfill()
-    return df.fillna(0)[consecutive_nan_screen<>1].copy()
+    return df.fillna(0)[consecutive_nan_screen != 1].copy()
 
 strat_ret_df = remove_data_preceding_consecutive_nans(strat_ret_df,num_nans=20)
 

@@ -29,7 +29,7 @@ def df_from_dict(dict_of_dicts):
     })
 
 standalone_strats = [x for (x,) in DOTS_DB.db_query('select strategy_id from dots.standalone_strategy')]
-live_strats = [x for (x,) in DOTS_DB.db_query("select strategy_id from dots.strategy where imp <> 'NULL'")]
+live_strats = [x for (x,) in DOTS_DB.db_query("select strategy_id from dots.strategy where imp != 'NULL'")]
 
 def get_straplines():
     d = DOTS_DB.db_query("select strategy_id, instrument_id, override_value from dots.trading_override where override_name='CAPTURE_STRATEGY_INSTRUMENT' and override_value is not null",name='pd')

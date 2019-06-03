@@ -77,7 +77,7 @@ def get_risk_product_list(incl_groups,grains):
     # ignore secondary share classes (termed AHL Fund Class)
     res = fund_info[
         (fund_info['ahl']==True) & \
-        (fund_info['FUNDTYPE'] <> 'AHL Fund Class') & \
+        (fund_info['FUNDTYPE'] != 'AHL Fund Class') & \
         (fund_info['FUNDLIQGROUPS'].isin(incl_groups)) & \
         (fund_info['MACGRAINFUNDS'].isin(grains))
         ]
@@ -128,7 +128,7 @@ HTML(dpm_res.style.format({'current':'{:,.2f}',
 
 #### CPMs
 
-mac_list = sorted([x for x,y in atd.get_funds_all().items() if y.style<>'DEAD'])
+mac_list = sorted([x for x,y in atd.get_funds_all().items() if y.style != 'DEAD'])
 current_cpms = pd.Series([fa.get_mac_gearing(x,latest=True) for x in mac_list],mac_list)
 
 cpm_pool_submit = map(lambda x: pool.submit(calc_proposed_cpm, x, start_dt,end_dt), mac_list)
