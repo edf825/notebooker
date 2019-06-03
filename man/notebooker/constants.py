@@ -18,6 +18,7 @@ PYTHON_TEMPLATE_DIR = os.path.join(os.environ['PY_TEMPLATE_DIR'],
 
 # NB: These env vars should come from the docker image.
 NOTEBOOKER_TEMPLATE_GIT_URL = os.getenv('NOTEBOOKER_TEMPLATE_GIT_URL')
+NOTEBOOKER_DISABLE_GIT = os.getenv('NOTEBOOKER_DISABLE_GIT')
 
 KERNEL_SPEC = {'display_name': os.getenv('NOTEBOOK_KERNEL_NAME', 'man_notebooker_kernel'),
                'language': 'python',

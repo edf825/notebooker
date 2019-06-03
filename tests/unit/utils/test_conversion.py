@@ -61,6 +61,20 @@ def test_generate_ipynb_from_py():
             'extra_path',
             'test_report.ipynb')
         assert os.path.exists(expected_ipynb_path), '.ipynb was not generated as expected!'
+
+        with mock.patch('man.notebooker.utils.conversion.uuid.uuid4') as uuid4:
+            conversion.PYTHON_TEMPLATE_DIR = python_dir
+            conversion.NOTEBOOKER_DISABLE_GIT = True
+            uuid4.return_value = 'uuid_nogit'
+            conversion.generate_ipynb_from_py(TEMPLATE_BASE_DIR, 'extra_path/test_report')
+
+        expected_ipynb_path = os.path.join(
+            TEMPLATE_BASE_DIR,
+            'uuid_nogit',
+            'extra_path',
+            'test_report.ipynb')
+        assert os.path.exists(expected_ipynb_path), '.ipynb was not generated as expected!'
+
     finally:
         _cleanup_dirs()
         shutil.rmtree(python_dir)
@@ -100,3 +114,34 @@ def test_generate_py_from_ipynb():
         shutil.rmtree(py_dir)
 
 
+@mock.patch('man.notebooker.utils.conversion.set_cache')
+@mock.patch('man.notebooker.utils.conversion.get_cache')
+@mock.patch('man.notebooker.utils.conversion._git_pull_templates')
+@mock.patch('man.notebooker.utils.conversion.uuid.uuid4')
+def test__get_output_path_hex(uuid4, pull, get_cache, set_cache):
+    # No-git path
+    conversion.PYTHON_TEMPLATE_DIR = None
+    uuid4.return_value = mock.sentinel.uuid4
+    actual = conversion._get_output_path_hex()
+    assert actual == str(mock.sentinel.uuid4)
+
+    # Git path set new SHA
+    conversion.PYTHON_TEMPLATE_DIR = mock.sentinel.pydir
+    conversion.NOTEBOOKER_DISABLE_GIT = False
+    pull.return_value = mock.sentinel.newsha
+    get_cache.return_value = mock.sentinel.newsha2
+    actual = conversion._get_output_path_hex()
+    assert actual == mock.sentinel.newsha2
+    set_cache.assert_called_once_with('latest_sha', mock.sentinel.newsha)
+
+    # Git path old SHA
+    get_cache.return_value = None
+    actual = conversion._get_output_path_hex()
+    assert actual == 'OLD'
+
+    # Git path same SHA
+    get_cache.return_value = pull.return_value = mock.sentinel.samesha
+    set_cache.reset_mock()
+    actual = conversion._get_output_path_hex()
+    assert actual == mock.sentinel.samesha
+    assert not set_cache.called

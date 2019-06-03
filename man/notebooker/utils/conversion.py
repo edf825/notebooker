@@ -10,7 +10,7 @@ from nbconvert.exporters.exporter import ResourcesDict
 from traitlets.config import Config
 from typing import AnyStr, Dict, Any, Optional
 
-from man.notebooker.constants import REPORT_NAME_SEPARATOR, PYTHON_TEMPLATE_DIR, KERNEL_SPEC
+from man.notebooker.constants import REPORT_NAME_SEPARATOR, PYTHON_TEMPLATE_DIR, KERNEL_SPEC, NOTEBOOKER_DISABLE_GIT
 from man.notebooker.utils.caching import get_cache, set_cache
 from man.notebooker.utils.notebook_execution import logger, mkdir_p
 
@@ -70,13 +70,19 @@ def _ipynb_output_path(template_base_dir, report_path, git_hex):
     )
 
 
-def generate_ipynb_from_py(template_base_dir, report_name, warn_on_local=True):
-    # type: (str, str, Optional[bool]) -> str
-    # This method EITHER:
-    # Pulls the latest version of the notebook templates from git, and regenerates templates if there is a new HEAD
-    # OR: finds the local templates from the repository using a relative path
-    report_path = report_name.replace(REPORT_NAME_SEPARATOR, os.path.sep)
+def _get_python_template_path(report_path, warn_on_local):
+    # type: (str, bool) -> str
     if PYTHON_TEMPLATE_DIR:
+        return _python_template(report_path)
+    else:
+        if warn_on_local:
+            logger.warning('Loading from local location. This is only expected if you are running locally.')
+        return pkg_resources.resource_filename(__name__, '../../../notebook_templates/{}.py'.format(report_path))
+
+
+def _get_output_path_hex():
+    # type: () -> str
+    if PYTHON_TEMPLATE_DIR and not NOTEBOOKER_DISABLE_GIT:
         logger.info('Pulling latest notebook templates from git.')
         try:
             latest_sha = _git_pull_templates()
@@ -86,15 +92,19 @@ def generate_ipynb_from_py(template_base_dir, report_name, warn_on_local=True):
             logger.info('Git pull done.')
         except Exception as e:
             logger.exception(e)
-        python_template_path = _python_template(report_path)
-        sha = get_cache('latest_sha') or 'OLD'
-        output_template_path = _ipynb_output_path(template_base_dir, report_path, sha)
+        return get_cache('latest_sha') or 'OLD'
     else:
-        if warn_on_local:
-            logger.warning('Loading from local location. This is only expected if you are running locally.')
-        python_template_path = pkg_resources.resource_filename(__name__,
-                                                               '../../../notebook_templates/{}.py'.format(report_path))
-        output_template_path = _ipynb_output_path(template_base_dir, report_path, str(uuid.uuid4()))
+        return str(uuid.uuid4())
+
+
+def generate_ipynb_from_py(template_base_dir, report_name, warn_on_local=True):
+    # type: (str, str, bool) -> str
+    # This method EITHER:
+    # Pulls the latest version of the notebook templates from git, and regenerates templates if there is a new HEAD
+    # OR: finds the local templates from the repository using a relative path
+    report_path = report_name.replace(REPORT_NAME_SEPARATOR, os.path.sep)
+    python_template_path = _get_python_template_path(report_path, warn_on_local)
+    output_template_path = _ipynb_output_path(template_base_dir, report_path, _get_output_path_hex())
 
     try:
         with open(output_template_path, 'r') as f:
