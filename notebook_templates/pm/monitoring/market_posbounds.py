@@ -222,7 +222,7 @@ def get_posbound_table(mkt, dataservice):
     # add in slim
     res_df['slim'] = slim
     strat_order = res_df.groupby(res_df.index.get_level_values(0))['desired_posbound'].max().sort_values(ascending=False).index.tolist()
-    return res_df[res_df['max_signal'] <> 0].T[strat_order].T
+    return res_df[res_df['max_signal'] != 0].T[strat_order].T
 
 
 def plot_posbound_table(posbound_table, **plotting_kwargs):
