@@ -113,6 +113,6 @@ def get_latest_successful_job_results_all_params(report_name,         # type: st
                                                  retrying=False,      # type: Optional[bool]
                                                  ignore_cache=False,  # type: Optional[bool]
                                                  ):
-    # type: (...) -> Generator[constants.NotebookResultBase]
+    # type: (...) -> Generator[constants.NotebookResultComplete]
     for job_id in serializer.get_latest_successful_job_ids_for_name_all_params(report_name):
         yield _get_job_results(job_id, report_name, serializer, retrying, ignore_cache)
