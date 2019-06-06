@@ -31,7 +31,8 @@ withEnv(['REGRESSION_TESTING="true"',"NOTEBOOK_KERNEL_NAME=${kernelname}"]) {
             ]
             testStages =  [
                 [name: 'Template Regression tests',
-                 body: regression
+                 body: regression,
+                 workers: 3
                  ]
             ]
         }
