@@ -233,7 +233,10 @@ class NotebookResultSerializer(object):
         # type: (str, Optional[Dict], Optional[JobStatus]) -> Dict[str, Any]
         mongo_filter = {'report_name': report_name}
         if overrides is not None:
-            mongo_filter['overrides'] = overrides
+            # BSON document comparisons are order-specific but we want to compare overrides irrespective of order and so we check subparts independently.
+            # See https://stackoverflow.com/questions/14324626/pymongo-or-mongodb-is-treating-two-equal-python-dictionaries-as-different-object
+            for k, v in overrides.items():
+                mongo_filter['overrides.{}'.format(k)] = v
         if status is not None:
             mongo_filter['status'] = status.value
         return mongo_filter
