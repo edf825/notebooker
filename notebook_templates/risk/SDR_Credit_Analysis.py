@@ -45,15 +45,19 @@ regex_str_ticker = '([A-Z]+[ .][A-Z]+[.][A-Z]+[.]\d{1,2})'
 
 regex_str_series = '\d+'
 
+# + {"tags": ["parameters"]}
+start_date = dt(2019,1,1)
+
 # +
 # Load the SDR data (both DTCC and BBG)
-dtcc_file = m.get_library('jmao.SDR')
-dtcc_filef = dtcc_file.find({'ASSET_CLASS': 'CREDITS'})
+dtcc_file = m.get_library('dtcc.SDR')
+dtcc_filef = dtcc_file.find({'EXECUTION_TIMESTAMP': {"$gte": start_date}, 'ASSET_CLASS': 'CREDITS'})
+
 dtcc_data = pd.DataFrame(d for d in dtcc_filef)
 
 
-bbg_file = m.get_library('jmao.BBG_SDR')
-bbg_filef = bbg_file.find({'ASSET_CLASS': 'CREDITS'})
+bbg_file = m.get_library('dtcc.BBG_SDR')
+bbg_filef = bbg_file.find({'EXECUTION_TIMESTAMP': {"$gte": start_date}, 'ASSET_CLASS': 'CREDITS'})
 bbg_data = pd.DataFrame(b for b in bbg_filef)
 # -
 
@@ -66,8 +70,7 @@ mkts.loc['IEF5EU', :] = ['CREDIT:INDEX:ITRAXX:ITRAXXEUROPE', 'ITRAXX.EUROPE.SNR.
 mkts.loc['IX5EU', :] = ['CREDIT:INDEX:ITRAXX:ITRAXXEUROPE', 'ITRAXX.EUROPE.XOVER.', 'ITRAXX EUROPE CROSSOVER', 'ITXEX']
 mkts.loc['I5US', :] = ['CREDIT:INDEX:CDX:CDXIG', 'CDX.NA.IG.', 'CDX.NA.IG', 'CDXIG']
 mkts.loc['IEM5US', :] = ['CREDIT:INDEX:CDX:CDXEMERGINGMARKETS', 'CDX.EM.', 'CDX.EM.', 'CXPEM']
-mkts.loc['I5JP', :] = ['CREDIT:INDEX:ITRAXX:ITRAXXJAPAN', 'ITRAXX.JAPAN.', 'ITRAXX JAPAN', 'ITXAJ']
-mkts.loc['IY5US', :] = ['CREDIT:INDEX:CDX:CDXHY', 'CDX.NA.HY.', 'CDX.NA.HY', 'CXPHY']
+mkts.loc['I5YUS', :] = ['CREDIT:INDEX:ITRAXX:ITRAXXJAPAN', 'ITRAXX.JAPAN.', 'ITRAXX JAPAN', 'ITXAJ']
 
 
 # Create mapping from underlying_asset (bbg_ticker) to ticker_stem for dtcc data (bbg data)
@@ -117,7 +120,7 @@ def tidy_up_processed_sdr_data(data, bbg_data, taxonomy, ticker_stem=None, from_
     df.loc[:,'red_id'] = df.UNDERLYING_ASSET_1.str.extract(regex_str_red).fillna(UNKNOWN)
     
     bbg_df = bbg_data
-    if taxonomy!='CREDIT:INDEX:ITRAXX:ITRAXXJAPAN':
+    if (taxonomy!='CREDIT:INDEX:ITRAXX:ITRAXXJAPAN') & (not bbg_data.empty):
         bbg_df = bbg_df.loc[bbg_df.TAXONOMY==taxonomy]
         bbg_df['FILE_NAME'] = 'BBG'
         logger.info('Creating BBG ticker column')
@@ -348,12 +351,6 @@ def summary_stats_trends(df, otr_filter=False):
     
     return stats
 
-# + {"tags": ["parameters"]}
-start_date_yyyy_mm_dd = '2019-01-01'
-# -
-
-start_date = dt.strptime(start_date_yyyy_mm_dd, '%Y-%m-%d')
-
 # +
 for x in mkts.values:
     res = tidy_up_processed_sdr_data(dtcc_data, bbg_data, x[0], x[1], start_date)
@@ -363,4 +360,7 @@ for x in mkts.values:
     fig2, ax2 = plt.subplots(figsize=(20,10))
     avg_price(res).plot(title=x[1]+'-NOTIONAL WEIGHTED AVG PRICE', ax=ax2)
     
+
+# -
+
 
