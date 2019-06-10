@@ -7,7 +7,7 @@ import threading
 
 import click
 from ahl.logging import get_logger
-from flask import Flask, render_template, request, g
+from flask import Flask, render_template, request
 from gevent.pywsgi import WSGIServer
 
 from man.notebooker.serialization.serialization import get_serializer
@@ -17,6 +17,7 @@ from man.notebooker.constants import OUTPUT_BASE_DIR, \
 from man.notebooker.utils.results import all_available_results
 from man.notebooker.utils.notebook_execution import mkdir_p, _cleanup_dirs
 from man.notebooker.utils.templates import get_all_possible_templates
+from man.notebooker.web.converters import DateConverter
 from man.notebooker.web.report_hunter import _report_hunter
 from man.notebooker.web.routes.prometheus import setup_metrics, prometheus_bp
 from man.notebooker.web.routes.run_report import run_report_bp
@@ -26,11 +27,10 @@ flask_app = Flask(__name__)
 logger = get_logger(__name__)
 all_report_refresher = None  # type: threading.Thread
 
+flask_app.url_map.converters['date'] = DateConverter
 flask_app.register_blueprint(prometheus_bp)
 flask_app.register_blueprint(run_report_bp)
 flask_app.register_blueprint(serve_results_bp)
-
-
 
 # ----------------- Main page -------------------- #
 

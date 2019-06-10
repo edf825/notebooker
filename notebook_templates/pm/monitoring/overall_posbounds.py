@@ -101,7 +101,7 @@ sum_posbounds_over_slim = mkt_desired_posbound / mkt_slim.replace(0, np.nan)
 market_description = positions_functions.get_position_group_label(mkt_desired_posbound.index, 'client_reporting_label')
 sectors = positions_functions.get_position_group_label(mkt_desired_posbound.index, 'sector')
 num_strats_traded_in = positions_functions.get_num_strats_traded_in(positions, multi_contracts)
-links = {m:'<a href="../market_posbounds/latest?mkt={}" '
+links = {m:'<a href="../market_posbounds/latest-successful-asof?mkt={}" '
                     'target="_blank">market notebook</a>'.format(m) for m in mkt_families}
 
 
