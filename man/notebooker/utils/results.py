@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime as dt
 
 from ahl.logging import get_logger
 from flask import url_for
@@ -32,7 +32,7 @@ def _get_job_results(job_id,              # type: str
         return constants.NotebookResultError(job_id,
                                              error_info=err_info,
                                              report_name=report_name,
-                                             job_start_time=datetime.datetime.now())
+                                             job_start_time=dt.now())
     if isinstance(notebook_result, str):
         if not retrying:
             return _get_job_results(job_id, report_name, serializer, retrying=True)
@@ -41,22 +41,23 @@ def _get_job_results(job_id,              # type: str
     return notebook_result
 
 
-def _get_results_from_name_and_params(job_id_func,   # type: Callable[[str, Optional[Dict]], str]
+def _get_results_from_name_and_params(job_id_func,   # type: Callable[[str, Optional[Dict], Optional[dt]], str]
                                       report_name,   # type: str
                                       params,        # type: Optional[Dict]
                                       serializer,    # type: NotebookResultSerializer
                                       retrying,      # type: bool
                                       ignore_cache,  # type: bool
+                                      as_of=None,    # type: Optional[dt]
                                       ):
     # type: (...) -> constants.NotebookResultBase
-    latest_job_id = job_id_func(report_name, params)
+    latest_job_id = job_id_func(report_name, params, as_of)
     if not latest_job_id:
-        err_info = 'No job results found for report name={} with params={}'.format(report_name, params)
+        err_info = 'No job results found for report name={} with params={} as of {}'.format(report_name, params, as_of)
         return constants.NotebookResultError(latest_job_id,
                                              error_info=err_info,
                                              report_name=report_name,
                                              overrides=params,
-                                             job_start_time=datetime.datetime.now())
+                                             job_start_time=dt.now())
     return _get_job_results(latest_job_id, report_name, serializer, retrying, ignore_cache)
 
 
@@ -65,10 +66,11 @@ def get_latest_job_results(report_name,         # type: str
                            serializer,          # type: NotebookResultSerializer
                            retrying=False,      # type: Optional[bool]
                            ignore_cache=False,  # type: Optional[bool]
+                           as_of=None,          # type: Optional[dt]
                            ):
     # type: (...) -> constants.NotebookResultBase
     return _get_results_from_name_and_params(serializer.get_latest_job_id_for_name_and_params, report_name, params,
-                                             serializer, retrying, ignore_cache)
+                                             serializer, retrying, ignore_cache, as_of)
 
 
 def get_latest_successful_job_results(report_name,         # type: str
@@ -76,10 +78,11 @@ def get_latest_successful_job_results(report_name,         # type: str
                                       serializer,          # type: NotebookResultSerializer
                                       retrying=False,      # type: Optional[bool]
                                       ignore_cache=False,  # type: Optional[bool]
+                                      as_of=None,          # type: Optional[dt]
                                       ):
     # type: (...) -> constants.NotebookResultBase
     return _get_results_from_name_and_params(serializer.get_latest_successful_job_id_for_name_and_params,
-                                             report_name, params, serializer, retrying, ignore_cache)
+                                             report_name, params, serializer, retrying, ignore_cache, as_of)
 
 
 def get_all_result_keys(serializer, limit=0, force_reload=False):

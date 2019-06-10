@@ -105,7 +105,7 @@ resdf = pd.DataFrame(resd).T
 market_names = {x:amd.describe(x)['longName'] for x in fut_mkt_families}
 strat_mkt_map = positions.columns.droplevel(2).tolist()
 num_strats_per_mkt = {x: len([s for (s,m) in strat_mkt_map if multi_contracts.get(m,m)==x]) for x in fut_mkt_families}
-link = {m:'<a href="../market_participation/latest?mkt={}" '
+link = {m:'<a href="../market_participation/latest-successful-asof?mkt={}" '
                                            'target="_blank">market notebook</a>'.format(m) for m in fut_mkt_families}
 
 res_with_metadata = pd.concat([resdf[['median_trade', 'median_volume', 'max_participation', 'trade_weighted_participation']],

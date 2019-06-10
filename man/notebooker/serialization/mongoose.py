@@ -229,8 +229,8 @@ class NotebookResultSerializer(object):
         return keys
 
     @staticmethod
-    def _mongo_filter(report_name, overrides=None, status=None):
-        # type: (str, Optional[Dict], Optional[JobStatus]) -> Dict[str, Any]
+    def _mongo_filter(report_name, overrides=None, status=None, as_of=None):
+        # type: (str, Optional[Dict], Optional[JobStatus], Optional[datetime.datetime]) -> Dict[str, Any]
         mongo_filter = {'report_name': report_name}
         if overrides is not None:
             # BSON document comparisons are order-specific but we want to compare overrides irrespective of order and so we check subparts independently.
@@ -239,12 +239,14 @@ class NotebookResultSerializer(object):
                 mongo_filter['overrides.{}'.format(k)] = v
         if status is not None:
             mongo_filter['status'] = status.value
+        if as_of is not None:
+            mongo_filter['update_time'] = {'$lt': as_of}
         return mongo_filter
 
     @mongo_retry
-    def _get_all_job_ids(self, report_name, overrides, status=None):
-        # type: (str, Optional[Dict], Optional[JobStatus]) -> List[str]
-        mongo_filter = self._mongo_filter(report_name, overrides, status)
+    def _get_all_job_ids(self, report_name, overrides, status=None, as_of=None):
+        # type: (str, Optional[Dict], Optional[JobStatus], Optional[datetime.datetime]) -> List[str]
+        mongo_filter = self._mongo_filter(report_name, overrides, status, as_of)
         return [x[1] for x in self.get_all_result_keys(mongo_filter=mongo_filter)]
 
     def get_all_job_ids_for_name_and_params(self, report_name, params):
@@ -252,16 +254,16 @@ class NotebookResultSerializer(object):
         """ Get all the result ids for a given name and parameters, newest first """
         return self._get_all_job_ids(report_name, params)
 
-    def get_latest_job_id_for_name_and_params(self, report_name, params):
-        # type: (str, Optional[Dict]) -> Optional[str]
+    def get_latest_job_id_for_name_and_params(self, report_name, params, as_of=None):
+        # type: (str, Optional[Dict], Optional[datetime.datetime]) -> Optional[str]
         """ Get the latest result id for a given name and parameters """
-        all_job_ids = self._get_all_job_ids(report_name, params)
+        all_job_ids = self._get_all_job_ids(report_name, params, as_of=as_of)
         return all_job_ids[0] if all_job_ids else None
 
-    def get_latest_successful_job_id_for_name_and_params(self, report_name, params):
-        # type: (str, Optional[Dict]) -> Optional[str]
+    def get_latest_successful_job_id_for_name_and_params(self, report_name, params, as_of=None):
+        # type: (str, Optional[Dict], Optional[datetime.datetime]) -> Optional[str]
         """ Get the latest successful job id for a given name and parameters """
-        all_job_ids = self._get_all_job_ids(report_name, params, JobStatus.DONE)
+        all_job_ids = self._get_all_job_ids(report_name, params, JobStatus.DONE, as_of)
         return all_job_ids[0] if all_job_ids else None
 
     @mongo_retry

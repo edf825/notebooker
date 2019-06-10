@@ -66,6 +66,13 @@ def latest_parameterised_task_results_html(report_name):
     return _process_result_or_abort(result)
 
 
+@serve_results_bp.route('/result_html_render/as_of/<date:as_of>/<path:report_name>/latest')
+def latest_parameterised_task_results_as_of(report_name, as_of):
+    params = _params_from_request_args(request.args)
+    result = get_latest_job_results(report_name, params, get_serializer(), as_of=as_of)
+    return _process_result_or_abort(result)
+
+
 @serve_results_bp.route('/result_html_render/<path:report_name>/latest-all')
 def latest_task_results_html(report_name):
     # In this method, we either:
@@ -76,10 +83,22 @@ def latest_task_results_html(report_name):
     return _process_result_or_abort(get_latest_job_results(report_name, None, get_serializer()))
 
 
+@serve_results_bp.route('/result_html_render/as_of/<date:as_of>/<path:report_name>/latest-all')
+def latest_task_results_as_of(report_name, as_of):
+    return _process_result_or_abort(get_latest_job_results(report_name, None, get_serializer(), as_of=as_of))
+
+
 @serve_results_bp.route('/result_html_render/<path:report_name>/latest-successful')
 def latest_successful_task_results_html(report_name):
     params = _params_from_request_args(request.args)
     result = get_latest_successful_job_results(report_name, params, get_serializer())
+    return _process_result_or_abort(result)
+
+
+@serve_results_bp.route('/result_html_render/as_of/<date:as_of>/<path:report_name>/latest-successful')
+def latest_successful_task_results_as_of(report_name, as_of):
+    params = _params_from_request_args(request.args)
+    result = get_latest_successful_job_results(report_name, params, get_serializer(), as_of=as_of)
     return _process_result_or_abort(result)
 
 
