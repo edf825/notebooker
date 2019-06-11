@@ -9,7 +9,7 @@ from traitlets.config import Config
 from typing import Optional, Dict, Union
 
 from man.notebooker.utils.caching import get_cache, set_cache
-from man.notebooker.constants import TEMPLATE_BASE_DIR, PYTHON_TEMPLATE_DIR, REPORT_NAME_SEPARATOR
+from man.notebooker.constants import TEMPLATE_BASE_DIR, python_template_dir
 from man.notebooker.utils.conversion import generate_ipynb_from_py
 
 logger = get_logger(__name__)
@@ -30,11 +30,12 @@ def _valid_filename(f):
     )
 
 
-def get_directory_structure(starting_point=PYTHON_TEMPLATE_DIR):
+def get_directory_structure(starting_point=None):
     # type: (Optional[str]) -> Dict[str, Union[Dict, None]]
     """
     Creates a nested dictionary that represents the folder structure of rootdir
     """
+    starting_point = starting_point or python_template_dir()
     all_dirs = {}
     rootdir = starting_point.rstrip(os.sep)
     start = rootdir.rfind(os.sep) + 1
@@ -51,7 +52,7 @@ def get_directory_structure(starting_point=PYTHON_TEMPLATE_DIR):
 
 
 def get_all_possible_templates(warn_on_local=True):
-    if PYTHON_TEMPLATE_DIR:
+    if python_template_dir():
         all_checks = get_directory_structure()
     else:
         if warn_on_local:
@@ -62,7 +63,7 @@ def get_all_possible_templates(warn_on_local=True):
     return all_checks
 
 
-def _get_metadata_cell_idx(notebook):
+def _get_parameters_cell_idx(notebook):
     # type: (nbformat.NotebookNode) -> Optional[int]
     for idx, cell in enumerate(notebook['cells']):
         tags = cell.get('metadata', {}).get('tags', [])
@@ -86,13 +87,14 @@ def _get_preview(template_name, warn_on_local=True):
         logger.info('Getting %s preview from cache.', template_name)
         return cached
     nb = template_name_to_notebook_node(template_name, warn_on_local=warn_on_local)
-    metadata_idx = _get_metadata_cell_idx(nb)
+    parameters_idx = _get_parameters_cell_idx(nb)
     conf = Config()
-    conf.HTMLExporter.template_file = pkg_resources.resource_filename(__name__, '../web/templates/notebook_preview.tpl')
+    if parameters_idx is not None:
+        # Use this template to highlight the cell with parameters
+        conf.HTMLExporter.template_file = pkg_resources.resource_filename(__name__,
+                                                                          '../web/templates/notebook_preview.tpl')
     exporter = HTMLExporter(config=conf)
-    html = ''
-    if metadata_idx is not None:
-        html, _ = exporter.from_notebook_node(nb) if nb['cells'] else ('', '')
+    html, _ = exporter.from_notebook_node(nb) if nb['cells'] else ('', '')
     set_cache(('preview', template_name), html, timeout=30)
     return html
 

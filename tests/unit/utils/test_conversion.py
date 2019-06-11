@@ -25,7 +25,7 @@ def test_generate_ipynb_from_py():
             f.write('#hello world\n')
 
         with mock.patch('man.notebooker.utils.conversion._git_pull_templates') as pull:
-            conversion.PYTHON_TEMPLATE_DIR = python_dir
+            conversion.python_template_dir = lambda *a, **kw: python_dir
             pull.return_value = 'fake_sha_early'
             conversion.generate_ipynb_from_py(TEMPLATE_BASE_DIR, 'extra_path/test_report')
             pull.return_value = 'fake_sha_later'
@@ -50,7 +50,7 @@ def test_generate_ipynb_from_py():
 
         with mock.patch('man.notebooker.utils.conversion.uuid.uuid4') as uuid4:
             with mock.patch('man.notebooker.utils.conversion.pkg_resources.resource_filename') as resource_filename:
-                conversion.PYTHON_TEMPLATE_DIR = None
+                conversion.python_template_dir = lambda *a, **kw: None
                 uuid4.return_value = 'uuid'
                 resource_filename.return_value = python_dir + '/extra_path/test_report.py'
                 conversion.generate_ipynb_from_py(TEMPLATE_BASE_DIR, 'extra_path/test_report')

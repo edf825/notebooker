@@ -10,7 +10,13 @@ from nbconvert.exporters.exporter import ResourcesDict
 from traitlets.config import Config
 from typing import AnyStr, Dict, Any, Optional
 
-from man.notebooker.constants import REPORT_NAME_SEPARATOR, PYTHON_TEMPLATE_DIR, KERNEL_SPEC, NOTEBOOKER_DISABLE_GIT
+from man.notebooker.constants import (
+    REPORT_NAME_SEPARATOR,
+    python_template_dir,
+    KERNEL_SPEC,
+    NOTEBOOKER_TEMPLATE_GIT_URL,
+    NOTEBOOKER_DISABLE_GIT
+)
 from man.notebooker.utils.caching import get_cache, set_cache
 from man.notebooker.utils.notebook_execution import logger, mkdir_p
 
@@ -55,7 +61,7 @@ def _python_template(report_path):
     # type: (AnyStr) -> AnyStr
     file_name = '{}.py'.format(report_path)
     return os.path.join(
-        PYTHON_TEMPLATE_DIR,
+        python_template_dir(),
         file_name,
     )
 
@@ -72,7 +78,7 @@ def _ipynb_output_path(template_base_dir, report_path, git_hex):
 
 def _get_python_template_path(report_path, warn_on_local):
     # type: (str, bool) -> str
-    if PYTHON_TEMPLATE_DIR:
+    if python_template_dir():
         return _python_template(report_path)
     else:
         if warn_on_local:
@@ -82,7 +88,7 @@ def _get_python_template_path(report_path, warn_on_local):
 
 def _get_output_path_hex():
     # type: () -> str
-    if PYTHON_TEMPLATE_DIR and not NOTEBOOKER_DISABLE_GIT:
+    if python_template_dir() and not NOTEBOOKER_DISABLE_GIT:
         logger.info('Pulling latest notebook templates from git.')
         try:
             latest_sha = _git_pull_templates()
@@ -98,7 +104,7 @@ def _get_output_path_hex():
 
 
 def generate_ipynb_from_py(template_base_dir, report_name, warn_on_local=True):
-    # type: (str, str, bool) -> str
+    # type: (str, str, Optional[bool]) -> str
     # This method EITHER:
     # Pulls the latest version of the notebook templates from git, and regenerates templates if there is a new HEAD
     # OR: finds the local templates from the repository using a relative path

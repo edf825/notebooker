@@ -16,7 +16,7 @@ from man.notebooker.constants import TEMPLATE_BASE_DIR, JobStatus, OUTPUT_BASE_D
 from man.notebooker.serialization.serialization import get_serializer, get_fresh_serializer
 from man.notebooker.web.handle_overrides import handle_overrides
 from man.notebooker.utils.conversion import generate_ipynb_from_py
-from man.notebooker.utils.templates import _get_preview, _get_metadata_cell_idx, get_all_possible_templates
+from man.notebooker.utils.templates import _get_preview, _get_parameters_cell_idx, get_all_possible_templates
 from man.notebooker.utils.web import validate_title, validate_mailto
 
 run_report_bp = Blueprint('run_report_bp', __name__)
@@ -35,7 +35,7 @@ def run_report_get_preview(report_name):
 def run_report_http(report_name):
     path = generate_ipynb_from_py(TEMPLATE_BASE_DIR, report_name)
     nb = nbformat.read(path, as_version=nbformat.v4.nbformat)
-    metadata_idx = _get_metadata_cell_idx(nb)
+    metadata_idx = _get_parameters_cell_idx(nb)
     parameters_as_html = ''
     has_prefix = has_suffix = False
     if metadata_idx is not None:
