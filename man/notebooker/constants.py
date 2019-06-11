@@ -5,7 +5,7 @@ import os
 import tempfile
 
 from enum import unique, Enum
-from typing import AnyStr
+from typing import AnyStr, Optional
 
 SUBMISSION_TIMEOUT = 3
 RUNNING_TIMEOUT = 60
@@ -20,20 +20,17 @@ KERNEL_SPEC = {'display_name': os.getenv('NOTEBOOK_KERNEL_NAME', 'man_notebooker
                'name': os.getenv('NOTEBOOK_KERNEL_NAME', 'man_notebooker_kernel')}
 CANCEL_MESSAGE = 'The webapp shut down while this job was running. Please resubmit with the same parameters.'
 REPORT_NAME_SEPARATOR = '|'
-_PYTHON_TEMPLATE_DIR = ''  # populated by method below so logic isn't run at import time
 
 
 def python_template_dir():
-    global _PYTHON_TEMPLATE_DIR
-    if _PYTHON_TEMPLATE_DIR == '':
-        if os.getenv('PY_TEMPLATE_DIR'):
-            _PYTHON_TEMPLATE_DIR = os.path.join(
-                os.environ['PY_TEMPLATE_DIR'],
-                os.environ.get('GIT_REPO_TEMPLATE_DIR', '')
-            )
-        else:
-            _PYTHON_TEMPLATE_DIR = None
-    return _PYTHON_TEMPLATE_DIR
+    # type: () -> Optional[str]
+    if os.getenv('PY_TEMPLATE_DIR'):
+        return os.path.join(
+            os.environ['PY_TEMPLATE_DIR'],
+            os.environ.get('GIT_REPO_TEMPLATE_DIR', '')
+        )
+    return None
+
 
 @unique
 class JobStatus(Enum):
