@@ -20,15 +20,20 @@ KERNEL_SPEC = {'display_name': os.getenv('NOTEBOOK_KERNEL_NAME', 'man_notebooker
                'name': os.getenv('NOTEBOOK_KERNEL_NAME', 'man_notebooker_kernel')}
 CANCEL_MESSAGE = 'The webapp shut down while this job was running. Please resubmit with the same parameters.'
 REPORT_NAME_SEPARATOR = '|'
+_PYTHON_TEMPLATE_DIR = ''  # populated by method below so logic isn't run at import time
 
 
 def python_template_dir():
-    if os.getenv('PY_TEMPLATE_DIR'):
-        return os.path.join(
-            os.environ['PY_TEMPLATE_DIR'],
-            os.environ.get('GIT_REPO_TEMPLATE_DIR', '')
-        )
-    return None
+    global _PYTHON_TEMPLATE_DIR
+    if _PYTHON_TEMPLATE_DIR == '':
+        if os.getenv('PY_TEMPLATE_DIR'):
+            _PYTHON_TEMPLATE_DIR = os.path.join(
+                os.environ['PY_TEMPLATE_DIR'],
+                os.environ.get('GIT_REPO_TEMPLATE_DIR', '')
+            )
+        else:
+            _PYTHON_TEMPLATE_DIR = None
+    return _PYTHON_TEMPLATE_DIR
 
 @unique
 class JobStatus(Enum):

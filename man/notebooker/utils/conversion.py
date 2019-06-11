@@ -14,7 +14,6 @@ from man.notebooker.constants import (
     REPORT_NAME_SEPARATOR,
     python_template_dir,
     KERNEL_SPEC,
-    NOTEBOOKER_TEMPLATE_GIT_URL,
     NOTEBOOKER_DISABLE_GIT
 )
 from man.notebooker.utils.caching import get_cache, set_cache
