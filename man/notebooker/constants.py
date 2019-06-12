@@ -5,18 +5,13 @@ import os
 import tempfile
 
 from enum import unique, Enum
-from typing import AnyStr
+from typing import AnyStr, Optional
 
 SUBMISSION_TIMEOUT = 3
 RUNNING_TIMEOUT = 60
 OUTPUT_BASE_DIR = os.getenv('OUTPUT_DIR') or tempfile.mkdtemp(dir=os.path.expanduser('~'))
 TEMPLATE_BASE_DIR = os.getenv('TEMPLATE_DIR') or tempfile.mkdtemp(dir=os.path.expanduser('~'))
 CACHE_DIR = tempfile.mkdtemp()
-PYTHON_TEMPLATE_DIR = os.path.join(os.environ['PY_TEMPLATE_DIR'],
-                                   os.environ['GIT_REPO_TEMPLATE_DIR']
-                                   ) if os.getenv('PY_TEMPLATE_DIR') else None  # If not None, we are likely in docker
-
-# NB: These env vars should come from the docker image.
 NOTEBOOKER_TEMPLATE_GIT_URL = os.getenv('NOTEBOOKER_TEMPLATE_GIT_URL')
 NOTEBOOKER_DISABLE_GIT = os.getenv('NOTEBOOKER_DISABLE_GIT')
 
@@ -25,6 +20,16 @@ KERNEL_SPEC = {'display_name': os.getenv('NOTEBOOK_KERNEL_NAME', 'man_notebooker
                'name': os.getenv('NOTEBOOK_KERNEL_NAME', 'man_notebooker_kernel')}
 CANCEL_MESSAGE = 'The webapp shut down while this job was running. Please resubmit with the same parameters.'
 REPORT_NAME_SEPARATOR = '|'
+
+
+def python_template_dir():
+    # type: () -> Optional[str]
+    if os.getenv('PY_TEMPLATE_DIR'):
+        return os.path.join(
+            os.environ['PY_TEMPLATE_DIR'],
+            os.environ.get('GIT_REPO_TEMPLATE_DIR', '')
+        )
+    return None
 
 
 @unique

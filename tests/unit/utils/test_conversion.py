@@ -25,7 +25,7 @@ def test_generate_ipynb_from_py():
             f.write('#hello world\n')
 
         with mock.patch('man.notebooker.utils.conversion._git_pull_templates') as pull:
-            conversion.PYTHON_TEMPLATE_DIR = python_dir
+            conversion.python_template_dir = lambda *a, **kw: python_dir
             pull.return_value = 'fake_sha_early'
             conversion.generate_ipynb_from_py(TEMPLATE_BASE_DIR, 'extra_path/test_report')
             pull.return_value = 'fake_sha_later'
@@ -50,7 +50,7 @@ def test_generate_ipynb_from_py():
 
         with mock.patch('man.notebooker.utils.conversion.uuid.uuid4') as uuid4:
             with mock.patch('man.notebooker.utils.conversion.pkg_resources.resource_filename') as resource_filename:
-                conversion.PYTHON_TEMPLATE_DIR = None
+                conversion.python_template_dir = lambda *a, **kw: None
                 uuid4.return_value = 'uuid'
                 resource_filename.return_value = python_dir + '/extra_path/test_report.py'
                 conversion.generate_ipynb_from_py(TEMPLATE_BASE_DIR, 'extra_path/test_report')
@@ -63,7 +63,7 @@ def test_generate_ipynb_from_py():
         assert os.path.exists(expected_ipynb_path), '.ipynb was not generated as expected!'
 
         with mock.patch('man.notebooker.utils.conversion.uuid.uuid4') as uuid4:
-            conversion.PYTHON_TEMPLATE_DIR = python_dir
+            conversion.python_template_dir = lambda *a, **kw: python_dir
             conversion.NOTEBOOKER_DISABLE_GIT = True
             uuid4.return_value = 'uuid_nogit'
             conversion.generate_ipynb_from_py(TEMPLATE_BASE_DIR, 'extra_path/test_report')
@@ -120,13 +120,13 @@ def test_generate_py_from_ipynb():
 @mock.patch('man.notebooker.utils.conversion.uuid.uuid4')
 def test__get_output_path_hex(uuid4, pull, get_cache, set_cache):
     # No-git path
-    conversion.PYTHON_TEMPLATE_DIR = None
+    conversion.python_template_dir = lambda *a, **kw: None
     uuid4.return_value = mock.sentinel.uuid4
     actual = conversion._get_output_path_hex()
     assert actual == str(mock.sentinel.uuid4)
 
     # Git path set new SHA
-    conversion.PYTHON_TEMPLATE_DIR = mock.sentinel.pydir
+    conversion.python_template_dir = lambda *a, **kw: mock.sentinel.pydir
     conversion.NOTEBOOKER_DISABLE_GIT = False
     pull.return_value = mock.sentinel.newsha
     get_cache.return_value = mock.sentinel.newsha2
