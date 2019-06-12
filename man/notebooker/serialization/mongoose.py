@@ -46,6 +46,7 @@ class NotebookResultSerializer(object):
         # Ensure that the job_id index exists
         self.library.create_index([('job_id', pymongo.ASCENDING)], background=True)
         self.library.create_index([('update_time', pymongo.DESCENDING)], background=True)
+        self.library.create_index([('report_name', pymongo.TEXT)], background=True)
 
     def _save_to_db(self, notebook_result):
         out_data = notebook_result.saveable_output()
@@ -218,7 +219,7 @@ class NotebookResultSerializer(object):
 
     @mongo_retry
     def get_all_result_keys(self, limit=0, mongo_filter=None):
-        # type: (Optional[int], Optional[Dict]) -> List[Tuple[str, str]]
+        # type: (int, Optional[Dict]) -> List[Tuple[str, str]]
         keys = []
         base_filter = {'status': {'$ne': JobStatus.DELETED.value}}
         if mongo_filter:
@@ -244,10 +245,10 @@ class NotebookResultSerializer(object):
         return mongo_filter
 
     @mongo_retry
-    def _get_all_job_ids(self, report_name, overrides, status=None, as_of=None):
-        # type: (str, Optional[Dict], Optional[JobStatus], Optional[datetime.datetime]) -> List[str]
+    def _get_all_job_ids(self, report_name, overrides, status=None, as_of=None, limit=0):
+        # type: (str, Optional[Dict], Optional[JobStatus], Optional[datetime.datetime], int) -> List[str]
         mongo_filter = self._mongo_filter(report_name, overrides, status, as_of)
-        return [x[1] for x in self.get_all_result_keys(mongo_filter=mongo_filter)]
+        return [x[1] for x in self.get_all_result_keys(mongo_filter=mongo_filter, limit=limit)]
 
     def get_all_job_ids_for_name_and_params(self, report_name, params):
         # type: (str, Optional[Dict]) -> List[str]
@@ -257,13 +258,13 @@ class NotebookResultSerializer(object):
     def get_latest_job_id_for_name_and_params(self, report_name, params, as_of=None):
         # type: (str, Optional[Dict], Optional[datetime.datetime]) -> Optional[str]
         """ Get the latest result id for a given name and parameters """
-        all_job_ids = self._get_all_job_ids(report_name, params, as_of=as_of)
+        all_job_ids = self._get_all_job_ids(report_name, params, as_of=as_of, limit=1)
         return all_job_ids[0] if all_job_ids else None
 
     def get_latest_successful_job_id_for_name_and_params(self, report_name, params, as_of=None):
         # type: (str, Optional[Dict], Optional[datetime.datetime]) -> Optional[str]
         """ Get the latest successful job id for a given name and parameters """
-        all_job_ids = self._get_all_job_ids(report_name, params, JobStatus.DONE, as_of)
+        all_job_ids = self._get_all_job_ids(report_name, params, JobStatus.DONE, as_of, limit=1)
         return all_job_ids[0] if all_job_ids else None
 
     @mongo_retry
