@@ -17,8 +17,12 @@ ahlPython {
     buildLabel='ts2-el7'
     labels='ts2-el7'
     buildPinnedEgg = true
-    dockerPath = 'docker'
-    medusaVersions = ["27-3", "36-1"]
+    dockerPath = 'docker-27-3'
+    medusaVersions = [
+        build: ['27-3'],
+        test: ['27-3'],
+        docker: ['27-3']
+    ]
     publicProject = true
     testStages =  [
         [name: 'Sanity checks',
