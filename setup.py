@@ -1,5 +1,6 @@
 #!/bin/env python
 import os
+import six
 try:
     from ahl.pkglib.setuptools import setup
 except ImportError:
@@ -7,27 +8,15 @@ except ImportError:
     import sys
     sys.exit(1)
 
-if os.getenv('REGRESSION_TESTING'):
-    template_test_deps = open(
-        os.path.join(os.path.dirname(__file__), 'notebook_templates', 'notebook_requirements.txt')
-    ).readlines()
+if six.PY2:
+    setup_cfg = 'setup-legacy.cfg'
 else:
-    template_test_deps = []
+    setup_cfg = 'setup.cfg'
+
+print('Using setup.cfg at {}'.format(setup_cfg))
 
 setup(
     namespace_packages=('man',),
-    tests_require=[
-        'openpyxl',
-        'pytest',
-        'pandas',
-        'mock',
-        'pytest-cov',
-        'pytest-timeout',
-        'pytest-xdist',
-        'ahl.testing',
-        'freezegun',
-        'hypothesis>=3.83.2',
-    ] + template_test_deps,
-    setup_cfg='setup.cfg',
+    setup_cfg=setup_cfg,
     zip_safe=False,  # so that we can get our templates from notebook_templates/
 )
