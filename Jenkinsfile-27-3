@@ -24,6 +24,7 @@ ahlPython {
         docker: ['27-3']
     ]
     publicProject = true
+    setup_cfg = 'setup-legacy.cfg'
     testStages =  [
         [name: 'Sanity checks',
          body: sanity,
