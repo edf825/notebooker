@@ -3,7 +3,8 @@ def unit = {
 }
 
 def integration = {
-  pyTest 'tests/integration', "-m 'not compress and not serial'"
+  // Skipping integration tests until design change is resolved
+  // pyTest 'tests/integration', "-m 'not compress and not serial'"
 }
 
 def sanity = {
