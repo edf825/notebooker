@@ -31,8 +31,8 @@ To create a new instance of Notebooker:
   * Add the git URL of your new repository, and choose whether you'd like 27-3 or 36-1
   * Click "Build"
   * The console output of the build will give you a Bitbucket URL to create a pull request with all the required docker and Jenkins setup.
-3. A new pipeline project should also have been created for you under [Notebooker Builds](http://ci.dev.ahl/dev/job/Auto-Generated%20Jobs/job/Notebooker%20Builds/)
-  * If this hasn't appeared yet, run the seed job [here](http://ci.dev.ahl/dev/job/Auto-Generated%20Jobs/job/Configure%20All%20Jobs/)
+3. A new pipeline project should also have been created for you under [Notebooker Builds](http://ci.res.ahl/build/job/Auto-Generated%20Jobs/job/Notebooker%20Builds/)
+  * If this hasn't appeared yet, run the seed job [here](http://ci.res.ahl/build/job/Auto-Generated%20Jobs/job/Configure%20All%20Jobs/)
 4. This build will:
   * Run sanity checks on your notebook templates
   * Check your notebook_requirements.txt has all of the correct requirements for the templates
