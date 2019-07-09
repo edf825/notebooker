@@ -6,7 +6,7 @@ equities.centaur
 man.datascience
 intervaltree
 mkd.core
-man.secmaster
+man.security-master
 matplotlib
 pytz
 seaborn
