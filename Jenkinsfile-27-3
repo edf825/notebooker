@@ -14,7 +14,7 @@ def sanity = {
 env.PYTHONPATH = '.:..'  // So that the src directory can be used as a dir
 
 
-ahlPython {
+manPython('ts2-el7') {
     buildLabel='ts2-el7'
     labels='ts2-el7'
     buildPinnedEgg = true
@@ -24,7 +24,6 @@ ahlPython {
         test: ['27-3'],
         docker: ['27-3']
     ]
-    publicProject = true
     setup_cfg = 'setup-legacy.cfg'
     testStages =  [
         [name: 'Sanity checks',
