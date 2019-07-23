@@ -12,4 +12,5 @@ yum -y install texlive-xetex \
                texlive-ulem \
                pandoc \
                git \
+               npm \
            && yum clean all && rm -rf /var/cache/yum

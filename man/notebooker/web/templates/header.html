@@ -2,16 +2,16 @@
 <html xmlns="http://www.w3.org/1999/html">
         <head>
             <title>One-Click-Notebooks</title>
-            <link rel="shortcut icon" href="{{ url_for('static', filename='notebooker.png') }}">
-            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.3.2/dist/semantic.min.css">
-            <link rel="stylesheet" href="https://cdn.datatables.net/1.10.19/css/jquery.dataTables.min.css">
-            <script src="https://code.jquery.com/jquery-3.3.1.js"></script>
-            <script src="https://cdn.jsdelivr.net/npm/semantic-ui@2.3.2/dist/semantic.min.js"></script>
-            <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
-            <script src="https://cdn.datatables.net/1.10.19/js/dataTables.semanticui.min.js"></script>
-            <script type="application/javascript" src="{{ url_for('static', filename='iframe_loading.js') }}"></script>
-            <script type="application/javascript" src="{{ url_for('static', filename='header.js') }}"></script>
-            <link rel="stylesheet" href="{{ url_for('static', filename='one_click_notebooks.css') }}">
+            <link rel="shortcut icon" href="{{ url_for('static', filename='notebooker/notebooker.png') }}">
+            <link rel="stylesheet" href="{{ url_for('static', filename='node_modules/semantic-ui/dist/semantic.min.css') }}">
+            <link rel="stylesheet" href="{{ url_for('static', filename='node_modules/datatables/media/css/jquery.dataTables.min.css') }}">
+            <script src="{{ url_for('static', filename='node_modules/jquery/dist/jquery.min.js') }}"></script>
+            <script src="{{ url_for('static', filename='node_modules/semantic-ui/dist/semantic.min.js') }}"></script>
+            <script src="{{ url_for('static', filename='node_modules/datatables/media/js/jquery.dataTables.min.js') }}"></script>
+            <script src="{{ url_for('static', filename='node_modules/bootstrap-table/dist/themes/semantic/bootstrap-table-semantic.js') }}"></script>
+            <script type="application/javascript" src="{{ url_for('static', filename='notebooker/iframe_loading.js') }}"></script>
+            <script type="application/javascript" src="{{ url_for('static', filename='notebooker/header.js') }}"></script>
+            <link rel="stylesheet" href="{{ url_for('static', filename='notebooker/one_click_notebooks.css') }}">
         </head>
         <body>
         <div class="ui negative message" style="display:none;position: relative" id="errorPopup">
