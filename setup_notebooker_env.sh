@@ -14,7 +14,7 @@ sudo yum install -y texlive-xetex \
                pandoc \
                npm
 # Install web deps
-pushd /man/notebooker/web/static/
+pushd ./man/notebooker/web/static/
 npm install
 popd
 
