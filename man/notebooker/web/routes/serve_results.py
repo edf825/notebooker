@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 # ------------------- Serving results -------------------- #
 
 def _params_from_request_args(request_args):
-    return {k: (v[0] if len(v) == 1 else v) for k, v in request_args.iterlists()}
+    return {k: (v[0] if len(v) == 1 else v) for k, v in request_args.lists()}
 
 
 @serve_results_bp.route('/results/<path:report_name>/<task_id>')
@@ -35,6 +35,26 @@ def task_results(task_id, report_name):
                            pdf_url=url_for('serve_results_bp.download_pdf_result', report_name=report_name, task_id=task_id),
                            rerun_url=url_for('run_report_bp.rerun_report', report_name=report_name, task_id=task_id),
                            all_reports=get_all_possible_templates())
+
+
+@serve_results_bp.route('/results/<path:report_name>/latest')
+def task_results_latest(report_name):
+    params = _params_from_request_args(request.args)
+    result = get_latest_job_results(report_name, params, get_serializer())
+    task_id = result.job_id
+    return render_template(
+        'results.html',
+        task_id=task_id,
+        report_name=report_name,
+        result=result,
+        donevalue=JobStatus.DONE,  # needed so we can check if a result is available
+        html_content=result.error_info if isinstance(result, NotebookResultError) else '',
+        html_render=url_for('serve_results_bp.task_results_html', report_name=report_name, task_id=task_id) if task_id else '',
+        ipynb_url=url_for('serve_results_bp.download_ipynb_result', report_name=report_name, task_id=task_id) if task_id else '',
+        pdf_url=url_for('serve_results_bp.download_pdf_result', report_name=report_name, task_id=task_id) if task_id else '',
+        rerun_url=url_for('run_report_bp.rerun_report', report_name=report_name, task_id=task_id) if task_id else '',
+        all_reports=get_all_possible_templates(),
+    )
 
 
 def _process_result_or_abort(result):

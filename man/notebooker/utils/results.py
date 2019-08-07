@@ -53,6 +53,7 @@ def _get_results_from_name_and_params(job_id_func,   # type: Callable[[str, Opti
     latest_job_id = job_id_func(report_name, params, as_of)
     if not latest_job_id:
         err_info = 'No job results found for report name={} with params={} as of {}'.format(report_name, params, as_of)
+        logger.info(err_info)
         return constants.NotebookResultError(latest_job_id,
                                              error_info=err_info,
                                              report_name=report_name,
