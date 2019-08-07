@@ -1,9 +1,20 @@
+kernelname = 'man_notebooker_integration273_' + currentBuild.id
+
+def installKernel = { medusaVersion ->
+  def venvDir = getVenvDir(medusaVersion)
+  pyInstall('ipykernel', venvDir)
+  withActivate("python -m ipykernel install --name=${kernelname} --user",
+               venvDir)
+}
+
 def unit = {
   pyTest 'tests/unit'
 }
 
 def integration = {
-  pyTest 'tests/integration', "-m 'not compress and not serial'"
+  withEnv(["NOTEBOOK_KERNEL_NAME=${kernelname}", "NOTEBOOKER_DISABLE_GIT='1'"]) {
+    pyTest 'tests/integration', "-m 'not compress and not serial'"
+  }
 }
 
 def sanity = {
@@ -13,7 +24,7 @@ def sanity = {
 env.PYTHONPATH = '.:..'  // So that the src directory can be used as a dir
 
 
-ahlPython {
+manPython('ts2-el7') {
     buildLabel='ts2-el7'
     labels='ts2-el7'
     buildPinnedEgg = true
@@ -23,7 +34,13 @@ ahlPython {
         test: ['27-3'],
         docker: ['27-3']
     ]
+    setup_cfg = 'setup-legacy.cfg'
     publicProject = true
+    preBuildStages = [
+        [name: 'Installing ipython kernel',
+         body: installKernel
+         ]
+    ]
     testStages =  [
         [name: 'Sanity checks',
          body: sanity,

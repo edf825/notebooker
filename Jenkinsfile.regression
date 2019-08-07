@@ -14,14 +14,13 @@ def regression = {
 
 
 withEnv(['REGRESSION_TESTING="true"',"NOTEBOOK_KERNEL_NAME=${kernelname}"]) {
-    ahlPython {
+    manPython('ts2-el7') {
         acquireDotsDb(){
             buildLabel='ts2-el7'
             labels='ts2-el7'
             dockerImages: []
             buildPinnedEgg = false
             medusaVersions = ["27-3"]
-            publicProject = true
             preventPushEgg = true
             coverage = false
             preBuildStages = [

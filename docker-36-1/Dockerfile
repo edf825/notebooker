@@ -26,6 +26,7 @@ ADD bin/* /usr/bin/
 # Don't install kernel here - child images will do this themselves.
 ARG VERSION
 RUN /tmp/install_man_notebooker.sh && rm -f /tmp/install_man_notebooker.sh /tmp/dist/*.egg
+RUN /tmp/install_node.sh && rm -f /tmp/install_node.sh
 
 LABEL IMAGE_TAG ${VERSION}
 

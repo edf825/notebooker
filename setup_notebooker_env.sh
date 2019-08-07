@@ -11,8 +11,17 @@ sudo yum install -y texlive-xetex \
                texlive-adjustbox \
                texlive-upquote \
                texlive-ulem \
-               pandoc
+               pandoc \
+               npm
+# Install web deps
+pushd ./man/notebooker/web/static/
+npm install
+popd
+
+# Python setup
 python setup.py develop
 pyinstall $(cat ./notebook_templates/notebook_requirements.txt)
 python -m ipykernel install --user --name=man_notebooker_kernel
+
+# Finally run the webapp
 man_notebooker_webapp --port 11828 --debug --database-name mongoose_$USER
