@@ -81,9 +81,10 @@ def handle_overrides(overrides_string, issues):
             logger.info('Got %s from pickle', output_dict)
             override_dict, _issues = output_dict['overrides'], output_dict['issues']
             issues.extend(_issues)
-            os.remove(tmp_file)
         except subprocess.CalledProcessError as cpe:
             issues.append(str(cpe.output))
+        finally:
+            os.remove(tmp_file)
     return override_dict
 
 
