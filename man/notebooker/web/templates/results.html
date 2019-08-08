@@ -13,6 +13,7 @@
                 <div class="ui active inverted dimmer iframeLoadingDimmer">
                     <div class="ui text loader">Loading</div>
                 </div>
+                {{ html_content|safe }}
                 <iframe
                         id="resultsIframe"
                         src="{{ html_render }}"
