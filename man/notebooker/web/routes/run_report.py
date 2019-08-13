@@ -1,6 +1,8 @@
 from __future__ import unicode_literals
 import datetime
 import json
+from typing import List, Tuple, Any, Dict
+
 import os
 import subprocess
 import sys
@@ -100,21 +102,34 @@ def run_report(report_name, report_title, mailto, overrides, generate_pdf_output
     return job_id
 
 
-@run_report_bp.route('/run_report/<path:report_name>', methods=['POST'])
-def run_checks_http(report_name):
-    issues = []
-    # Get and process override script
-    override_dict = handle_overrides(request.values.get('overrides'), issues)
+def _handle_run_report(report_name, overrides_dict, issues):
+    # type: (str, Dict[str, Any], List[str]) -> Tuple[str, int, Dict[str, str]]
     # Find and cleanse the title of the report
     report_title = validate_title(request.values.get('report_title'), issues)
     # Get mailto email address
     mailto = validate_mailto(request.values.get('mailto'), issues)
     if issues:
         return jsonify({'status': 'Failed', 'content': ('\n'.join(issues))})
-    job_id = run_report(report_name, report_title, mailto, override_dict)
+    job_id = run_report(report_name, report_title, mailto, overrides_dict)
     return (jsonify({'id': job_id}),
             202,  # HTTP Accepted code
             {'Location': url_for('serve_results_bp.task_status', report_name=report_name, task_id=job_id)})
+
+
+@run_report_bp.route('/run_report_json/<path:report_name>', methods=['POST'])
+def run_report_json(report_name):
+    issues = []
+    # Get JSON overrides
+    overrides_dict = json.loads(request.values.get('overrides'))
+    return _handle_run_report(report_name, overrides_dict, issues)
+
+
+@run_report_bp.route('/run_report/<path:report_name>', methods=['POST'])
+def run_checks_http(report_name):
+    issues = []
+    # Get and process raw python overrides
+    overrides_dict = handle_overrides(request.values.get('overrides'), issues)
+    return _handle_run_report(report_name, overrides_dict, issues)
 
 
 def _rerun_report(task_id, prepare_only=False):
