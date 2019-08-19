@@ -19,7 +19,7 @@ from man.notebooker.serialization.serialization import get_serializer, get_fresh
 from man.notebooker.web.handle_overrides import handle_overrides
 from man.notebooker.utils.conversion import generate_ipynb_from_py
 from man.notebooker.utils.templates import _get_preview, _get_parameters_cell_idx, get_all_possible_templates
-from man.notebooker.utils.web import validate_title, validate_mailto
+from man.notebooker.utils.web import json_to_python, validate_title, validate_mailto
 
 run_report_bp = Blueprint('run_report_bp', __name__)
 logger = get_logger(__name__)
@@ -35,7 +35,13 @@ def run_report_get_preview(report_name):
 
 @run_report_bp.route('/run_report/<path:report_name>', methods=['GET'])
 def run_report_http(report_name):
-    path = generate_ipynb_from_py(TEMPLATE_BASE_DIR, report_name)
+    json_params = request.args.get('json_params')
+    initial_python_parameters = json_to_python(json_params) or ""
+    try:
+        path = generate_ipynb_from_py(TEMPLATE_BASE_DIR, report_name)
+    except FileNotFoundError as e:
+        logger.exception(e)
+        return "", 404
     nb = nbformat.read(path, as_version=nbformat.v4.nbformat)
     metadata_idx = _get_parameters_cell_idx(nb)
     parameters_as_html = ''
@@ -44,13 +50,14 @@ def run_report_http(report_name):
         metadata = nb['cells'][metadata_idx]
         parameters_as_html = metadata['source'].strip()
         has_prefix, has_suffix = bool(nb['cells'][:metadata_idx]), bool(nb['cells'][metadata_idx+1:])
-
+    logger.info("initial_python_parameters = {}".format(initial_python_parameters))
     return render_template('run_report.html',
                            parameters_as_html=parameters_as_html,
                            has_prefix=has_prefix,
                            has_suffix=has_suffix,
                            report_name=report_name,
-                           all_reports=get_all_possible_templates())
+                           all_reports=get_all_possible_templates(),
+                           initialPythonParameters=initial_python_parameters)
 
 
 def _monitor_stderr(process, job_id):
@@ -113,7 +120,7 @@ def _handle_run_report(report_name, overrides_dict, issues):
     job_id = run_report(report_name, report_title, mailto, overrides_dict)
     return (jsonify({'id': job_id}),
             202,  # HTTP Accepted code
-            {'Location': url_for('serve_results_bp.task_status', report_name=report_name, task_id=job_id)})
+            {'Location': url_for('serve_results_bp.task_status', report_name=report_name, job_id=job_id)})
 
 
 @run_report_bp.route('/run_report_json/<path:report_name>', methods=['POST'])
@@ -132,8 +139,8 @@ def run_checks_http(report_name):
     return _handle_run_report(report_name, overrides_dict, issues)
 
 
-def _rerun_report(task_id, prepare_only=False):
-    result = get_serializer().get_check_result(task_id)
+def _rerun_report(job_id, prepare_only=False):
+    result = get_serializer().get_check_result(job_id)
     if not result:
         abort(404)
     prefix = 'Rerun of '
@@ -149,8 +156,8 @@ def _rerun_report(task_id, prepare_only=False):
     return new_job_id
 
 
-@run_report_bp.route('/rerun_report/<task_id>/<path:report_name>', methods=['POST'])
-def rerun_report(task_id, report_name):
-    new_job_id = _rerun_report(task_id)
+@run_report_bp.route('/rerun_report/<job_id>/<path:report_name>', methods=['POST'])
+def rerun_report(job_id, report_name):
+    new_job_id = _rerun_report(job_id)
     return jsonify({'results_url': url_for('serve_results_bp.task_results',
-                                           report_name=report_name, task_id=new_job_id)})
+                                           report_name=report_name, job_id=new_job_id)})

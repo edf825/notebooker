@@ -1,3 +1,5 @@
+import json
+
 import os
 import traceback
 from ahl.logging import get_logger
@@ -22,39 +24,47 @@ def _params_from_request_args(request_args):
     return {k: (v[0] if len(v) == 1 else v) for k, v in request_args.lists()}
 
 
-@serve_results_bp.route('/results/<path:report_name>/<task_id>')
-def task_results(task_id, report_name):
-    result = _get_job_results(task_id, report_name, get_serializer(), ignore_cache=True)
-    return render_template('results.html',
-                           task_id=task_id,
-                           report_name=report_name,
-                           result=result,
-                           donevalue=JobStatus.DONE,  # needed so we can check if a result is available
-                           html_render=url_for('serve_results_bp.task_results_html', report_name=report_name, task_id=task_id),
-                           ipynb_url=url_for('serve_results_bp.download_ipynb_result', report_name=report_name, task_id=task_id),
-                           pdf_url=url_for('serve_results_bp.download_pdf_result', report_name=report_name, task_id=task_id),
-                           rerun_url=url_for('run_report_bp.rerun_report', report_name=report_name, task_id=task_id),
-                           all_reports=get_all_possible_templates())
+def _render_results(job_id, report_name, result):
+    # type: (str, str, NotebookResultBase) -> str
+    result_url = url_for(
+        'serve_results_bp.task_results_html', report_name=report_name, job_id=job_id
+    ) if job_id else ''
+    ipynb_url = url_for(
+        'serve_results_bp.download_ipynb_result', report_name=report_name, job_id=job_id
+    ) if job_id else ''
+    pdf_url = url_for('serve_results_bp.download_pdf_result', report_name=report_name, job_id=job_id) if job_id else ''
+    rerun_url = url_for('run_report_bp.rerun_report', report_name=report_name, job_id=job_id) if job_id else ''
+    clone_url = url_for('run_report_bp.run_report_http', report_name=report_name)
+    if result and result.overrides:
+        clone_url = clone_url + "?json_params={}".format(json.dumps(result.overrides))
+    return render_template(
+        'results.html',
+        job_id=job_id,
+        report_name=report_name,
+        result=result,
+        donevalue=JobStatus.DONE,  # needed so we can check if a result is available
+        html_content=result.error_info if isinstance(result, NotebookResultError) else '',
+        html_render=result_url,
+        ipynb_url=ipynb_url,
+        pdf_url=pdf_url,
+        rerun_url=rerun_url,
+        clone_url=clone_url,
+        all_reports=get_all_possible_templates(),
+    )
+
+
+@serve_results_bp.route('/results/<path:report_name>/<job_id>')
+def task_results(job_id, report_name):
+    result = _get_job_results(job_id, report_name, get_serializer(), ignore_cache=True)
+    return _render_results(job_id, report_name, result)
 
 
 @serve_results_bp.route('/results/<path:report_name>/latest')
 def task_results_latest(report_name):
     params = _params_from_request_args(request.args)
     result = get_latest_job_results(report_name, params, get_serializer())
-    task_id = result.job_id
-    return render_template(
-        'results.html',
-        task_id=task_id,
-        report_name=report_name,
-        result=result,
-        donevalue=JobStatus.DONE,  # needed so we can check if a result is available
-        html_content=result.error_info if isinstance(result, NotebookResultError) else '',
-        html_render=url_for('serve_results_bp.task_results_html', report_name=report_name, task_id=task_id) if task_id else '',
-        ipynb_url=url_for('serve_results_bp.download_ipynb_result', report_name=report_name, task_id=task_id) if task_id else '',
-        pdf_url=url_for('serve_results_bp.download_pdf_result', report_name=report_name, task_id=task_id) if task_id else '',
-        rerun_url=url_for('run_report_bp.rerun_report', report_name=report_name, task_id=task_id) if task_id else '',
-        all_reports=get_all_possible_templates(),
-    )
+    job_id = result.job_id
+    return _render_results(job_id, report_name, result)
 
 
 def _process_result_or_abort(result):
@@ -66,13 +76,13 @@ def _process_result_or_abort(result):
     abort(404)
 
 
-@serve_results_bp.route('/result_html_render/<path:report_name>/<task_id>')
-def task_results_html(task_id, report_name):
+@serve_results_bp.route('/result_html_render/<path:report_name>/<job_id>')
+def task_results_html(job_id, report_name):
     # In this method, we either:
     # - present the HTML results, if the job has finished
     # - present the error, if the job has failed
     # - present the user with some info detailing the progress of the job, if it is still running.
-    return _process_result_or_abort(_get_job_results(task_id, report_name, get_serializer()))
+    return _process_result_or_abort(_get_job_results(job_id, report_name, get_serializer()))
 
 
 @serve_results_bp.route('/result_html_render/<path:report_name>/latest')
@@ -122,35 +132,35 @@ def latest_successful_task_results_as_of(report_name, as_of):
     return _process_result_or_abort(result)
 
 
-@serve_results_bp.route('/result_html_render/<path:report_name>/<task_id>/resources/<path:resource>')
-def task_result_resources_html(task_id, resource, report_name):
-    result = _get_job_results(task_id, report_name, get_serializer())
+@serve_results_bp.route('/result_html_render/<path:report_name>/<job_id>/resources/<path:resource>')
+def task_result_resources_html(job_id, resource, report_name):
+    result = _get_job_results(job_id, report_name, get_serializer())
     if isinstance(result, NotebookResultComplete):
         html_resources = result.raw_html_resources
-        resource_path = os.path.join(task_id, 'resources', resource)
+        resource_path = os.path.join(job_id, 'resources', resource)
         if resource_path in html_resources.get('outputs', {}):
             return html_resources['outputs'][resource_path]
     abort(404)
 
 
-@serve_results_bp.route('/result_download_ipynb/<path:report_name>/<task_id>')
-def download_ipynb_result(task_id, report_name):
-    result = _get_job_results(task_id, report_name, get_serializer())
+@serve_results_bp.route('/result_download_ipynb/<path:report_name>/<job_id>')
+def download_ipynb_result(job_id, report_name):
+    result = _get_job_results(job_id, report_name, get_serializer())
     if isinstance(result, NotebookResultComplete):
         return Response(result.raw_ipynb_json,
                         mimetype="application/vnd.jupyter",
-                        headers={"Content-Disposition": "attachment;filename={}.ipynb".format(task_id)})
+                        headers={"Content-Disposition": "attachment;filename={}.ipynb".format(job_id)})
     else:
         abort(404)
 
 
-@serve_results_bp.route('/result_download_pdf/<path:report_name>/<task_id>')
-def download_pdf_result(task_id, report_name):
-    result = _get_job_results(task_id, report_name, get_serializer())
+@serve_results_bp.route('/result_download_pdf/<path:report_name>/<job_id>')
+def download_pdf_result(job_id, report_name):
+    result = _get_job_results(job_id, report_name, get_serializer())
     if isinstance(result, NotebookResultComplete):
         return Response(result.pdf,
                         mimetype="application/pdf",
-                        headers={"Content-Disposition": "attachment;filename={}".format(_pdf_filename(task_id))})
+                        headers={"Content-Disposition": "attachment;filename={}".format(_pdf_filename(job_id))})
     else:
         abort(404)
 
@@ -158,11 +168,11 @@ def download_pdf_result(task_id, report_name):
 # ---------------- Loading -------------------- #
 
 
-def task_loading(report_name, task_id):
+def task_loading(report_name, job_id):
     # Loaded once, when the user queries /results/<report_name>/<job_id> and it is pending.
     return render_template('loading.html',
-                           task_id=task_id,
-                           location=url_for('serve_results_bp.task_status', report_name=report_name, task_id=task_id),
+                           job_id=job_id,
+                           location=url_for('serve_results_bp.task_status', report_name=report_name, job_id=job_id),
                            )
 
 
@@ -173,15 +183,15 @@ def _get_job_status(job_id, report_name):
         return {'status': 'Job not found. Did you use an old job ID?'}
     if job_result.status in (JobStatus.DONE, JobStatus.ERROR, JobStatus.TIMEOUT, JobStatus.CANCELLED):
         response = {'status': job_result.status.value,
-                    'results_url': url_for('serve_results_bp.task_results', report_name=report_name, task_id=job_id)}
+                    'results_url': url_for('serve_results_bp.task_results', report_name=report_name, job_id=job_id)}
     else:
         response = {'status': job_result.status.value, 'run_output': '\n'.join(job_result.stdout)}
     return response
 
 
-@serve_results_bp.route('/status/<path:report_name>/<task_id>')
-def task_status(report_name, task_id):
-    return jsonify(_get_job_status(task_id, report_name))
+@serve_results_bp.route('/status/<path:report_name>/<job_id>')
+def task_status(report_name, job_id):
+    return jsonify(_get_job_status(job_id, report_name))
 
 
 @serve_results_bp.route('/delete_report/<job_id>', methods=['POST'])
