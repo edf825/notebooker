@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
-
 import json
+from six import string_types
 from typing import AnyStr, List, Optional
 
 from man.notebooker.constants import EMAIL_SPACE_ERR_MSG, FORBIDDEN_CHAR_ERR_MSG, FORBIDDEN_INPUT_CHARS
@@ -20,7 +20,7 @@ def json_to_python(json_candidate):
     out_s = []
     for var_name in sorted(val_dict.keys()):
         value = val_dict[var_name]
-        if isinstance(value, str):
+        if isinstance(value, string_types):
             out_s.append("{} = '{}'".format(var_name, value))
         else:
             out_s.append("{} = {}".format(var_name, value))

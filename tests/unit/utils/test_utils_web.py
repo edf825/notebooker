@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 import pytest
+import six
 
 from man.notebooker import constants
 from man.notebooker.utils import web
@@ -49,20 +50,18 @@ def test_validate_title(test_name, title, expected_issues, expected_mailto):
     (None, None),
     ("", None),
     ('{"test": "me"}', "test = 'me'"),
-    ('{"test": ["me"]}', "test = ['me']"),
+    ('{"test": [2, 3, 4]}', "test = [2, 3, 4]"),
     ('{"test": false}', "test = False"),
     ('{"test": 23}', "test = 23"),
     ('{"test": 2.3}', "test = 2.3"),
-    ('{"test": {"one": 1, "two": "two"}}', "test = {'one': 1, 'two': 'two'}"),
     ('{"test": "me", "hello": "world", "blah": 5}',
      """blah = 5
 hello = 'world'
 test = 'me'"""),
-    ('{"test": "me", "hello": true, "blah": 5, "testdict": {"one": 1, "two": "two"}}',
+    ('{"test": "me", "hello": true, "blah": 5}',
      """blah = 5
 hello = True
-test = 'me'
-testdict = {'one': 1, 'two': 'two'}"""),
+test = 'me'"""),
 ])
 def test_json_to_python(input_json, output_python):
     if output_python is None:
