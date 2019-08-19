@@ -6,7 +6,7 @@
 <body>
     {{ header.sidebar(all_reports) }}
     <div class="ui container">
-        <h1>Task Results</h1>
+        <h1>Notebook Results</h1>
         <h2>{{ result.report_title }}</h2>
         <div class="ui grid">
             <div class="thirteen wide column">
@@ -38,7 +38,7 @@
                 {% if result.job_finish_time %}
                         <h4>It finished at:</h4>  {{result.job_finish_time}}
                 {% endif %}
-                <h4>Job ID:</h4> {{ task_id }}
+                <h4>Job ID:</h4> {{ job_id }}
                 <h4>Report Template Name:</h4> {{ report_name }}
                 {% if result.mailto %}
                     <h4>Mailing results to:</h4> {{ result.mailto }}
@@ -55,6 +55,10 @@
                 <br/>
                 <button onclick="rerunReport('{{ result.job_id }}', '{{ rerun_url }}')"
                             type="button" class="ui blue button rerunButton"><i class="redo alternate icon"></i>Rerun</button>
+                <br/>
+                <br/>
+                <button onclick="cloneReport('{{ clone_url }}')"
+                            type="button" class="ui blue button cloneButton"><i class="copy outline icon"></i>Clone Parameters</button>
 
             </div>
         <br/>

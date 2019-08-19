@@ -31,3 +31,7 @@ function rerunReport(jobId, rerunUrl) {
         }
     })
 }
+
+function cloneReport(cloneUrl) {
+    window.location.href = cloneUrl;
+}

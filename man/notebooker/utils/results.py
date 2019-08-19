@@ -104,10 +104,10 @@ def all_available_results(serializer,  # type: NotebookResultSerializer
     complete_jobs = {}
     for result in all_results:
         report_name, job_id = result.report_name, result.job_id
-        result.result_url = url_for('serve_results_bp.task_results', task_id=job_id, report_name=report_name)
-        result.ipynb_url = url_for('serve_results_bp.download_ipynb_result', task_id=job_id, report_name=report_name)
-        result.pdf_url = url_for('serve_results_bp.download_pdf_result', task_id=job_id, report_name=report_name)
-        result.rerun_url = url_for('run_report_bp.rerun_report', task_id=job_id, report_name=report_name)
+        result.result_url = url_for('serve_results_bp.task_results', job_id=job_id, report_name=report_name)
+        result.ipynb_url = url_for('serve_results_bp.download_ipynb_result', job_id=job_id, report_name=report_name)
+        result.pdf_url = url_for('serve_results_bp.download_pdf_result', job_id=job_id, report_name=report_name)
+        result.rerun_url = url_for('run_report_bp.rerun_report', job_id=job_id, report_name=report_name)
         complete_jobs[(report_name, job_id)] = result
     return complete_jobs
 
