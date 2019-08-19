@@ -4,6 +4,7 @@ import pytest
 
 from man.notebooker import constants
 from man.notebooker.utils import web
+from man.notebooker.utils.web import json_to_python
 
 
 @pytest.mark.parametrize('test_name, mailto, expected_issues, expected_mailto', [
@@ -42,3 +43,29 @@ def test_validate_title(test_name, title, expected_issues, expected_mailto):
     actual_title = web.validate_title(title, issues)
     assert issues == expected_issues
     assert actual_title == expected_mailto
+
+
+@pytest.mark.parametrize('input_json,output_python', [
+    (None, None),
+    ("", None),
+    ('{"test": "me"}', "test = 'me'"),
+    ('{"test": ["me"]}', "test = ['me']"),
+    ('{"test": false}', "test = False"),
+    ('{"test": 23}', "test = 23"),
+    ('{"test": 2.3}', "test = 2.3"),
+    ('{"test": {"one": 1, "two": "two"}}', "test = {'one': 1, 'two': 'two'}"),
+    ('{"test": "me", "hello": "world", "blah": 5}',
+     """blah = 5
+hello = 'world'
+test = 'me'"""),
+    ('{"test": "me", "hello": true, "blah": 5, "testdict": {"one": 1, "two": "two"}}',
+     """blah = 5
+hello = True
+test = 'me'
+testdict = {'one': 1, 'two': 'two'}"""),
+])
+def test_json_to_python(input_json, output_python):
+    if output_python is None:
+        assert json_to_python(input_json) is None
+    else:
+        assert json_to_python(input_json) == output_python

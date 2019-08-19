@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
 import json
-from typing import AnyStr, List
+from typing import AnyStr, List, Optional
 
 from man.notebooker.constants import EMAIL_SPACE_ERR_MSG, FORBIDDEN_CHAR_ERR_MSG, FORBIDDEN_INPUT_CHARS
 
@@ -13,12 +13,13 @@ def _check_bad_chars(s, issues):
 
 
 def json_to_python(json_candidate):
-    # type: (AnyStr) -> AnyStr
+    # type: (AnyStr) -> Optional[AnyStr]
     if not json_candidate:
         return
-    vars = json.loads(json_candidate)
+    val_dict = json.loads(json_candidate)
     out_s = []
-    for var_name, value in vars.items():
+    for var_name in sorted(val_dict.keys()):
+        value = val_dict[var_name]
         if isinstance(value, str):
             out_s.append("{} = '{}'".format(var_name, value))
         else:
