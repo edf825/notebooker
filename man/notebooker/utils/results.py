@@ -53,7 +53,6 @@ def _get_results_from_name_and_params(job_id_func,   # type: Callable[[str, Opti
     latest_job_id = job_id_func(report_name, params, as_of)
     if not latest_job_id:
         err_info = 'No job results found for report name={} with params={} as of {}'.format(report_name, params, as_of)
-        logger.info(err_info)
         return constants.NotebookResultError(latest_job_id,
                                              error_info=err_info,
                                              report_name=report_name,
@@ -95,21 +94,26 @@ def get_all_result_keys(serializer, limit=0, force_reload=False):
     return all_keys
 
 
-def all_available_results(serializer,  # type: NotebookResultSerializer
-                          limit=50,  # type: Optional[int]
-                          ):
-    # type: (...) -> Dict[Tuple[str, str], constants.NotebookResultBase]
-    # all_keys = get_all_result_keys(serializer, limit=limit)
-    all_results = serializer.get_all_results(limit=limit, load_payload=False)
-    complete_jobs = {}
-    for result in all_results:
-        report_name, job_id = result.report_name, result.job_id
-        result.result_url = url_for('serve_results_bp.task_results', job_id=job_id, report_name=report_name)
-        result.ipynb_url = url_for('serve_results_bp.download_ipynb_result', job_id=job_id, report_name=report_name)
-        result.pdf_url = url_for('serve_results_bp.download_pdf_result', job_id=job_id, report_name=report_name)
-        result.rerun_url = url_for('run_report_bp.rerun_report', job_id=job_id, report_name=report_name)
-        complete_jobs[(report_name, job_id)] = result
-    return complete_jobs
+def get_all_available_results_json(
+        serializer: NotebookResultSerializer, limit: int = 50
+) -> List[constants.NotebookResultBase]:
+    json_output = []
+    for result in serializer.get_all_results(limit=limit, load_payload=False):
+        output = result.saveable_output()
+        output["result_url"] = url_for(
+            'serve_results_bp.task_results', task_id=output["task_id"], report_name=output["report_name"]
+        )
+        output["ipynb_url"] = url_for(
+            'serve_results_bp.download_ipynb_result', task_id=output["task_id"], report_name=output["report_name"]
+        )
+        output["pdf_url"] = url_for(
+            'serve_results_bp.download_pdf_result', task_id=output["task_id"], report_name=output["report_name"]
+        )
+        output["rerun_url"] = url_for(
+            'run_report_bp.rerun_report', task_id=output["task_id"], report_name=output["report_name"]
+        )
+        json_output.append(output)
+    return json_output
 
 
 def get_latest_successful_job_results_all_params(report_name,         # type: str

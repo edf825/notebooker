@@ -39,3 +39,7 @@ code {
 td button i {
     margin: 0 !important;
 }
+
+#usernameInfo {
+    margin-left: 0.5em;
+}

@@ -9,53 +9,17 @@
 <body>
 
     {{ header.sidebar(all_reports) }}
+    <span id="failedLoad" style="display: none;">
+        <h2>Couldn't load any reports!</h2>
+        Either we haven't run any reports yet, or you don't have permission to view any on this Notebooker
+        instance. Please check with the instance admin.
+    </span>
     <div class="ui centered grid" style="display:none" id="indexTableContainer">
         <div class="twelve wide column">
             <table id="resultsTable" class="ui sortable selectable padded table">
-                <thead>
-                    <th>Title</th>
-                    <th>Report Template Name</th>
-                    <th>Status</th>
-                    <th>Start Time</th>
-                    <th>Completion Time</th>
-                    <th>Results</th>
-                    <th>Download pdf</th>
-                    <th>Rerun report</th>
-                    <th>Delete Result</th>
-                </thead>
-                <tbody>
-                {% for ((report_name, job_id), result) in all_jobs.items() %}
-                    <tr>
-                        <td>{{ result.report_title }}</td>
-                        <td>{{ result.report_name }}</td>
-                        <td>{{ result.status.value }}</td>
-                        <td class="datetd">{{ result.job_start_time.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-                        <td class="datetd">{{ result.job_finish_time.strftime('%Y-%m-%d %H:%M:%S') if result.job_finish_time else '' }}</td>
-                        <td class="buttontd"><button onclick="location.href='{{ result.result_url }}'"
-                                    type="button" class="ui button blue">Result</button>
-                        </td>
-
-                        <td class="buttontd">
-                            {% if result.generate_pdf_output %}
-                                <button onclick="location.href='{{ result.pdf_url }}'"
-                                        type="button" class="ui button green"><i class="download icon"></i></button>
-                            {% endif %}
-                        </td>
-                        <td class="buttontd">
-                            <button onclick="rerunReport('{{ result.job_id }}', '{{ result.rerun_url }}')"
-                                type="button" class="ui yellow button rerunButton"><i class="redo alternate icon"></i>Rerun</button>
-                        </td>
-                        <td class="buttontd">
-                            <button type="button" class="ui button red deletebutton" id="delete_{{ result.job_id }}">
-                                <i class="trash icon"></i>
-                            </button>
-                        </td>
-                    </tr>
-                {% endfor %}
-                </tbody>
             </table>
             <div>
-                <button class="ui button black" onclick="location.href=window.location.href+'/?limit=0'">
+                <button class="ui button black" onclick="load_data(0)">
                     Load all {{ n_results_available }} results
                 </button>
             </div>
