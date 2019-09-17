@@ -99,7 +99,7 @@ def start_app():
 @click.option('--result-collection-name', default='NOTEBOOK_OUTPUT')
 @click.option('--debug/--no-debug', default=False)
 @click.option('--port', default=int(os.getenv('OCN_PORT', 11828)))
-def main(mongo_host, database_name, result_collection_name, debug, use_authentication, port):
+def main(mongo_host, database_name, result_collection_name, debug, port):
     logger.info('Running man.notebooker with params: '
                 'mongo-host=%s, database-name=%s, '
                 'result-collection-name=%s, debug=%s, '

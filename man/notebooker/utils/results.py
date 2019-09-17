@@ -101,16 +101,16 @@ def get_all_available_results_json(
     for result in serializer.get_all_results(limit=limit, load_payload=False):
         output = result.saveable_output()
         output["result_url"] = url_for(
-            'serve_results_bp.task_results', task_id=output["task_id"], report_name=output["report_name"]
+            'serve_results_bp.task_results', job_id=output["job_id"], report_name=output["report_name"]
         )
         output["ipynb_url"] = url_for(
-            'serve_results_bp.download_ipynb_result', task_id=output["task_id"], report_name=output["report_name"]
+            'serve_results_bp.download_ipynb_result', job_id=output["job_id"], report_name=output["report_name"]
         )
         output["pdf_url"] = url_for(
-            'serve_results_bp.download_pdf_result', task_id=output["task_id"], report_name=output["report_name"]
+            'serve_results_bp.download_pdf_result', job_id=output["job_id"], report_name=output["report_name"]
         )
         output["rerun_url"] = url_for(
-            'run_report_bp.rerun_report', task_id=output["task_id"], report_name=output["report_name"]
+            'run_report_bp.rerun_report', job_id=output["job_id"], report_name=output["report_name"]
         )
         json_output.append(output)
     return json_output
