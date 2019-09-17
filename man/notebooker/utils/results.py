@@ -94,9 +94,8 @@ def get_all_result_keys(serializer, limit=0, force_reload=False):
     return all_keys
 
 
-def get_all_available_results_json(
-        serializer: NotebookResultSerializer, limit: int = 50
-) -> List[constants.NotebookResultBase]:
+def get_all_available_results_json(serializer, limit):
+    # type: (NotebookResultSerializer, int) -> List[constants.NotebookResultBase]
     json_output = []
     for result in serializer.get_all_results(limit=limit, load_payload=False):
         output = result.saveable_output()

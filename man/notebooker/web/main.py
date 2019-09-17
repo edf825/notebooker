@@ -38,7 +38,6 @@ flask_app.register_blueprint(serve_results_bp)
 @flask_app.route('/', methods=['GET'])
 def index():
     username = request.headers.get("X-Auth-Username")
-    logger.info(f"My headers are {request.headers}")
     all_reports = get_all_possible_templates(request.headers.get("X-Auth-Roles"))
     with flask_app.app_context():
         result = render_template('index.html',
