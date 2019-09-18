@@ -155,7 +155,7 @@ class NotebookResultSerializer(object):
                 status=job_status,
                 update_time=result['update_time'],
                 job_finish_time=result['job_finish_time'],
-                raw_html_resources=result.get('raw_html_resources'),
+                raw_html_resources=result.get('raw_html_resources', {}),
                 raw_ipynb_json=result.get('raw_ipynb_json'),
                 raw_html=result.get('raw_html'),
                 pdf=result.get('pdf', ''),

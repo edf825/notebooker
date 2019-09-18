@@ -19,8 +19,8 @@ npm install
 popd
 
 # Python setup
-python setup.py develop
-pyinstall $(cat ./notebook_templates/notebook_requirements.txt)
+python setup.py develop --extras
+easy_install --upgrade $(cat ./notebook_templates/notebook_requirements.txt)
 python -m ipykernel install --user --name=man_notebooker_kernel
 
 # Finally run the webapp

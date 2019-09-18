@@ -1,4 +1,32 @@
 $(document).ready(function() {
+    // Check auth is enabled on our host
+    $.ajax({
+        url: "/oauth/health",
+        success: () => {
+            // If enabled, then fetch our login status
+            $.ajax({
+                url: "/core/user_profile",
+                dataType: "json",
+                success: (result) => {
+                    console.log(result);
+                    var user = result;
+                    if (result.username) {
+                        $('#usernameInfo').text(result.username);
+                        $('.loggedIn').fadeIn()
+                    } else {
+                        $('.loggedOut').fadeIn()
+                    }
+                },
+                error: (jqXHR, textStatus, errorThrown) => {
+                    var user = undefined;
+                    $('.loggedOut').fadeIn()
+                }
+            });
+        },
+        error: () => {
+            $('#authArea').hide()
+        }
+    });
 
     let sb = $('.ui.left.sidebar');
     sb.sidebar({

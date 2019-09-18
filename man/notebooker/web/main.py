@@ -7,18 +7,17 @@ import threading
 
 import click
 from ahl.logging import get_logger
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, url_for
 from gevent.pywsgi import WSGIServer
 
 from man.notebooker.serialization.serialization import get_serializer
-from man.notebooker.utils.caching import get_cache, set_cache
 from man.notebooker.constants import OUTPUT_BASE_DIR, \
     TEMPLATE_BASE_DIR, JobStatus, CANCEL_MESSAGE
-from man.notebooker.utils.results import all_available_results
 from man.notebooker.utils.notebook_execution import mkdir_p, _cleanup_dirs
 from man.notebooker.utils.templates import get_all_possible_templates
 from man.notebooker.web.converters import DateConverter
 from man.notebooker.web.report_hunter import _report_hunter
+from man.notebooker.web.routes.core import core_bp
 from man.notebooker.web.routes.prometheus import setup_metrics, prometheus_bp
 from man.notebooker.web.routes.run_report import run_report_bp
 from man.notebooker.web.routes.serve_results import serve_results_bp
@@ -28,6 +27,7 @@ logger = get_logger(__name__)
 all_report_refresher = None  # type: threading.Thread
 
 flask_app.url_map.converters['date'] = DateConverter
+flask_app.register_blueprint(core_bp)
 flask_app.register_blueprint(prometheus_bp)
 flask_app.register_blueprint(run_report_bp)
 flask_app.register_blueprint(serve_results_bp)
@@ -37,18 +37,16 @@ flask_app.register_blueprint(serve_results_bp)
 
 @flask_app.route('/', methods=['GET'])
 def index():
-    limit = int(request.args.get('limit', 50))
-    cached = get_cache('index_limit_{}'.format(limit))
-    if cached:
-        return cached
+    username = request.headers.get("X-Auth-Username")
+    all_reports = get_all_possible_templates()
     with flask_app.app_context():
-        result =  render_template('index.html',
-                                  all_jobs=all_available_results(get_serializer(), limit),
-                                  all_reports=get_all_possible_templates(),
-                                  n_results_available=get_serializer().n_all_results(),
-                                  donevalue=JobStatus.DONE,  # needed so we can check if a result is available
-                                  )
-        set_cache('index_limit_{}'.format(limit), result, timeout=10)
+        result = render_template('index.html',
+                                 all_jobs_url=url_for("core_bp.all_available_results"),
+                                 all_reports=all_reports,
+                                 n_results_available=get_serializer().n_all_results(),
+                                 donevalue=JobStatus.DONE,  # needed so we can check if a result is available
+                                 username=username
+                                 )
         return result
 
 
