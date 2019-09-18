@@ -38,7 +38,7 @@ flask_app.register_blueprint(serve_results_bp)
 @flask_app.route('/', methods=['GET'])
 def index():
     username = request.headers.get("X-Auth-Username")
-    all_reports = get_all_possible_templates(request.headers.get("X-Auth-Roles"))
+    all_reports = get_all_possible_templates()
     with flask_app.app_context():
         result = render_template('index.html',
                                  all_jobs_url=url_for("core_bp.all_available_results"),
