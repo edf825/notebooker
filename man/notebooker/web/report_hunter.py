@@ -22,12 +22,6 @@ def _report_hunter(mongo_host, database_name, result_collection_name, run_once=F
     while not os.getenv('NOTEBOOKER_APP_STOPPING'):
         try:
             ct = 0
-            # First, check we have all keys that are available and populate their entries
-            all_keys = get_all_result_keys(serializer)
-            for report_name, job_id in all_keys:
-                # This method loads from db and saves into the store.
-                _get_job_results(job_id, report_name, serializer)
-
             # Now, get all pending requests and check they haven't timed out...
             all_pending = serializer.get_all_results(mongo_filter={'status': {'$in': [JobStatus.SUBMITTED.value,
                                                                                       JobStatus.PENDING.value]}})
