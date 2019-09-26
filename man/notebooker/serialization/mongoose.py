@@ -45,9 +45,8 @@ class NotebookResultSerializer(object):
             self.library.insert_one(out_data)
         # Ensure that the job_id index exists
         self.library.create_index([('job_id', pymongo.ASCENDING)], background=True)
-        self.library.create_index([('update_time', pymongo.DESCENDING)], background=True)
-        self.library.create_index([('report_name', pymongo.TEXT)], background=True)
-        self.library.create_index([('status', pymongo.ASCENDING)], background=True)
+        self.library.create_index([('report_name', pymongo.ASCENDING)], background=True)
+        self.library.create_index([('status', pymongo.ASCENDING), ('update_time', pymongo.DESCENDING)], background=True)
 
     def _save_to_db(self, notebook_result):
         out_data = notebook_result.saveable_output()
