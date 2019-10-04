@@ -4,7 +4,7 @@ import six
 try:
     from ahl.pkglib.setuptools import setup
 except ImportError:
-    print("AHL Package Utilities are not available. Please run \"easy_install ahl.pkgutils\"")
+    print("AHL Package Utilities are not available. Please run \"easy_install ahl.pkglib\"")
     import sys
     sys.exit(1)
 
