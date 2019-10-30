@@ -99,19 +99,21 @@ def start_app():
 @click.option('--debug/--no-debug', default=False)
 @click.option('--port', default=int(os.getenv('OCN_PORT', 11828)))
 def main(mongo_host, database_name, result_collection_name, debug, port):
-    logger.info('Running man.notebooker with params: '
-                'mongo-host=%s, database-name=%s, '
-                'result-collection-name=%s, debug=%s, '
-                'port=%s', mongo_host, database_name, result_collection_name, debug, port)
     logger.parent.setLevel(logging.DEBUG if debug else logging.INFO)
 
     # Used by Prometheus metrics
-    env = {'mktdatad': 'dev', 'research': 'res', 'mktdatas': 'pre', 'mktdatap': 'prod'}.get(mongo_host, 'research')
-    os.environ['NOTEBOOKER_HOST'] = os.getenv('NOTEBOOKER_HOST', env)
+    env = {'mktdatad': 'dev', 'research': 'res', 'mktdatas': 'pre', 'mktdatap': 'prod'}.get(mongo_host, 'res')
+
+    # Set out environment
+    os.environ['NOTEBOOKER_ENVIRONMENT'] = os.getenv('NOTEBOOKER_ENVIRONMENT', env)
     os.environ['MONGO_HOST'] = os.getenv('MONGO_HOST', mongo_host)
     os.environ['DATABASE_NAME'] = os.getenv('DATABASE_NAME', database_name)
     os.environ['RESULT_COLLECTION_NAME'] = os.getenv('RESULT_COLLECTION_NAME', result_collection_name)
 
+    logger.info('Running man.notebooker with params: '
+                'mongo-host=%s, database-name=%s, '
+                'result-collection-name=%s, debug=%s, '
+                'port=%s', os.environ['MONGO_HOST'], os.environ['DATABASE_NAME'], os.environ['RESULT_COLLECTION_NAME'], debug, port)
     flask_app.config.update(
         TEMPLATES_AUTO_RELOAD=debug,
     )

@@ -37,3 +37,39 @@ To create a new instance of Notebooker:
    * Build a Docker image which can be used to execute your notebooks and run a Notebooker server.
 
 To deploy as a Kubernetes instance, please refer to the [documentation](http://docs/core/services/kubernetes/#templating-kustomize). Also, see this [OCD PR](http://ahlgit.maninvestments.com/projects/DOCKER/repos/one-click-deploys/pull-requests/11621/diff).
+
+
+## Important environment variables
+
+#### MONGO_HOST
+The environment which mongo is reading from and writing to, e.g. "research"
+
+#### DATABASE_NAME
+The mongo database which we are saving to, e.g. "mongoose_notebooker"
+
+#### RESULT_COLLECTION_NAME
+The mongo collection which we are saving to, e.g. "DATASCIENCE_RESULTS".
+This will be created for you if it doesn't exist already.
+
+#### PY_TEMPLATE_DIR
+The directory of the Notebook Templates git repository.
+
+#### GIT_REPO_TEMPLATE_DIR
+The subdirectory within your PY_TEMPLATE_DIR git repo which holds all of your templates.
+
+#### NOTEBOOKER_DISABLE_GIT
+A boolean flag to dictate whether we should pull from git master every time we try to
+run a report or list the available templates.
+
+#### OUTPUT_DIR
+The temporary directory which will contain the output results of executing notebooks.
+Defaults to a random directory in the current user's homedir.
+
+#### TEMPLATE_DIR
+The temporary directory which will contain the .ipynb templates which have been converted 
+from the .py templates.
+Defaults to a random directory in the current user's homedir.
+
+#### NOTEBOOK_KERNEL_NAME
+The name of the kernel which we are using to execute notebooks.
+Defaults to `man_notebooker_kernel`.

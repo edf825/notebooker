@@ -164,13 +164,13 @@ def run_report_worker(job_submit_time,
               default=3,
               help='The number of times to retry when executing this notebook.')
 @click.option('--mongo-db-name',
-              default='mongoose_restech',
+              default=os.environ.get("DATABASE_NAME", "mongoose_notebooker"),
               help='The mongo database name to which we will save the notebook result.')
 @click.option('--mongo-host',
-              default='research',
+              default=os.environ.get("MONGO_HOST", "research"),
               help='The Mongoose cluster to which we are saving notebook results.')
 @click.option('--result-collection-name',
-              default='NOTEBOOK_OUTPUT',
+              default=os.environ.get("RESULT_COLLECTION_NAME", "NOTEBOOK_OUTPUT"),
               help='The name of the BSONStore to which we are saving notebook results.')
 @click.option('--job-id',
               default=str(uuid.uuid4()),
@@ -212,6 +212,20 @@ def main(report_name,
     mkdir_p(output_base_dir)
     overrides = json.loads(overrides_as_json) if overrides_as_json else {}
     start_time = datetime.datetime.now()
+    logger.info("Running a report with these parameters:")
+    logger.info("report_name = %s", report_name)
+    logger.info("overrides_as_json = %s", overrides_as_json)
+    logger.info("report_title = %s", report_title)
+    logger.info("n_retries = %s", n_retries)
+    logger.info("mongo_db_name = %s", mongo_db_name)
+    logger.info("mongo_host = %s", mongo_host)
+    logger.info("result_collection_name = %s", result_collection_name)
+    logger.info("job_id = %s", job_id)
+    logger.info("output_base_dir = %s", output_base_dir)
+    logger.info("template_base_dir = %s", template_base_dir)
+    logger.info("mailto = %s", mailto)
+    logger.info("pdf_output = %s", pdf_output)
+    logger.info("prepare_notebook_only = %s", prepare_notebook_only)
     result_serializer = NotebookResultSerializer(database_name=mongo_db_name,
                                                  mongo_host=mongo_host, 
                                                  result_collection_name=result_collection_name)
