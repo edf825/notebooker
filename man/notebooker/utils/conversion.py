@@ -13,7 +13,7 @@ from typing import AnyStr, Dict, Any, Optional
 from man.notebooker.constants import (
     REPORT_NAME_SEPARATOR,
     python_template_dir,
-    KERNEL_SPEC,
+    kernel_spec,
     NOTEBOOKER_DISABLE_GIT
 )
 from man.notebooker.utils.caching import get_cache, set_cache
@@ -126,7 +126,7 @@ def generate_ipynb_from_py(template_base_dir, report_name, warn_on_local=True):
         os.utime(output_template_path, None)
 
     jupytext_nb = jupytext.readf(python_template_path)
-    jupytext_nb['metadata']['kernelspec'] = KERNEL_SPEC  # Override the kernel spec since we want to run it..
+    jupytext_nb['metadata']['kernelspec'] = kernel_spec()  # Override the kernel spec since we want to run it..
     jupytext.writef(jupytext_nb, output_template_path)
     return output_template_path
 

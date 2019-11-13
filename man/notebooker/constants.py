@@ -14,12 +14,14 @@ TEMPLATE_BASE_DIR = os.getenv('TEMPLATE_DIR') or tempfile.mkdtemp(dir=os.path.ex
 CACHE_DIR = tempfile.mkdtemp()
 NOTEBOOKER_TEMPLATE_GIT_URL = os.getenv('NOTEBOOKER_TEMPLATE_GIT_URL')
 NOTEBOOKER_DISABLE_GIT = os.getenv('NOTEBOOKER_DISABLE_GIT')
-
-KERNEL_SPEC = {'display_name': os.getenv('NOTEBOOK_KERNEL_NAME', 'man_notebooker_kernel'),
-               'language': 'python',
-               'name': os.getenv('NOTEBOOK_KERNEL_NAME', 'man_notebooker_kernel')}
 CANCEL_MESSAGE = 'The webapp shut down while this job was running. Please resubmit with the same parameters.'
 REPORT_NAME_SEPARATOR = '|'
+
+
+def kernel_spec():
+    return {'display_name': os.getenv('NOTEBOOK_KERNEL_NAME', 'man_notebooker_kernel'),
+            'language': 'python',
+            'name': os.getenv('NOTEBOOK_KERNEL_NAME', 'man_notebooker_kernel')}
 
 
 def python_template_dir():
