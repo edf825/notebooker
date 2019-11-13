@@ -21,7 +21,7 @@ class NotebookResultSerializer(object):
     # This class is the interface between Mongo and the rest of the application
 
     def __init__(self,
-                 database_name='mongoose_restech',
+                 database_name='mongoose_notebooker',
                  mongo_host='research',
                  result_collection_name='NOTEBOOK_OUTPUT'):
         self.result_collection_name = result_collection_name
