@@ -164,14 +164,17 @@ def run_report_worker(job_submit_time,
               default=3,
               help='The number of times to retry when executing this notebook.')
 @click.option('--mongo-db-name',
-              default=os.environ.get("DATABASE_NAME", "mongoose_notebooker"),
+              default=None,
               help='The mongo database name to which we will save the notebook result.')
 @click.option('--mongo-host',
-              default=os.environ.get("MONGO_HOST", "research"),
+              default=None,
               help='The Mongoose cluster to which we are saving notebook results.')
 @click.option('--result-collection-name',
-              default=os.environ.get("RESULT_COLLECTION_NAME", "NOTEBOOK_OUTPUT"),
+              default=None,
               help='The name of the BSONStore to which we are saving notebook results.')
+@click.option('--notebook-kernel-name',
+              default=None,
+              help='The name of the kernel which is running our notebook code.')
 @click.option('--job-id',
               default=str(uuid.uuid4()),
               help='The unique job ID for this notebook. Can be non-unique, but note that you will overwrite history.')
@@ -198,6 +201,7 @@ def main(report_name,
          mongo_db_name,
          mongo_host,
          result_collection_name,
+         man_notebooker_kernel,
          job_id,
          output_base_dir,
          template_base_dir,
@@ -207,6 +211,11 @@ def main(report_name,
          ):
     if report_name is None:
         raise ValueError('Error! Please provide a --report-name.')
+    mongo_db_name = mongo_db_name or os.environ.get("DATABASE_NAME", "mongoose_notebooker")
+    mongo_host = mongo_host or os.environ.get("MONGO_HOST", "research")
+    result_collection_name = result_collection_name or os.environ.get("RESULT_COLLECTION_NAME", "NOTEBOOK_OUTPUT")
+    if man_notebooker_kernel:
+        os.environ['NOTEBOOK_KERNEL_NAME'] = man_notebooker_kernel
     report_title = report_title or report_name
     logger.info('Creating %s', output_base_dir)
     mkdir_p(output_base_dir)
