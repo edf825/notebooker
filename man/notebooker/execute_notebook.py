@@ -201,7 +201,7 @@ def main(report_name,
          mongo_db_name,
          mongo_host,
          result_collection_name,
-         man_notebooker_kernel,
+         notebook_kernel_name,
          job_id,
          output_base_dir,
          template_base_dir,
@@ -214,8 +214,8 @@ def main(report_name,
     mongo_db_name = mongo_db_name or os.environ.get("DATABASE_NAME", "mongoose_notebooker")
     mongo_host = mongo_host or os.environ.get("MONGO_HOST", "research")
     result_collection_name = result_collection_name or os.environ.get("RESULT_COLLECTION_NAME", "NOTEBOOK_OUTPUT")
-    if man_notebooker_kernel:
-        os.environ['NOTEBOOK_KERNEL_NAME'] = man_notebooker_kernel
+    if notebook_kernel_name:
+        os.environ['NOTEBOOK_KERNEL_NAME'] = notebook_kernel_name
     report_title = report_title or report_name
     logger.info('Creating %s', output_base_dir)
     mkdir_p(output_base_dir)
