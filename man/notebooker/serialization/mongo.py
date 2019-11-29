@@ -3,18 +3,15 @@ from builtins import object
 
 import gridfs
 import pymongo
-from ahl.logging import get_logger
-from ahl.mongo import Mongoose
-from ahl.mongo.auth import authenticate
-from ahl.mongo.decorators import mongo_retry
+from arctic.decorators import mongo_retry
+from logging import getLogger
 from gridfs import NoFile
-from mkd.auth.mongo import get_auth
 from typing import Union, Optional, Dict, Any, AnyStr, List, Tuple, Generator
 
 from man.notebooker.constants import JobStatus, NotebookResultPending, NotebookResultError, NotebookResultComplete, \
     NotebookResultBase
 
-logger = get_logger(__name__)
+logger = getLogger(__name__)
 
 
 class NotebookResultSerializer(object):
@@ -24,16 +21,15 @@ class NotebookResultSerializer(object):
                  database_name='mongoose_notebooker',
                  mongo_host='research',
                  result_collection_name='NOTEBOOK_OUTPUT'):
-        self.result_collection_name = result_collection_name
-        self.mongo = Mongoose(mongo_host)._conn[database_name]
-        self.library = self.mongo[self.result_collection_name]
-        self.result_data_store = gridfs.GridFS(self.mongo, "notebook_data")
-
-        user_creds = get_auth(mongo_host, 'mongoose', database_name)
-
-        authenticate(self.mongo, user_creds.user, user_creds.password)
         self.database_name = database_name
         self.mongo_host = mongo_host
+        self.result_collection_name = result_collection_name
+        mongo_connection = self.setup_mongo_connection()
+        self.library = mongo_connection[result_collection_name]
+        self.result_data_store = gridfs.GridFS(mongo_connection, "notebook_data")
+
+    def setup_mongo_connection(self):
+        raise NotImplementedError()
 
     @mongo_retry
     def _save_raw_to_db(self, out_data):

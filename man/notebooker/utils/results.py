@@ -1,15 +1,15 @@
 from datetime import datetime as dt
 
-from ahl.logging import get_logger
+from logging import getLogger
 from flask import url_for
 from typing import Optional, Dict, List, Tuple, Callable, Generator
 
-from man.notebooker.serialization.mongoose import NotebookResultSerializer
+from man.notebooker.serialization.mongo import NotebookResultSerializer
 from man.notebooker.utils.caching import get_cache, get_report_cache, set_cache, set_report_cache
 from man.notebooker.exceptions import NotebookRunException
 from man.notebooker import constants
 
-logger = get_logger(__name__)
+logger = getLogger(__name__)
 
 
 def _get_job_results(job_id,              # type: str

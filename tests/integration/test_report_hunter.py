@@ -3,12 +3,9 @@ import freezegun
 import pytest
 import uuid
 
-from ahl.mongo import Mongoose
-from arctic.store.bson_store import BSON_STORE_TYPE
-
 from man.notebooker.utils.caching import get_report_cache
 from man.notebooker.constants import JobStatus, NotebookResultPending, NotebookResultError, NotebookResultComplete
-from man.notebooker.serialization.mongoose import NotebookResultSerializer
+from man.notebooker.serialization.serializers import MongooseNotebookResultSerializer
 
 from man.notebooker.web.report_hunter import _report_hunter
 from ..utils import cache_blaster
@@ -17,20 +14,20 @@ from .conftest import TEST_DB_NAME, TEST_LIB
 
 @cache_blaster
 def test_report_hunter_with_nothing(bson_library, mongo_host):
-    _report_hunter(mongo_host, TEST_DB_NAME, TEST_LIB, run_once=True)
+    _report_hunter(mongo_host=mongo_host, database_name=TEST_DB_NAME, result_collection_name=TEST_LIB, run_once=True)
 
 
 @cache_blaster
 @freezegun.freeze_time(datetime.datetime(2018, 1, 12))
 def test_report_hunter_with_one(bson_library, mongo_host):
-    serializer = NotebookResultSerializer(database_name=TEST_DB_NAME,
-                                          mongo_host=mongo_host,
-                                          result_collection_name=TEST_LIB)
+    serializer = MongooseNotebookResultSerializer(database_name=TEST_DB_NAME,
+                                                  mongo_host=mongo_host,
+                                                  result_collection_name=TEST_LIB)
 
     job_id = str(uuid.uuid4())
     report_name = str(uuid.uuid4())
     serializer.save_check_stub(job_id, report_name)
-    _report_hunter(mongo_host, TEST_DB_NAME, TEST_LIB, run_once=True)
+    _report_hunter(mongo_host=mongo_host, database_name=TEST_DB_NAME, result_collection_name=TEST_LIB, run_once=True)
     expected = NotebookResultPending(job_id=job_id,
                                      report_name=report_name,
                                      report_title=report_name,
@@ -41,15 +38,15 @@ def test_report_hunter_with_one(bson_library, mongo_host):
 
 @cache_blaster
 def test_report_hunter_with_status_change(bson_library, mongo_host):
-    serializer = NotebookResultSerializer(database_name=TEST_DB_NAME,
-                                          mongo_host=mongo_host,
-                                          result_collection_name=TEST_LIB)
+    serializer = MongooseNotebookResultSerializer(database_name=TEST_DB_NAME,
+                                                  mongo_host=mongo_host,
+                                                  result_collection_name=TEST_LIB)
 
     job_id = str(uuid.uuid4())
     report_name = str(uuid.uuid4())
     with freezegun.freeze_time(datetime.datetime(2018, 1, 12, 2, 30)):
         serializer.save_check_stub(job_id, report_name)
-        _report_hunter(mongo_host, TEST_DB_NAME, TEST_LIB, run_once=True)
+        _report_hunter(mongo_host=mongo_host, database_name=TEST_DB_NAME, result_collection_name=TEST_LIB, run_once=True)
     expected = NotebookResultPending(job_id=job_id,
                                      report_name=report_name,
                                      report_title=report_name,
@@ -59,7 +56,7 @@ def test_report_hunter_with_status_change(bson_library, mongo_host):
 
     with freezegun.freeze_time(datetime.datetime(2018, 1, 12, 2, 32)):
         serializer.update_check_status(job_id, JobStatus.CANCELLED, error_info='This was cancelled!')
-        _report_hunter(mongo_host, TEST_DB_NAME, TEST_LIB, run_once=True)
+        _report_hunter(mongo_host=mongo_host, database_name=TEST_DB_NAME, result_collection_name=TEST_LIB, run_once=True)
 
     expected = NotebookResultError(job_id=job_id,
                                    report_name=report_name,
@@ -84,13 +81,13 @@ def test_report_hunter_timeout(bson_library, mongo_host, status, time_later, sho
     job_id = str(uuid.uuid4())
     report_name = str(uuid.uuid4())
 
-    serializer = NotebookResultSerializer(database_name=TEST_DB_NAME,
-                                          mongo_host=mongo_host,
-                                          result_collection_name=TEST_LIB)
+    serializer = MongooseNotebookResultSerializer(database_name=TEST_DB_NAME,
+                                                  mongo_host=mongo_host,
+                                                  result_collection_name=TEST_LIB)
     start_time = time_now = datetime.datetime(2018, 1, 12, 2, 30)
     with freezegun.freeze_time(time_now):
         serializer.save_check_stub(job_id, report_name, status=status)
-        _report_hunter(mongo_host, TEST_DB_NAME, TEST_LIB, run_once=True)
+        _report_hunter(mongo_host=mongo_host, database_name=TEST_DB_NAME, result_collection_name=TEST_LIB, run_once=True)
     expected = NotebookResultPending(job_id=job_id,
                                      report_name=report_name,
                                      report_title=report_name,
@@ -101,7 +98,7 @@ def test_report_hunter_timeout(bson_library, mongo_host, status, time_later, sho
 
     time_now += time_later
     with freezegun.freeze_time(time_now):
-        _report_hunter(mongo_host, TEST_DB_NAME, TEST_LIB, run_once=True)
+        _report_hunter(mongo_host=mongo_host, database_name=TEST_DB_NAME, result_collection_name=TEST_LIB, run_once=True)
 
     if should_timeout:
         mins = (time_later.total_seconds() / 60) - 1
@@ -125,13 +122,13 @@ def test_report_hunter_timeout(bson_library, mongo_host, status, time_later, sho
 def test_report_hunter_pending_to_done(bson_library, mongo_host):
     job_id = str(uuid.uuid4())
     report_name = str(uuid.uuid4())
-    serializer = NotebookResultSerializer(database_name=TEST_DB_NAME,
-                                          mongo_host=mongo_host,
-                                          result_collection_name=TEST_LIB)
+    serializer = MongooseNotebookResultSerializer(database_name=TEST_DB_NAME,
+                                                  mongo_host=mongo_host,
+                                                  result_collection_name=TEST_LIB)
 
     with freezegun.freeze_time(datetime.datetime(2018, 1, 12, 2, 30)):
         serializer.save_check_stub(job_id, report_name, status=JobStatus.SUBMITTED)
-        _report_hunter(mongo_host, TEST_DB_NAME, TEST_LIB, run_once=True)
+        _report_hunter(mongo_host=mongo_host, database_name=TEST_DB_NAME, result_collection_name=TEST_LIB, run_once=True)
     expected = NotebookResultPending(job_id=job_id,
                                      report_name=report_name,
                                      report_title=report_name,
@@ -142,7 +139,7 @@ def test_report_hunter_pending_to_done(bson_library, mongo_host):
 
     with freezegun.freeze_time(datetime.datetime(2018, 1, 12, 2, 32)):
         serializer.update_check_status(job_id, JobStatus.PENDING)
-        _report_hunter(mongo_host, TEST_DB_NAME, TEST_LIB, run_once=True)
+        _report_hunter(mongo_host=mongo_host, database_name=TEST_DB_NAME, result_collection_name=TEST_LIB, run_once=True)
 
     expected = NotebookResultPending(job_id=job_id,
                                      report_name=report_name,
@@ -160,7 +157,7 @@ def test_report_hunter_pending_to_done(bson_library, mongo_host):
                                        pdf='',
                                        raw_ipynb_json='[]',
                                        raw_html='')
-        _report_hunter(mongo_host, TEST_DB_NAME, TEST_LIB, run_once=True)
+        _report_hunter(mongo_host=mongo_host, database_name=TEST_DB_NAME, result_collection_name=TEST_LIB, run_once=True)
 
     expected = NotebookResultComplete(job_id=job_id,
                                       report_name=report_name,

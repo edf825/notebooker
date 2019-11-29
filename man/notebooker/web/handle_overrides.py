@@ -9,10 +9,10 @@ import tempfile
 from typing import Tuple, Dict, Any, List, Union, AnyStr
 
 import click
-from ahl.logging import get_logger
+from logging import getLogger
 
 
-logger = get_logger(__name__)
+logger = getLogger(__name__)
 
 
 def _handle_overrides_safe(raw_python, output_path):

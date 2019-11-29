@@ -6,11 +6,10 @@ import os
 import threading
 
 import click
-from ahl.logging import get_logger
 from flask import Flask, render_template, request, url_for
 from gevent.pywsgi import WSGIServer
 
-from man.notebooker.serialization.serialization import get_serializer
+from man.notebooker.serialization.serialization import get_serializer, serializer_kwargs_from_os_envs
 from man.notebooker.constants import OUTPUT_BASE_DIR, \
     TEMPLATE_BASE_DIR, JobStatus, CANCEL_MESSAGE
 from man.notebooker.utils.notebook_execution import mkdir_p, _cleanup_dirs
@@ -23,7 +22,8 @@ from man.notebooker.web.routes.run_report import run_report_bp
 from man.notebooker.web.routes.serve_results import serve_results_bp
 
 flask_app = Flask(__name__)
-logger = get_logger(__name__)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 all_report_refresher = None  # type: threading.Thread
 
 flask_app.url_map.converters['date'] = DateConverter
@@ -85,16 +85,14 @@ def start_app():
 
     setup_metrics(flask_app)
     all_report_refresher = threading.Thread(target=_report_hunter,
-                                            args=(os.environ['MONGO_HOST'],
-                                                  os.environ['DATABASE_NAME'],
-                                                  os.environ['RESULT_COLLECTION_NAME']))
+                                            kwargs=serializer_kwargs_from_os_envs())
     all_report_refresher.daemon = True
     all_report_refresher.start()
 
 
 @click.command()
 @click.option('--mongo-host', default='research')
-@click.option('--database-name', default='mongoose_restech')
+@click.option('--database-name', default='mongoose_notebooker')
 @click.option('--result-collection-name', default='NOTEBOOK_OUTPUT')
 @click.option('--debug/--no-debug', default=False)
 @click.option('--port', default=int(os.getenv('OCN_PORT', 11828)))

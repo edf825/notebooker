@@ -3,7 +3,7 @@ import os
 
 import click
 import uuid
-from ahl.logging import get_logger
+from logging import getLogger
 from man.notebooker.exceptions import NotebookRunException
 
 from man.notebooker.constants import OUTPUT_BASE_DIR, TEMPLATE_BASE_DIR
@@ -17,7 +17,7 @@ from man.notebooker.utils.templates import (
     _all_templates,
 )
 
-logger = get_logger(__name__)
+logger = getLogger(__name__)
 
 
 @click.command()

@@ -10,7 +10,6 @@ from man.notebooker.serialization.serialization import get_serializer
 from man.notebooker.web.main import flask_app
 
 from man.notebooker.constants import JobStatus
-from man.notebooker.serialization.mongoose import NotebookResultSerializer
 from man.notebooker.web.routes.run_report import run_report, _rerun_report
 from ..utils import cache_blaster
 from .conftest import TEST_DB_NAME, TEST_LIB

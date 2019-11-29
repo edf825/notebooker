@@ -10,16 +10,16 @@ import papermill as pm
 import traceback
 from typing import Any, Dict, Optional
 
-from ahl.logging import get_logger
+import logging
 
-from man.notebooker.utils.caching import get_cache
 from man.notebooker.constants import JobStatus, CANCEL_MESSAGE, OUTPUT_BASE_DIR, TEMPLATE_BASE_DIR, NotebookResultError, \
     NotebookResultComplete
-from man.notebooker.serialization.mongoose import NotebookResultSerializer
+from man.notebooker.serialization.serialization import get_serializer_from_cls, Serializer
 from man.notebooker.utils.notebook_execution import _output_dir, send_result_email, mkdir_p, _cleanup_dirs
 from man.notebooker.utils.conversion import ipython_to_html, ipython_to_pdf, _output_ipynb_name, generate_ipynb_from_py
 
-logger = get_logger(__name__)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def run_checks(job_id,  # type: str
@@ -191,6 +191,9 @@ def run_report_worker(job_submit_time,
 @click.option('--pdf-output/--no-pdf-output',
               default=True,
               help='Whether we generate PDF output or not.')
+@click.option('--serializer-cls',
+              default=Serializer.MONGOOSE.value,
+              help='The serializer class through which we will save the notebook result.')
 @click.option('--prepare-notebook-only',
               is_flag=True,
               help='Used for debugging and testing. Whether to actually execute the notebook or just "prepare" it.')
@@ -207,6 +210,7 @@ def main(report_name,
          template_base_dir,
          mailto,
          pdf_output,
+         serializer_cls,
          prepare_notebook_only,
          ):
     if report_name is None:
@@ -235,9 +239,11 @@ def main(report_name,
     logger.info("mailto = %s", mailto)
     logger.info("pdf_output = %s", pdf_output)
     logger.info("prepare_notebook_only = %s", prepare_notebook_only)
-    result_serializer = NotebookResultSerializer(database_name=mongo_db_name,
-                                                 mongo_host=mongo_host, 
-                                                 result_collection_name=result_collection_name)
+
+    result_serializer = get_serializer_from_cls(serializer_cls,
+                                                database_name=mongo_db_name,
+                                                mongo_host=mongo_host,
+                                                result_collection_name=result_collection_name)
     result = run_report_worker(
         start_time,
         report_name,

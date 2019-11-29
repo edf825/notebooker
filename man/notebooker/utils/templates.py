@@ -3,7 +3,7 @@ import nbformat
 import pkg_resources
 from functools import reduce
 
-from ahl.logging import get_logger
+from logging import getLogger
 from nbconvert import HTMLExporter
 from traitlets.config import Config
 from typing import Optional, Dict, Union
@@ -12,7 +12,7 @@ from man.notebooker.utils.caching import get_cache, set_cache
 from man.notebooker.constants import TEMPLATE_BASE_DIR, python_template_dir
 from man.notebooker.utils.conversion import generate_ipynb_from_py
 
-logger = get_logger(__name__)
+logger = getLogger(__name__)
 
 
 def _valid_dirname(d):

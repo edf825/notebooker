@@ -6,11 +6,11 @@ import re
 from ahl.mail import mail
 from typing import AnyStr, Union
 
-from ahl.logging import get_logger
+from logging import getLogger
 from man.notebooker.constants import REPORT_NAME_SEPARATOR, NotebookResultError, \
     NotebookResultComplete, OUTPUT_BASE_DIR, TEMPLATE_BASE_DIR, CACHE_DIR
 
-logger = get_logger(__name__)
+logger = getLogger(__name__)
 
 
 def _output_dir(output_base_dir, report_name, job_id):
