@@ -11,7 +11,7 @@ def test_snapshot_latest_successful_notebooks():
     compat_builtin = "builtins.open" if PY3 else '__builtin__.open'
     with mock.patch(compat_builtin) as fopen, \
             mock.patch('man.notebooker.snapshot.get_latest_successful_job_results_all_params') as get_results, \
-            mock.patch('man.notebooker.snapshot.NotebookResultSerializer') as nbs:
+            mock.patch('man.notebooker.snapshot.get_serializer_from_cls') as nbs:
         result = mock.Mock(spec=constants.NotebookResultComplete)
         result.overrides = {'over': 'ride'}
         result.raw_html = 'some html'

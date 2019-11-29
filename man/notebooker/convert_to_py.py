@@ -1,9 +1,9 @@
 import click
-from ahl.logging import get_logger
+from logging import getLogger
 from man.notebooker.utils.conversion import generate_py_from_ipynb
 
 
-logger = get_logger(__name__)
+logger = getLogger(__name__)
 
 
 @click.command()

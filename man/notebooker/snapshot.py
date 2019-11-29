@@ -2,7 +2,7 @@ import click
 import errno
 import os
 from logging import getLogger
-from man.notebooker.serialization.mongoose import NotebookResultSerializer
+from man.notebooker.serialization.serialization import get_serializer_from_cls, Serializer
 from man.notebooker.utils.results import get_latest_successful_job_results_all_params
 
 
@@ -25,15 +25,21 @@ logger = getLogger(__name__)
 @click.option('--result-collection-name',
               default='NOTEBOOK_OUTPUT',
               help='The name of the BSONStore from which we are retrieving notebook results.')
+@click.option('--serializer-cls',
+              default=Serializer.MONGOOSE.value,
+              help='The serializer class through which we will save the notebook result.')
 def snapshot_latest_successful_notebooks(
         report_name,
         mongo_db_name,
         mongo_host,
         result_collection_name,
-        output_directory):
-    result_serializer = NotebookResultSerializer(database_name=mongo_db_name,
-                                                 mongo_host=mongo_host,
-                                                 result_collection_name=result_collection_name)
+        output_directory,
+        serializer_cls,
+):
+    result_serializer = get_serializer_from_cls(serializer_cls,
+                                                database_name=mongo_db_name,
+                                                mongo_host=mongo_host,
+                                                result_collection_name=result_collection_name)
     report_suffix = report_name.split('/')[-1]
     report_directory = os.path.join(output_directory, report_suffix)
     results = get_latest_successful_job_results_all_params(report_name, result_serializer)

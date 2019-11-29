@@ -1,16 +1,44 @@
+from enum import Enum
 import os
 
 from flask import g
 
-from man.notebooker.serialization.mongoose import NotebookResultSerializer
+from man.notebooker.serialization.serializers import PyMongoNotebookResultSerializer
+from man.notebooker.serialization.mongo import NotebookResultSerializer
+
+
+class Serializer(Enum):
+    MONGOOSE = 'MongooseNotebookResultSerializer'
+    PYMONGO = 'PyMongoNotebookResultSerializer'
+
+
+def serializer_kwargs_from_os_envs():
+    return {
+        'user': os.environ.get('MONGO_USER'),
+        'password': os.environ.get('MONGO_PASSWORD'),
+        'mongo_host': os.environ.get('MONGO_HOST'),
+        'database_name': os.environ.get('DATABASE_NAME'),
+        'result_collection_name': os.environ.get('RESULT_COLLECTION_NAME')
+    }
+
+
+def get_serializer_from_cls(serializer_cls, **kwargs):
+    # type: (str, dict) -> NotebookResultSerializer
+
+    if serializer_cls == Serializer.MONGOOSE.value:
+        from man.notebooker.serialization.serializers import MongooseNotebookResultSerializer
+        return MongooseNotebookResultSerializer(**kwargs)
+    elif serializer_cls == Serializer.PYMONGO.value:
+        return PyMongoNotebookResultSerializer(**kwargs)
+    else:
+        raise ValueError("Unspported serializer {}".format(serializer_cls))
 
 
 def get_fresh_serializer():
     # type: () -> NotebookResultSerializer
-    return NotebookResultSerializer(
-        mongo_host=os.environ['MONGO_HOST'],
-        database_name=os.environ['DATABASE_NAME'],
-        result_collection_name=os.environ['RESULT_COLLECTION_NAME'])
+    serializer_cls = os.environ.get('NOTEBOOK_SERIALIZER', Serializer.MONGOOSE.value)
+    serializer_kwargs = serializer_kwargs_from_os_envs()
+    return get_serializer_from_cls(serializer_cls, **serializer_kwargs)
 
 
 def get_serializer():

@@ -1,13 +1,13 @@
 import pytest
 
-from ahl.logging import get_logger
+from logging import getLogger
 from man.notebooker.constants import TEMPLATE_BASE_DIR
 
 from man.notebooker.utils.conversion import generate_ipynb_from_py
 from man.notebooker.utils.templates import _get_preview, _get_parameters_cell_idx, template_name_to_notebook_node
 from ..utils import _all_templates
 
-logger = get_logger('template_sanity_check')
+logger = getLogger('template_sanity_check')
 
 
 @pytest.mark.parametrize('template_name', _all_templates())

@@ -10,7 +10,7 @@ import threading
 import uuid
 
 import nbformat
-from ahl.logging import get_logger
+from logging import getLogger
 from flask import render_template, request, jsonify, url_for, Blueprint, abort
 
 from man.notebooker import execute_notebook
@@ -22,7 +22,7 @@ from man.notebooker.utils.templates import _get_preview, _get_parameters_cell_id
 from man.notebooker.utils.web import json_to_python, validate_title, validate_mailto
 
 run_report_bp = Blueprint('run_report_bp', __name__)
-logger = get_logger(__name__)
+logger = getLogger(__name__)
 
 
 @run_report_bp.route('/run_report/get_preview/<path:report_name>', methods=['GET'])
@@ -100,6 +100,7 @@ def run_report(report_name, report_title, mailto, overrides, generate_pdf_output
                           '--mongo-host', result_serializer.mongo_host,
                           '--result-collection-name', result_serializer.result_collection_name,
                           '--pdf-output' if generate_pdf_output else '--no-pdf-output',
+                          '--serializer-cls', result_serializer.__class__.__name__
                           ] +
                          (['--prepare-notebook-only'] if prepare_only else []),
                          stderr=subprocess.PIPE)

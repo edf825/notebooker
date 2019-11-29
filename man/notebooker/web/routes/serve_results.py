@@ -2,20 +2,20 @@ import json
 
 import os
 import traceback
-from ahl.logging import get_logger
+from logging import getLogger
 from flask import render_template, jsonify, url_for, Blueprint, Response, abort, request
 from typing import Union, Any
 
 from man.notebooker.serialization.serialization import get_serializer
 from man.notebooker.constants import JobStatus, NotebookResultError, NotebookResultPending, NotebookResultComplete, NotebookResultBase
-from man.notebooker.serialization.mongoose import _pdf_filename
+from man.notebooker.serialization.mongo import _pdf_filename
 from man.notebooker.utils.results import (_get_job_results, get_all_result_keys, get_latest_job_results,
                                           get_latest_successful_job_results,
                                           )
 from man.notebooker.utils.templates import get_all_possible_templates
 
 serve_results_bp = Blueprint('serve_results_bp', __name__)
-logger = get_logger(__name__)
+logger = getLogger(__name__)
 
 
 # ------------------- Serving results -------------------- #

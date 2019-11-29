@@ -6,7 +6,7 @@ from click.testing import CliRunner
 
 from man.notebooker import execute_notebook
 from man.notebooker.constants import NotebookResultComplete
-from man.notebooker.serialization.mongoose import NotebookResultSerializer
+from man.notebooker.serialization.serializers import MongooseNotebookResultSerializer
 
 
 def mock_nb_execute(input_path, output_path, **kw):
@@ -28,7 +28,7 @@ def test_main(mongo_host):
                                                            '--mongo-host', mongo_host,
                                                            '--job-id', job_id])
         assert cli_result.exit_code == 0
-        serializer = NotebookResultSerializer(mongo_host=mongo_host)
+        serializer = MongooseNotebookResultSerializer(mongo_host=mongo_host)
         result = serializer.get_check_result(job_id)
         assert isinstance(result, NotebookResultComplete), 'Result is not instance of {}, ' \
                                                            'it is {}'.format(NotebookResultComplete, type(result))
