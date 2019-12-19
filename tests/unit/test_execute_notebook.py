@@ -3,6 +3,7 @@ import mock
 
 from ahl.testing.pytest.mongo_server import mongo_host
 from click.testing import CliRunner
+from nbformat import NotebookNode, __version__ as nbv
 
 from man.notebooker import execute_notebook
 from man.notebooker.constants import NotebookResultComplete
@@ -20,7 +21,9 @@ def test_main(mongo_host):
          mock.patch('man.notebooker.utils.conversion.PDFExporter') as pdf_exporter:
         pdf_contents = b'This is a PDF.'
         pdf_exporter().from_notebook_node.return_value = (pdf_contents, None)
-        read_nb.return_value = {'cells': [], 'metadata': {}}
+        versions = nbv.split(".")
+        major, minor = int(versions[0]), int(versions[1])
+        read_nb.return_value = NotebookNode({'cells': [], 'metadata': {}, "nbformat": major, "nbformat_minor": minor})
         exec_nb.side_effect = mock_nb_execute
         job_id = 'ttttteeeesssstttt'
         runner = CliRunner()
