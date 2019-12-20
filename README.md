@@ -38,6 +38,16 @@ To create a new instance of Notebooker:
 
 To deploy as a Kubernetes instance, please refer to the [documentation](http://docs/core/services/kubernetes/#templating-kustomize). Also, see this [OCD PR](http://ahlgit.maninvestments.com/projects/DOCKER/repos/one-click-deploys/pull-requests/11621/diff).
 
+### Securing notebooker instances
+
+Notebooker instances can be secured using [Keycloak gatekeeper](http://docs/core/services/keycloak/#add-authentication-to-app). At a high level, this involves the following steps (with example hyperlinks):
+
+* Include a keycloak [gatekeeper image](http://ahlgit.maninvestments.com/projects/DOCKER/repos/one-click-deploys/browse/k8s-kustomize/ahl-notebooker/notebooker_central_trading/environment_variables.yaml?at=4b5be740596#22) in the notebooker container, and [forward port 80 to 3000](http://ahlgit.maninvestments.com/projects/DOCKER/repos/one-click-deploys/browse/k8s-kustomize/ahl-notebooker/notebooker_central_trading/service_patch.yaml?at=4b5be740596).
+* Through an admin/ATS, [register](http://docs/core/services/keycloak/#register-the-app) your notebooker instance as a client--this gives you a client secret. Have them also create and configure users and roles as required.
+* [Seal](http://docs/core/services/kubernetes/resources/#sealedsecret) your client secret, and have the [sealed secrets](http://ahlgit.maninvestments.com/projects/DOCKER/repos/one-click-deploys/browse/k8s/ahl-notebooker/notebooker-central-trading-sealed.yaml?at=4b5be740596) passed to the [gatekeeper environment](http://ahlgit.maninvestments.com/projects/DOCKER/repos/one-click-deploys/browse/k8s-kustomize/ahl-notebooker/notebooker_central_trading/environment_variables.yaml?at=4b5be740596#23-33).
+* Specify in gatekeeper [command line arguments](http://ahlgit.maninvestments.com/projects/DOCKER/repos/one-click-deploys/browse/k8s-kustomize/ahl-notebooker/notebooker_central_trading/environment_variables.yaml?at=4b5be740596#34) the client ID, [roles](http://ahlgit.maninvestments.com/projects/DOCKER/repos/one-click-deploys/browse/k8s-kustomize/ahl-notebooker/notebooker_central_trading/environment_variables.yaml?at=4b5be740596#48-51) that you require visiting users to have in order to access your notebooker URLs.
+
+For testing purposes, it's recommended that you first point your gatekeeper to [dev keycloak instance](https://keycloak-lon.dev.m/auth/).
 
 ## Important environment variables
 
