@@ -5,13 +5,15 @@ import sys
 import uuid
 
 import click
+import copy
 import os
 import papermill as pm
 import traceback
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Sequence, List, AnyStr
 
 import logging
 
+from man.notebooker.utils.caching import get_cache
 from man.notebooker.constants import JobStatus, CANCEL_MESSAGE, OUTPUT_BASE_DIR, TEMPLATE_BASE_DIR, NotebookResultError, \
     NotebookResultComplete
 from man.notebooker.serialization.serialization import get_serializer_from_cls, Serializer
@@ -151,12 +153,76 @@ def run_report_worker(job_submit_time,
     return result
 
 
+def _get_overrides(overrides_as_json, iterate_override_values_of):
+    # type: (AnyStr, Optional[AnyStr]) -> List[Dict]
+    """
+    Converts input parameters from a JSON string into a list of parameters for reports to be run.
+    A list of parameters will return a list of parameters.
+    A dictionary of parameters will return:
+      * If iterate_override_values_of is set,
+        it will return a copy of itself with each value under the iterate_override_values_of key
+      * If iterate_override_values_of is not set,
+        it will return the dictionary within a list as the only element.
+    Parameters
+    ----------
+    overrides_as_json : `AnyStr`
+        A string containing JSON parameters for the report(s) to be run.
+    iterate_override_values_of : `Optional[AnyStr]`
+        If the overrides are a dictionary, and the dictionary contains this key, the values are exploded out
+        into multiple output dictionaries.
+
+    Examples
+    --------
+    >>> _get_overrides('{"test": [1, 2, 3], "a": 1}', None)
+    [{'test': [1, 2, 3], 'a': 1}]
+    >>> _get_overrides('{"test": [1, 2, 3], "a": 1}', "test")
+    [{"test": 1, "a": 1}, {"test": 2, "a": 1}, {"test": 3, "a": 1}]
+    >>> _get_overrides('[{"test": 1, "a": 1}, {"test": 2, "a": 1}, {"test": 3, "a": 1}]', None)
+    [{'test': 1, 'a': 1}, {'test': 2, 'a': 1}, {'test': 3, 'a': 1}]
+    >>> _get_overrides('[{"test": 1, "a": 1}, {"test": 2, "a": 1}, {"test": 3, "a": 1}]', "blah")
+    [{'test': 1, 'a': 1}, {'test': 2, 'a': 1}, {'test': 3, 'a': 1}]
+
+    Returns
+    -------
+    `List[Dict]`
+    The override parameters. Each list item will result in one notebook being run.
+
+    """
+    overrides = json.loads(overrides_as_json) if overrides_as_json else {}
+    all_overrides = []
+    if isinstance(overrides, (list, tuple)):
+        if iterate_override_values_of:
+            logger.warning("An --iterate-override-values-of has been specified ({}), but a list of overrides ({}) "
+                           "has been given. We can't use this parameter as expected, but will continue with the "
+                           "list of overrides.".format(iterate_override_values_of, overrides))
+        all_overrides = overrides
+    elif iterate_override_values_of:
+        if iterate_override_values_of not in overrides:
+            raise ValueError("Can't iterate over override values unless it is given in the override json! "
+                             "Given overrides were: {}".format(overrides))
+        to_iterate = overrides[iterate_override_values_of]
+        if not isinstance(to_iterate, (list, tuple)):
+            raise ValueError("Can't iterate over a non-list or tuple of variables. "
+                             "The given value was a {} - {}.".format(type(to_iterate), to_iterate))
+        for iterated_value in to_iterate:
+            new_override = copy.deepcopy(overrides)
+            new_override[iterate_override_values_of] = iterated_value
+            all_overrides.append(new_override)
+    else:
+        all_overrides = [overrides]
+    return all_overrides
+
+
 @click.command()
 @click.option('--report-name',
               help='The name of the template to execute, relative to the template directory.')
 @click.option('--overrides-as-json',
               default='{}',
               help='The parameters to inject into the notebook template, in JSON format.')
+@click.option('--iterate-override-values-of',
+              default="",
+              help="For the key/values in the overrides, set this to the value of one of the keys to run reports for "
+                   "each of its values.")
 @click.option('--report-title',
               default='',
               help='A custom title for this notebook. The default is the report_name.')
@@ -199,6 +265,7 @@ def run_report_worker(job_submit_time,
               help='Used for debugging and testing. Whether to actually execute the notebook or just "prepare" it.')
 def main(report_name,
          overrides_as_json,
+         iterate_override_values_of,
          report_title,
          n_retries,
          mongo_db_name,
@@ -223,11 +290,13 @@ def main(report_name,
     report_title = report_title or report_name
     logger.info('Creating %s', output_base_dir)
     mkdir_p(output_base_dir)
-    overrides = json.loads(overrides_as_json) if overrides_as_json else {}
+    all_overrides = _get_overrides(overrides_as_json, iterate_override_values_of)
+
     start_time = datetime.datetime.now()
     logger.info("Running a report with these parameters:")
     logger.info("report_name = %s", report_name)
     logger.info("overrides_as_json = %s", overrides_as_json)
+    logger.info("iterate_override_values_of = %s", iterate_override_values_of)
     logger.info("report_title = %s", report_title)
     logger.info("n_retries = %s", n_retries)
     logger.info("mongo_db_name = %s", mongo_db_name)
@@ -240,31 +309,35 @@ def main(report_name,
     logger.info("pdf_output = %s", pdf_output)
     logger.info("prepare_notebook_only = %s", prepare_notebook_only)
 
+    logger.info("Calculated overrides are: %s", str(all_overrides))
     result_serializer = get_serializer_from_cls(serializer_cls,
                                                 database_name=mongo_db_name,
                                                 mongo_host=mongo_host,
                                                 result_collection_name=result_collection_name)
-    result = run_report_worker(
-        start_time,
-        report_name,
-        overrides,
-        result_serializer,
-        report_title=report_title,
-        job_id=job_id,
-        output_base_dir=output_base_dir,
-        template_base_dir=template_base_dir,
-        attempts_remaining=n_retries-1,
-        mailto=mailto,
-        generate_pdf_output=pdf_output,
-        prepare_only=prepare_notebook_only,
-    )
-    if mailto:
-        send_result_email(result, mailto)
-    if isinstance(result, NotebookResultError):
-        logger.warning('Notebook execution failed! Output was:')
-        logger.warning(repr(result))
-        raise Exception(result.error_info)
-    return result
+    results = []
+    for overrides in all_overrides:
+        result = run_report_worker(
+            start_time,
+            report_name,
+            overrides,
+            result_serializer,
+            report_title=report_title,
+            job_id=job_id,
+            output_base_dir=output_base_dir,
+            template_base_dir=template_base_dir,
+            attempts_remaining=n_retries-1,
+            mailto=mailto,
+            generate_pdf_output=pdf_output,
+            prepare_only=prepare_notebook_only,
+        )
+        if mailto:
+            send_result_email(result, mailto)
+        if isinstance(result, NotebookResultError):
+            logger.warning('Notebook execution failed! Output was:')
+            logger.warning(repr(result))
+            raise Exception(result.error_info)
+        results.append(result)
+    return results
 
 
 def docker_compose_entrypoint():
