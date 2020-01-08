@@ -3,7 +3,7 @@ import shutil
 import os
 import tempfile
 import re
-from ahl.mail import mail
+from man.notebooker.utils.mail import mail
 from typing import AnyStr, Union
 
 from logging import getLogger
@@ -25,9 +25,10 @@ def send_result_email(result, mailto):
     subject = u'Notebooker: {} report completed with status: {}'.format(report_title, result.status.value)
     body = result.raw_html
     attachments = []
-    tmp_dir = tempfile.mkdtemp(dir=os.path.expanduser('~'))
+    tmp_dir = None
     try:
         if isinstance(result, NotebookResultComplete):
+            tmp_dir = tempfile.mkdtemp(dir=os.path.expanduser('~'))
             # Attach PDF output to the email. Has to be saved to disk temporarily for the mail API to work.
             report_name = result.report_name.replace(os.sep, REPORT_NAME_SEPARATOR)
             if isinstance(report_name, bytes):
@@ -35,7 +36,7 @@ def send_result_email(result, mailto):
             if result.pdf:
                 pdf_name = u'{}_{}.pdf'.format(report_name, result.job_start_time.strftime('%Y-%m-%dT%H%M%S'))
                 pdf_path = os.path.join(tmp_dir, pdf_name)
-                with open(pdf_path, 'w') as f:
+                with open(pdf_path, 'wb') as f:
                     f.write(result.pdf)
                 attachments.append(pdf_path)
 
@@ -43,7 +44,7 @@ def send_result_email(result, mailto):
             for resource_path, resource in result.raw_html_resources.get('outputs', {}).items():
                 resource_path_short = resource_path.rsplit(os.sep, 1)[1]
                 new_path = os.path.join(tmp_dir, resource_path_short)
-                with open(new_path, 'w') as f:
+                with open(new_path, 'wb') as f:
                     f.write(resource)
 
                 body = re.sub(r'<img src="{}"'.format(resource_path),
@@ -56,7 +57,9 @@ def send_result_email(result, mailto):
         logger.info(u'Sending email to %s with %d attachments', mailto, len(attachments))
         mail(from_email, to_email, subject, msg, attachments=attachments)
     finally:
-        shutil.rmtree(tmp_dir)
+        if tmp_dir:
+            logger.info("Cleaning up temporary email attachment directory %s", tmp_dir)
+            shutil.rmtree(tmp_dir)
 
 
 def mkdir_p(path):
