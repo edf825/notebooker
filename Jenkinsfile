@@ -1,4 +1,4 @@
-kernelname = 'man_notebooker_integration273_' + currentBuild.id
+kernelname = 'man_notebooker_integration_' + currentBuild.id
 
 def installKernel = { medusaVersion ->
   def venvDir = getVenvDir(medusaVersion)
@@ -28,13 +28,12 @@ manPython('ts2-el7') {
     buildLabel='ts2-el7'
     labels='ts2-el7'
     buildPinnedEgg = true
-    dockerPath = 'docker-27-3'
+    dockerPath = 'docker'
     medusaVersions = [
-        build: ['27-3'],
-        test: ['27-3'],
-        docker: ['27-3']
+        build: ['36-1'],
+        test: ['36-1'],
+        docker: ['36-1']
     ]
-    setup_cfg = 'setup-legacy.cfg'
     publicProject = true
     preBuildStages = [
         [name: 'Installing ipython kernel',

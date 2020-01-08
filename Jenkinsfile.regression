@@ -20,7 +20,7 @@ withEnv(['REGRESSION_TESTING="true"',"NOTEBOOK_KERNEL_NAME=${kernelname}"]) {
             labels='ts2-el7'
             dockerImages: []
             buildPinnedEgg = false
-            medusaVersions = ["27-3"]
+            medusaVersions = ["36-1"]
             preventPushEgg = true
             coverage = false
             preBuildStages = [
