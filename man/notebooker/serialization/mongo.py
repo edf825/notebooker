@@ -11,6 +11,10 @@ from typing import Union, Optional, Dict, Any, AnyStr, List, Tuple, Generator
 from man.notebooker.constants import JobStatus, NotebookResultPending, NotebookResultError, NotebookResultComplete, \
     NotebookResultBase
 
+REMOVE_ID_PROJECTION = {'_id': 0}
+REMOVE_PAYLOAD_FIELDS_PROJECTION = {'raw_html_resources': 0, 'raw_html': 0, 'raw_ipynb_json': 0}
+REMOVE_PAYLOAD_FIELDS_AND_ID_PROJECTION = dict(REMOVE_PAYLOAD_FIELDS_PROJECTION, **REMOVE_ID_PROJECTION)
+
 logger = getLogger(__name__)
 
 
@@ -207,7 +211,7 @@ class NotebookResultSerializer(object):
             base_filter.update(mongo_filter)
         if since:
             base_filter.update({'update_time': {'$gt': since}})
-        projection = {'_id': 0} if load_payload else {'raw_html_resources': 0, 'raw_html': 0, 'raw_ipynb_json': 0, '_id': 0}
+        projection = REMOVE_ID_PROJECTION if load_payload else REMOVE_PAYLOAD_FIELDS_AND_ID_PROJECTION
         results = self.library.find(base_filter, projection).sort('update_time', -1).limit(limit)
         for res in results:
             if res:
@@ -220,8 +224,13 @@ class NotebookResultSerializer(object):
         base_filter = {'status': {'$ne': JobStatus.DELETED.value}}
         if mongo_filter:
             base_filter.update(mongo_filter)
-        projection = {'report_name': 1, 'job_id': 1, '_id': 0}
-        for result in self.library.find(base_filter, projection).sort('update_time', -1).limit(limit):
+        results = self.library.aggregate([stage for stage in (
+            {'$match': base_filter},
+            {'$sort': {'update_time': -1}},
+            {'$limit': limit} if limit else {},
+            {'$project': {'report_name': 1, 'job_id': 1}},
+        ) if stage])
+        for result in results:
             keys.append((result['report_name'], result['job_id']))
         return keys
 
@@ -270,6 +279,7 @@ class NotebookResultSerializer(object):
         mongo_filter = self._mongo_filter(report_name, status=JobStatus.DONE)
         results = self.library.aggregate([
             {'$match': mongo_filter},
+            {'$project': REMOVE_PAYLOAD_FIELDS_PROJECTION},
             {'$sort': {'update_time': -1}},
             {'$group': {'_id': '$overrides', 'job_id': {'$first': '$job_id'}}}
         ])
