@@ -1,4 +1,4 @@
-FROM shared-docker.repo.prod.m/man/base/medusa-python:36-1 
+FROM releases-docker.repo.prod.m/man/base/man-medusa-python:36-1
 
 MAINTAINER AHL Data Science
 
