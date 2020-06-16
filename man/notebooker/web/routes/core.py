@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 
 from man.notebooker.serialization.serialization import get_serializer
 from man.notebooker.utils.results import get_all_available_results_json
-from man.notebooker.utils.templates import get_all_possible_templates
+from man.notebooker.utils.templates import get_all_possible_templates as utils_get_all_possible_templates
 
 
 core_bp = Blueprint('core_bp', __name__)
@@ -23,4 +23,4 @@ def all_available_results():
 
 @core_bp.route("/core/all_possible_templates")
 def get_all_possible_templates():
-    return jsonify(get_all_possible_templates())
+    return jsonify(utils_get_all_possible_templates())
