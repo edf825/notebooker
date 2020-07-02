@@ -194,7 +194,6 @@ def task_latest_status(report_name):
     params = _params_from_request_args(request.args)
     result = get_latest_job_results(report_name, params, get_serializer())
     job_id = result.job_id
-    logger.info(f"job_id={job_id}")
     if job_id:
         return jsonify(_get_job_status(job_id, report_name))
     return jsonify({'status': 'Job not found for given overrides'})
