@@ -17,12 +17,13 @@ def _output_dir(output_base_dir, report_name, job_id):
     return os.path.join(output_base_dir, report_name, job_id)
 
 
-def send_result_email(result, mailto):
+def send_result_email(result):
     # type: (Union[NotebookResultComplete, NotebookResultError], AnyStr) -> None
     from_email = 'man.notebooker@man.com'
-    to_email = mailto
+    to_email = result.mailto
     report_title = result.report_title.decode('utf-8') if isinstance(result.report_title, bytes) else result.report_title
-    subject = u'Notebooker: {} report completed with status: {}'.format(report_title, result.status.value)
+    default_subject = u'Notebooker: {} report completed with status: {}'.format(report_title, result.status.value)
+    subject = result.email_subject or default_subject
     body = result.raw_html
     attachments = []
     tmp_dir = None
@@ -54,7 +55,7 @@ def send_result_email(result, mailto):
 
         msg = ['Please either activate HTML emails, or see the PDF attachment.', body]
 
-        logger.info(u'Sending email to %s with %d attachments', mailto, len(attachments))
+        logger.info(u'Sending email to %s with %d attachments', result.mailto, len(attachments))
         mail(from_email, to_email, subject, msg, attachments=attachments)
     finally:
         if tmp_dir:

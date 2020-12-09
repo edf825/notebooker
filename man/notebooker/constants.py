@@ -100,6 +100,10 @@ class NotebookResultError(NotebookResultBase):
     generate_pdf_output = attr.ib(default=True)
 
     @property
+    def email_subject(self):
+        return ''
+
+    @property
     def raw_html(self):
         return """<p>This job resulted in an error: <br/><code style="white-space: pre-wrap;">{}</code></p>""".format(
             self.error_info)
@@ -118,6 +122,7 @@ class NotebookResultComplete(NotebookResultBase):
     report_title = attr.ib(default='')
     overrides = attr.ib(default=attr.Factory(dict))
     mailto = attr.ib(default='')
+    email_subject = attr.ib(default='')
     generate_pdf_output = attr.ib(default=True)
     stdout = attr.ib(default=attr.Factory(list))
 
@@ -142,6 +147,7 @@ class NotebookResultComplete(NotebookResultBase):
                 'job_start_time': self.job_start_time,
                 'job_finish_time': self.job_finish_time,
                 'mailto': self.mailto,
+                'email_subject': self.email_subject,
                 'overrides': self.overrides,
                 'generate_pdf_output': self.generate_pdf_output,
                 'update_time': self.update_time,
@@ -151,8 +157,9 @@ class NotebookResultComplete(NotebookResultBase):
         return 'NotebookResultComplete(job_id={job_id}, status={status}, report_name={report_name}, ' \
                'job_start_time={job_start_time}, job_finish_time={job_finish_time}, update_time={update_time}, ' \
                'report_title={report_title}, overrides={overrides}, mailto={mailto}, ' \
-               'generate_pdf_output={generate_pdf_output})'.format(
+               'email_subject={email_subject}, generate_pdf_output={generate_pdf_output})'.format(
             job_id=self.job_id, status=self.status, report_name=self.report_name, job_start_time=self.job_start_time,
             job_finish_time=self.job_finish_time, update_time=self.update_time, report_title=self.report_title,
-            overrides=self.overrides, mailto=self.mailto, generate_pdf_output=self.generate_pdf_output
+            overrides=self.overrides, mailto=self.mailto, email_subject=self.email_subject,
+            generate_pdf_output=self.generate_pdf_output
         )

@@ -41,6 +41,36 @@ def test_main(mongo_host):
         assert result.pdf == pdf_contents
 
 
+@pytest.mark.parametrize(
+    ('cli_args', 'expected_mailto'),
+    [
+        (
+            ['--report-name', 'crashyreport', '--mailto', 'happy@email'],
+            'happy@email',
+        ), (
+            ['--report-name', 'crashyreport', '--mailto', 'happy@email', '--error-mailto', 'sad@email'],
+            'sad@email',
+        ), (
+            ['--report-name', 'crashyreport', '--error-mailto', 'sad@email'],
+            'sad@email',
+        )
+    ]
+)
+def test_error_mailto(mongo_host, cli_args, expected_mailto):
+    with mock.patch('man.notebooker.execute_notebook.pm.execute_notebook') as exec_nb, \
+         mock.patch('man.notebooker.utils.conversion.jupytext.readf') as read_nb, \
+         mock.patch('man.notebooker.execute_notebook.send_result_email') as send_email:
+        exec_nb.side_effect = Exception()
+        versions = nbv.split(".")
+        major, minor = int(versions[0]), int(versions[1])
+        read_nb.return_value = NotebookNode({'cells': [], 'metadata': {}, "nbformat": major, "nbformat_minor": minor})
+        runner = CliRunner()
+        cli_result = runner.invoke(execute_notebook.main, ['--mongo-host', mongo_host] + cli_args)
+
+        mailto = send_email.call_args_list[0][0][0].mailto
+        assert mailto == expected_mailto
+
+
 @pytest.mark.parametrize("json_overrides, iterate_override_values_of, expected_output",
                          [
                              ('{"test": [1, 2, 3]}', "", [{"test": [1, 2, 3]}]),

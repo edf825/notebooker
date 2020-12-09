@@ -33,6 +33,8 @@ def run_checks(job_id,  # type: str
                overrides,  # type: Dict[Any, Any]
                generate_pdf_output=True,  # type: Optional[bool]
                mailto='',  # type: Optional[str]
+               error_mailto='',  # type: Optional[str]
+               email_subject='',  # type: Optional[str]
                prepare_only=False,  # type: Optional[bool]
                ):
     # type: (...) -> NotebookResultComplete
@@ -68,6 +70,7 @@ def run_checks(job_id,  # type: str
                                              raw_ipynb_json=raw_executed_ipynb,
                                              raw_html=html,
                                              mailto=mailto,
+                                             email_subject=email_subject,
                                              pdf=pdf,
                                              generate_pdf_output=generate_pdf_output,
                                              report_name=template_name,
@@ -87,6 +90,8 @@ def run_report_worker(job_submit_time,
                       template_base_dir=TEMPLATE_BASE_DIR,
                       attempts_remaining=2,
                       mailto='',
+                      error_mailto='',
+                      email_subject='',
                       generate_pdf_output=True,
                       prepare_only=False,
                       ):
@@ -111,6 +116,7 @@ def run_report_worker(job_submit_time,
                             template_base_dir,
                             overrides,
                             mailto=mailto,
+                            email_subject=email_subject,
                             generate_pdf_output=generate_pdf_output,
                             prepare_only=prepare_only,
                             )
@@ -126,7 +132,7 @@ def run_report_worker(job_submit_time,
                                      report_title=report_title,
                                      error_info=error_info,
                                      overrides=overrides,
-                                     mailto=mailto,
+                                     mailto=error_mailto or mailto,
                                      generate_pdf_output=generate_pdf_output,
                                      )
         logger.error('Report run failed. Saving error result to mongo library %s@%s...',
@@ -145,6 +151,8 @@ def run_report_worker(job_submit_time,
                                      template_base_dir=template_base_dir,
                                      attempts_remaining=attempts_remaining - 1,
                                      mailto=mailto,
+                                     error_mailto=error_mailto,
+                                     email_subject=email_subject,
                                      generate_pdf_output=generate_pdf_output,
                                      prepare_only=prepare_only,
                                      )
@@ -254,6 +262,12 @@ def _get_overrides(overrides_as_json, iterate_override_values_of):
 @click.option('--mailto',
               default='',
               help='A comma-separated list of email addresses which will receive results.')
+@click.option('--error-mailto',
+              default='',
+              help='A comma-separated list of email addresses which will receive errors. Defaults to --mailto argument.')
+@click.option('--email-subject',
+              default='',
+              help='The subject of the email sent on a successful result.')
 @click.option('--pdf-output/--no-pdf-output',
               default=True,
               help='Whether we generate PDF output or not.')
@@ -276,6 +290,8 @@ def main(report_name,
          output_base_dir,
          template_base_dir,
          mailto,
+         error_mailto,
+         email_subject,
          pdf_output,
          serializer_cls,
          prepare_notebook_only,
@@ -306,6 +322,8 @@ def main(report_name,
     logger.info("output_base_dir = %s", output_base_dir)
     logger.info("template_base_dir = %s", template_base_dir)
     logger.info("mailto = %s", mailto)
+    logger.info("error_mailto = %s", error_mailto)
+    logger.info("email_subject = %s", email_subject)
     logger.info("pdf_output = %s", pdf_output)
     logger.info("prepare_notebook_only = %s", prepare_notebook_only)
 
@@ -327,11 +345,13 @@ def main(report_name,
             template_base_dir=template_base_dir,
             attempts_remaining=n_retries-1,
             mailto=mailto,
+            error_mailto=error_mailto,
+            email_subject=email_subject,
             generate_pdf_output=pdf_output,
             prepare_only=prepare_notebook_only,
         )
-        if mailto:
-            send_result_email(result, mailto)
+        if result.mailto:
+            send_result_email(result)
         if isinstance(result, NotebookResultError):
             logger.warning('Notebook execution failed! Output was:')
             logger.warning(repr(result))
