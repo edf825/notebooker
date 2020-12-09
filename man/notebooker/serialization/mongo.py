@@ -83,6 +83,7 @@ class NotebookResultSerializer(object):
                         overrides=None,  # type: Optional[Dict[Any, Any]]
                         mailto='',  # type: Optional[str]
                         generate_pdf_output=True,  # type: Optional[bool]
+                        hide_code=False,
                         ):
         # type: (...) -> None
         # Call this when we are just starting a check
@@ -95,7 +96,8 @@ class NotebookResultSerializer(object):
                                                report_name=report_name,
                                                mailto=mailto,
                                                generate_pdf_output=generate_pdf_output,
-                                               overrides=overrides or {})
+                                               overrides=overrides or {},
+                                               hide_code=hide_code)
         self._save_to_db(pending_result)
 
     def save_check_result(self, notebook_result):
@@ -158,11 +160,13 @@ class NotebookResultSerializer(object):
                 raw_html_resources=result.get('raw_html_resources', {}),
                 raw_ipynb_json=result.get('raw_ipynb_json'),
                 raw_html=result.get('raw_html'),
+                email_html=result.get('email_html'),
                 pdf=result.get('pdf', ''),
                 overrides=result.get('overrides', {}),
                 generate_pdf_output=result.get('generate_pdf_output', True),
                 report_title=result.get('report_title', result['report_name']),
                 mailto=result.get('mailto', ''),
+                hide_code=result.get('hide_code', False),
                 stdout=result.get('stdout', []),
             )
         elif cls == NotebookResultPending:
@@ -176,6 +180,7 @@ class NotebookResultSerializer(object):
                 generate_pdf_output=result.get('generate_pdf_output', True),
                 report_title=result.get('report_title', result['report_name']),
                 mailto=result.get('mailto', ''),
+                hide_code=result.get('hide_code', False),
                 stdout=result.get('stdout', []),
             )
 
@@ -191,6 +196,7 @@ class NotebookResultSerializer(object):
                 generate_pdf_output=result.get('generate_pdf_output', True),
                 report_title=result.get('report_title', result['report_name']),
                 mailto=result.get('mailto', ''),
+                hide_code=result.get('hide_code', False),
                 stdout=result.get('stdout', []),
             )
         else:

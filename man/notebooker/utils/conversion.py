@@ -20,11 +20,13 @@ from man.notebooker.utils.caching import get_cache, set_cache
 from man.notebooker.utils.notebook_execution import logger, mkdir_p
 
 
-def ipython_to_html(ipynb_path, job_id):
+def ipython_to_html(ipynb_path, job_id, hide_code=False):
     # type: (str, str) -> (nbformat.NotebookNode, Dict[str, Any])
     c = Config()
     c.HTMLExporter.preprocessors = ['nbconvert.preprocessors.ExtractOutputPreprocessor']
     c.HTMLExporter.template_file = pkg_resources.resource_filename(__name__, '../web/templates/notebooker_html_output.tpl')
+    c.HTMLExporter.exclude_input = hide_code
+    c.HTMLExporter.exclude_output_prompt = hide_code
     html_exporter_with_figs = HTMLExporter(config=c)
 
     with open(ipynb_path, 'r') as nb_file:
@@ -34,9 +36,14 @@ def ipython_to_html(ipynb_path, job_id):
     return html, resources
 
 
-def ipython_to_pdf(raw_executed_ipynb, report_title):
+def ipython_to_pdf(raw_executed_ipynb, report_title, hide_code=True):
     # type: (str, str) -> AnyStr
-    pdf_exporter = PDFExporter(Config())
+    c = Config()
+    c.PDFExporter.exclude_input = hide_code
+    c.PDFExporter.exclude_output_prompt = hide_code
+    c.PDFExporter.template_file = pkg_resources.resource_filename(__name__, '../web/templates/notebooker_pdf_output.tplx')
+    pdf_exporter = PDFExporter(config=c)
+
     resources = ResourcesDict()
     resources['metadata'] = ResourcesDict()
     resources['metadata']['name'] = report_title

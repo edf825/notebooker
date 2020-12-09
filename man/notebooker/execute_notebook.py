@@ -34,6 +34,7 @@ def run_checks(job_id,  # type: str
                generate_pdf_output=True,  # type: Optional[bool]
                mailto='',  # type: Optional[str]
                prepare_only=False,  # type: Optional[bool]
+               hide_code=False,
                ):
     # type: (...) -> NotebookResultComplete
 
@@ -59,7 +60,8 @@ def run_checks(job_id,  # type: str
 
     logger.info('Saving output notebook as HTML from {}'.format(ipynb_executed_path))
     html, resources = ipython_to_html(ipynb_executed_path, job_id)
-    pdf = ipython_to_pdf(raw_executed_ipynb, report_title) if generate_pdf_output else ''
+    email_html, _ = ipython_to_html(ipynb_executed_path, job_id, hide_code=hide_code)
+    pdf = ipython_to_pdf(raw_executed_ipynb, report_title, hide_code=hide_code) if generate_pdf_output else ''
 
     notebook_result = NotebookResultComplete(job_id=job_id,
                                              job_start_time=job_start_time,
@@ -67,6 +69,7 @@ def run_checks(job_id,  # type: str
                                              raw_html_resources=resources,
                                              raw_ipynb_json=raw_executed_ipynb,
                                              raw_html=html,
+                                             email_html=email_html,
                                              mailto=mailto,
                                              pdf=pdf,
                                              generate_pdf_output=generate_pdf_output,
@@ -89,6 +92,7 @@ def run_report_worker(job_submit_time,
                       mailto='',
                       generate_pdf_output=True,
                       prepare_only=False,
+                      hide_code=False,
                       ):
     job_id = job_id or str(uuid.uuid4())
     stop_execution = os.getenv('NOTEBOOKER_APP_STOPPING')
@@ -113,6 +117,7 @@ def run_report_worker(job_submit_time,
                             mailto=mailto,
                             generate_pdf_output=generate_pdf_output,
                             prepare_only=prepare_only,
+                            hide_code=hide_code,
                             )
         logger.info('Successfully got result.')
         result_serializer.save_check_result(result)
@@ -147,6 +152,7 @@ def run_report_worker(job_submit_time,
                                      mailto=mailto,
                                      generate_pdf_output=generate_pdf_output,
                                      prepare_only=prepare_only,
+                                     hide_code=hide_code,
                                      )
         else:
             logger.info('Abandoning attempt to run report. It failed too many times.')
@@ -263,6 +269,9 @@ def _get_overrides(overrides_as_json, iterate_override_values_of):
 @click.option('--prepare-notebook-only',
               is_flag=True,
               help='Used for debugging and testing. Whether to actually execute the notebook or just "prepare" it.')
+@click.option('--hide-code/--show-code',
+              is_flag=True,
+              help='Hide code from email and PDF output.')
 def main(report_name,
          overrides_as_json,
          iterate_override_values_of,
@@ -279,6 +288,7 @@ def main(report_name,
          pdf_output,
          serializer_cls,
          prepare_notebook_only,
+         hide_code,
          ):
     if report_name is None:
         raise ValueError('Error! Please provide a --report-name.')
@@ -308,6 +318,7 @@ def main(report_name,
     logger.info("mailto = %s", mailto)
     logger.info("pdf_output = %s", pdf_output)
     logger.info("prepare_notebook_only = %s", prepare_notebook_only)
+    logger.info("hide_code = %s", hide_code)
 
     logger.info("Calculated overrides are: %s", str(all_overrides))
     result_serializer = get_serializer_from_cls(serializer_cls,
@@ -329,6 +340,7 @@ def main(report_name,
             mailto=mailto,
             generate_pdf_output=pdf_output,
             prepare_only=prepare_notebook_only,
+            hide_code=hide_code,
         )
         if mailto:
             send_result_email(result, mailto)

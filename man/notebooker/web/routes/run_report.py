@@ -74,7 +74,7 @@ def _monitor_stderr(process, job_id):
     return ''.join(stderr)
 
 
-def run_report(report_name, report_title, mailto, overrides, generate_pdf_output=True, prepare_only=False):
+def run_report(report_name, report_title, mailto, overrides, hide_code=False, generate_pdf_output=True, prepare_only=False):
     # Actually start the job in earnest.
     job_id = str(uuid.uuid4())
     job_start_time = datetime.datetime.now()
@@ -86,6 +86,7 @@ def run_report(report_name, report_title, mailto, overrides, generate_pdf_output
                                       overrides=overrides,
                                       mailto=mailto,
                                       generate_pdf_output=generate_pdf_output,
+                                      hide_code=hide_code,
                                       )
     p = subprocess.Popen([sys.executable,
                           '-m', execute_notebook.__name__,
@@ -100,6 +101,7 @@ def run_report(report_name, report_title, mailto, overrides, generate_pdf_output
                           '--mongo-host', result_serializer.mongo_host,
                           '--result-collection-name', result_serializer.result_collection_name,
                           '--pdf-output' if generate_pdf_output else '--no-pdf-output',
+                          '--hide-code' if hide_code else '--show-code',
                           '--serializer-cls', result_serializer.__class__.__name__
                           ] +
                          (['--prepare-notebook-only'] if prepare_only else []),
@@ -116,9 +118,10 @@ def _handle_run_report(report_name, overrides_dict, issues):
     report_title = validate_title(request.values.get('report_title'), issues)
     # Get mailto email address
     mailto = validate_mailto(request.values.get('mailto'), issues)
+    hide_code = request.values.get('hide_code') == 'on'
     if issues:
         return jsonify({'status': 'Failed', 'content': ('\n'.join(issues))})
-    job_id = run_report(report_name, report_title, mailto, overrides_dict)
+    job_id = run_report(report_name, report_title, mailto, overrides_dict, hide_code=hide_code)
     return (jsonify({'id': job_id}),
             202,  # HTTP Accepted code
             {'Location': url_for('serve_results_bp.task_status', report_name=report_name, job_id=job_id)})
